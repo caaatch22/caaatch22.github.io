@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <meta name="robots" content="index, follow">
-<title>phmap —— 缓存友好的搞笑hashtable | Mingjie&#39;s Home</title>
+<title>phmap —— 缓存友好的高效hashtable | Mingjie&#39;s Home</title>
 <meta name="keywords" content="DataStructure, opensource">
 <meta name="description" content="众所周知，C&#43;&#43;标准库的 unordered_map在性能上向来不是一个好的选择。开源市场上有非常多的高性能哈希表可供选择，phmap继承自 absl-hashmap，有着非常好的插入、查找性能。在著名的Comprehensive C&#43;&#43; Hashmap Benchmarks 2022榜单中名列前茅。事实上，我比对了 phmap::flat_hash_map与榜单中综合性能第一的 ankerl::unordered_dense::map，我的benchmark中只有遍历哈希表时，flat_hash_map的性能低于 unordered_dense::map，其余无论是插入还是随即查找，大部分情况下 flat_hash_map的性能都更优。本文简单介绍了 flat_hash_map相关情况，以及一些使用上的建议与坑点。
 flat_hash_map 和 node_hash_map区别 phmap中有提供了两类哈希表，其内部布局示意图如下：
@@ -71,7 +71,7 @@ if (!doNotTrack) {
 	gtag('config', 'G-WEG841BBW9', { 'anonymize_ip': false });
 }
 </script>
-<meta property="og:title" content="phmap —— 缓存友好的搞笑hashtable" />
+<meta property="og:title" content="phmap —— 缓存友好的高效hashtable" />
 <meta property="og:description" content="众所周知，C&#43;&#43;标准库的 unordered_map在性能上向来不是一个好的选择。开源市场上有非常多的高性能哈希表可供选择，phmap继承自 absl-hashmap，有着非常好的插入、查找性能。在著名的Comprehensive C&#43;&#43; Hashmap Benchmarks 2022榜单中名列前茅。事实上，我比对了 phmap::flat_hash_map与榜单中综合性能第一的 ankerl::unordered_dense::map，我的benchmark中只有遍历哈希表时，flat_hash_map的性能低于 unordered_dense::map，其余无论是插入还是随即查找，大部分情况下 flat_hash_map的性能都更优。本文简单介绍了 flat_hash_map相关情况，以及一些使用上的建议与坑点。
 flat_hash_map 和 node_hash_map区别 phmap中有提供了两类哈希表，其内部布局示意图如下：
 由上图（忽略了bucket的细节）可以看出，flat_hash_map的最大的优点在于
@@ -83,7 +83,7 @@ node之间的内存是连续的(虽然可能中间存在空node)，遍历的时�
 <meta property="article:modified_time" content="2023-07-23T21:23:15+00:00" />
 
 <meta name="twitter:card" content="summary"/>
-<meta name="twitter:title" content="phmap —— 缓存友好的搞笑hashtable"/>
+<meta name="twitter:title" content="phmap —— 缓存友好的高效hashtable"/>
 <meta name="twitter:description" content="众所周知，C&#43;&#43;标准库的 unordered_map在性能上向来不是一个好的选择。开源市场上有非常多的高性能哈希表可供选择，phmap继承自 absl-hashmap，有着非常好的插入、查找性能。在著名的Comprehensive C&#43;&#43; Hashmap Benchmarks 2022榜单中名列前茅。事实上，我比对了 phmap::flat_hash_map与榜单中综合性能第一的 ankerl::unordered_dense::map，我的benchmark中只有遍历哈希表时，flat_hash_map的性能低于 unordered_dense::map，其余无论是插入还是随即查找，大部分情况下 flat_hash_map的性能都更优。本文简单介绍了 flat_hash_map相关情况，以及一些使用上的建议与坑点。
 flat_hash_map 和 node_hash_map区别 phmap中有提供了两类哈希表，其内部布局示意图如下：
 由上图（忽略了bucket的细节）可以看出，flat_hash_map的最大的优点在于
@@ -105,7 +105,7 @@ node之间的内存是连续的(虽然可能中间存在空node)，遍历的时�
     {
       "@type": "ListItem",
       "position":  3 ,
-      "name": "phmap —— 缓存友好的搞笑hashtable",
+      "name": "phmap —— 缓存友好的高效hashtable",
       "item": "https://caaatch22.github.io/posts/phmap/"
     }
   ]
@@ -115,8 +115,8 @@ node之间的内存是连续的(虽然可能中间存在空node)，遍历的时�
 {
   "@context": "https://schema.org",
   "@type": "BlogPosting",
-  "headline": "phmap —— 缓存友好的搞笑hashtable",
-  "name": "phmap —— 缓存友好的搞笑hashtable",
+  "headline": "phmap —— 缓存友好的高效hashtable",
+  "name": "phmap —— 缓存友好的高效hashtable",
   "description": "众所周知，C++标准库的 unordered_map在性能上向来不是一个好的选择。开源市场上有非常多的高性能哈希表可供选择，phmap继承自 absl-hashmap，有着非常好的插入、查找性能。在著名的Comprehensive C++ Hashmap Benchmarks 2022榜单中名列前茅。事实上，我比对了 phmap::flat_hash_map与榜单中综合性能第一的 ankerl::unordered_dense::map，我的benchmark中只有遍历哈希表时，flat_hash_map的性能低于 unordered_dense::map，其余无论是插入还是随即查找，大部分情况下 flat_hash_map的性能都更优。本文简单介绍了 flat_hash_map相关情况，以及一些使用上的建议与坑点。\nflat_hash_map 和 node_hash_map区别 phmap中有提供了两类哈希表，其内部布局示意图如下：\n由上图（忽略了bucket的细节）可以看出，flat_hash_map的最大的优点在于\nnode之间的内存是连续的(虽然可能中间存在空node)，遍历的时候对cache更加友好 并且相比于 node_hash_map版少一次寻址过程（std::unordered_map的设计与 node_hash_map）相同。 而 flat_*系列的缺点就是在 rehash的时候:\n会引发原来的value失效（这里的失效指的是原来的那个对象所对应的内存失效，而不是value所包含的内容失效，例如，value是一个指针，那它的值——所指向的对象，不会受到影响）。举个例子： flat_hash_map\u0026lt;int, Data\u0026gt; mp; node_hash_map\u0026lt;int, Data\u0026gt; nodemp; mp[0] = Data(); nodemp[0] = Data(); auto\u0026amp; mp0 = mp[0]; auto\u0026amp; nodemp0 = nodemp[0]; // tigger rehash for (int i = 1; i \u0026lt;= 10; i ++) { mp[i] = Data(); nodemp[i] = Data(); } assert(std::addressof(mp[0]) != std::addressof(mp0)); assert(std::addressof(nodemp[0]) == std::addressof(nodemp0)); 原因就是 flat_hash_map的内存布局导致的。而 node_hash_map或者 std::unordered_map就保证不会出现这种情况，因为当他们rehash的时候，只需要将bucket内的指针重新分配，指针的值还是指向原来的 node\u0026lt;key, value\u0026gt;.",
   "keywords": [
     "DataStructure", "opensource"
@@ -211,7 +211,7 @@ node之间的内存是连续的(虽然可能中间存在空node)，遍历的时�
   <header class="post-header">
     <div class="breadcrumbs"><a href="https://caaatch22.github.io">Home</a>&nbsp;»&nbsp;<a href="https://caaatch22.github.io/posts/">Posts</a></div>
     <h1 class="post-title">
-      phmap —— 缓存友好的搞笑hashtable
+      phmap —— 缓存友好的高效hashtable
     </h1>
     <div class="post-meta"><span title='2023-07-23 21:23:15 +0000 UTC'>July 23, 2023</span>&nbsp;·&nbsp;3 min
 

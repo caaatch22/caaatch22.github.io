@@ -558,7 +558,7 @@ non-blocking caches 本节主要参考了超标量处理器设计9.6.2</descript
     </item>
     
     <item>
-      <title>phmap —— 缓存友好的搞笑hashtable</title>
+      <title>phmap —— 缓存友好的高效hashtable</title>
       <link>https://caaatch22.github.io/posts/phmap/</link>
       <pubDate>Sun, 23 Jul 2023 21:23:15 +0000</pubDate>
       
