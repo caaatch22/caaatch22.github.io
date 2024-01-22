@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>parallel-hashmap | Mingjie&#39;s Home</title>
+<meta name="keywords" content="DataStructure, opensource">
+<meta name="description" content="众所周知，C&#43;&#43;标准库的 unordered_map向来不是一个好的选择。开源市场上有非常多的高性能哈希表可供选择，phmap继承自 absl-hashmap，有着非常好的插入、查找性能。在著名的Comprehensive C&#43;&#43; Hashmap Benchmarks 2022榜单中名列前茅。事实上，我比对了 phmap::flat_hash_map与榜单中综合性能第一的 ankerl::unordered_dense::map，我的benchmark中只有遍历哈希表时，flat_hash_map的性能低于 unordered_dense::map，其余无论是插入还是随即查找，大部分情况下 flat_hash_map的性能都更优。本文简单介绍了 flat_hash_map相关情况，以及一些使用上的建议与坑点。
+flat_hash_map 和 node_hash_map区别 phmap中有提供了两类哈希表，其内部布局示意图如下：
+由上图（忽略了bucket的细节）可以看出，flat_hash_map的最大的优点在于
+node之间的内存是连续的(虽然可能中间存在空node)，遍历的时候对cache更加友好 并且相比于 node_hash_map版少一次寻址过程（std::unordered_map的设计与 node_hash_map）相同。 而 flat_*系列的缺点就是在 rehash的时候:
+会引发原来的value失效（这里的失效指的是原来的那个对象所对应的内存失效，而不是value所包含的内容失效，例如，value是一个指针，那它的值——所指向的对象，不会受到影响）。举个例子： flat_hash_map&lt;int, Data&gt; mp; node_hash_map&lt;int, Data&gt; nodemp; mp[0] = Data(); nodemp[0] = Data(); auto&amp; mp0 = mp[0]; auto&amp; nodemp0 = nodemp[0]; // tigger rehash for (int i = 1; i &lt;= 10; i &#43;&#43;) { mp[i] = Data(); nodemp[i] = Data(); } assert(std::addressof(mp[0]) != std::addressof(mp0)); assert(std::addressof(nodemp[0]) == std::addressof(nodemp0)); 原因就是 flat_hash_map的内存布局导致的。而 node_hash_map或者 std::unordered_map就保证不会出现这种情况，因为当他们rehash的时候，只需要将bucket内的指针重新分配，指针的值还是指向原来的 node&lt;key, value&gt;.">
+<meta name="author" content="">
+<link rel="canonical" href="https://caaatch22.github.io/posts/parallel-hashmap/">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.678b5c47efa744d2e0dd0d61101075e6aecdc9a0631e7ad8538f4ec0cca79273.css" integrity="sha256-Z4tcR&#43;&#43;nRNLg3Q1hEBB15q7NyaBjHnrYU49OwMynknM=" rel="preload stylesheet" as="style">
+<script defer crossorigin="anonymous" src="/assets/js/highlight.f413e19d0714851f6474e7ee9632408e58ac146fbdbe62747134bea2fa3415e0.js" integrity="sha256-9BPhnQcUhR9kdOfuljJAjlisFG&#43;9vmJ0cTS&#43;ovo0FeA="
+    onload="hljs.initHighlightingOnLoad();"></script>
+<link rel="icon" href="https://caaatch22.github.io/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://caaatch22.github.io/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://caaatch22.github.io/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://caaatch22.github.io/apple-touch-icon.png">
+<link rel="mask-icon" href="https://caaatch22.github.io/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --hljs-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-WEG841BBW9"></script>
+<script>
+var doNotTrack = false;
+if (!doNotTrack) {
+	window.dataLayer = window.dataLayer || [];
+	function gtag(){dataLayer.push(arguments);}
+	gtag('js', new Date());
+	gtag('config', 'G-WEG841BBW9', { 'anonymize_ip': false });
+}
+</script>
+<meta property="og:title" content="parallel-hashmap" />
+<meta property="og:description" content="众所周知，C&#43;&#43;标准库的 unordered_map向来不是一个好的选择。开源市场上有非常多的高性能哈希表可供选择，phmap继承自 absl-hashmap，有着非常好的插入、查找性能。在著名的Comprehensive C&#43;&#43; Hashmap Benchmarks 2022榜单中名列前茅。事实上，我比对了 phmap::flat_hash_map与榜单中综合性能第一的 ankerl::unordered_dense::map，我的benchmark中只有遍历哈希表时，flat_hash_map的性能低于 unordered_dense::map，其余无论是插入还是随即查找，大部分情况下 flat_hash_map的性能都更优。本文简单介绍了 flat_hash_map相关情况，以及一些使用上的建议与坑点。
+flat_hash_map 和 node_hash_map区别 phmap中有提供了两类哈希表，其内部布局示意图如下：
+由上图（忽略了bucket的细节）可以看出，flat_hash_map的最大的优点在于
+node之间的内存是连续的(虽然可能中间存在空node)，遍历的时候对cache更加友好 并且相比于 node_hash_map版少一次寻址过程（std::unordered_map的设计与 node_hash_map）相同。 而 flat_*系列的缺点就是在 rehash的时候:
+会引发原来的value失效（这里的失效指的是原来的那个对象所对应的内存失效，而不是value所包含的内容失效，例如，value是一个指针，那它的值——所指向的对象，不会受到影响）。举个例子： flat_hash_map&lt;int, Data&gt; mp; node_hash_map&lt;int, Data&gt; nodemp; mp[0] = Data(); nodemp[0] = Data(); auto&amp; mp0 = mp[0]; auto&amp; nodemp0 = nodemp[0]; // tigger rehash for (int i = 1; i &lt;= 10; i &#43;&#43;) { mp[i] = Data(); nodemp[i] = Data(); } assert(std::addressof(mp[0]) != std::addressof(mp0)); assert(std::addressof(nodemp[0]) == std::addressof(nodemp0)); 原因就是 flat_hash_map的内存布局导致的。而 node_hash_map或者 std::unordered_map就保证不会出现这种情况，因为当他们rehash的时候，只需要将bucket内的指针重新分配，指针的值还是指向原来的 node&lt;key, value&gt;." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://caaatch22.github.io/posts/parallel-hashmap/" />
+<meta property="og:image" content="https://caaatch22.github.io/img/phmap/flat_hash_map-vs-node_hash_map.png" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-07-23T21:23:15+00:00" />
+<meta property="article:modified_time" content="2023-07-23T21:23:15+00:00" />
+
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:image" content="https://caaatch22.github.io/img/phmap/flat_hash_map-vs-node_hash_map.png" />
+<meta name="twitter:title" content="parallel-hashmap"/>
+<meta name="twitter:description" content="众所周知，C&#43;&#43;标准库的 unordered_map向来不是一个好的选择。开源市场上有非常多的高性能哈希表可供选择，phmap继承自 absl-hashmap，有着非常好的插入、查找性能。在著名的Comprehensive C&#43;&#43; Hashmap Benchmarks 2022榜单中名列前茅。事实上，我比对了 phmap::flat_hash_map与榜单中综合性能第一的 ankerl::unordered_dense::map，我的benchmark中只有遍历哈希表时，flat_hash_map的性能低于 unordered_dense::map，其余无论是插入还是随即查找，大部分情况下 flat_hash_map的性能都更优。本文简单介绍了 flat_hash_map相关情况，以及一些使用上的建议与坑点。
+flat_hash_map 和 node_hash_map区别 phmap中有提供了两类哈希表，其内部布局示意图如下：
+由上图（忽略了bucket的细节）可以看出，flat_hash_map的最大的优点在于
+node之间的内存是连续的(虽然可能中间存在空node)，遍历的时候对cache更加友好 并且相比于 node_hash_map版少一次寻址过程（std::unordered_map的设计与 node_hash_map）相同。 而 flat_*系列的缺点就是在 rehash的时候:
+会引发原来的value失效（这里的失效指的是原来的那个对象所对应的内存失效，而不是value所包含的内容失效，例如，value是一个指针，那它的值——所指向的对象，不会受到影响）。举个例子： flat_hash_map&lt;int, Data&gt; mp; node_hash_map&lt;int, Data&gt; nodemp; mp[0] = Data(); nodemp[0] = Data(); auto&amp; mp0 = mp[0]; auto&amp; nodemp0 = nodemp[0]; // tigger rehash for (int i = 1; i &lt;= 10; i &#43;&#43;) { mp[i] = Data(); nodemp[i] = Data(); } assert(std::addressof(mp[0]) != std::addressof(mp0)); assert(std::addressof(nodemp[0]) == std::addressof(nodemp0)); 原因就是 flat_hash_map的内存布局导致的。而 node_hash_map或者 std::unordered_map就保证不会出现这种情况，因为当他们rehash的时候，只需要将bucket内的指针重新分配，指针的值还是指向原来的 node&lt;key, value&gt;."/>
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "Posts",
+      "item": "https://caaatch22.github.io/posts/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  3 ,
+      "name": "parallel-hashmap",
+      "item": "https://caaatch22.github.io/posts/parallel-hashmap/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "parallel-hashmap",
+  "name": "parallel-hashmap",
+  "description": "众所周知，C++标准库的 unordered_map向来不是一个好的选择。开源市场上有非常多的高性能哈希表可供选择，phmap继承自 absl-hashmap，有着非常好的插入、查找性能。在著名的Comprehensive C++ Hashmap Benchmarks 2022榜单中名列前茅。事实上，我比对了 phmap::flat_hash_map与榜单中综合性能第一的 ankerl::unordered_dense::map，我的benchmark中只有遍历哈希表时，flat_hash_map的性能低于 unordered_dense::map，其余无论是插入还是随即查找，大部分情况下 flat_hash_map的性能都更优。本文简单介绍了 flat_hash_map相关情况，以及一些使用上的建议与坑点。\nflat_hash_map 和 node_hash_map区别 phmap中有提供了两类哈希表，其内部布局示意图如下：\n由上图（忽略了bucket的细节）可以看出，flat_hash_map的最大的优点在于\nnode之间的内存是连续的(虽然可能中间存在空node)，遍历的时候对cache更加友好 并且相比于 node_hash_map版少一次寻址过程（std::unordered_map的设计与 node_hash_map）相同。 而 flat_*系列的缺点就是在 rehash的时候:\n会引发原来的value失效（这里的失效指的是原来的那个对象所对应的内存失效，而不是value所包含的内容失效，例如，value是一个指针，那它的值——所指向的对象，不会受到影响）。举个例子： flat_hash_map\u0026lt;int, Data\u0026gt; mp; node_hash_map\u0026lt;int, Data\u0026gt; nodemp; mp[0] = Data(); nodemp[0] = Data(); auto\u0026amp; mp0 = mp[0]; auto\u0026amp; nodemp0 = nodemp[0]; // tigger rehash for (int i = 1; i \u0026lt;= 10; i ++) { mp[i] = Data(); nodemp[i] = Data(); } assert(std::addressof(mp[0]) != std::addressof(mp0)); assert(std::addressof(nodemp[0]) == std::addressof(nodemp0)); 原因就是 flat_hash_map的内存布局导致的。而 node_hash_map或者 std::unordered_map就保证不会出现这种情况，因为当他们rehash的时候，只需要将bucket内的指针重新分配，指针的值还是指向原来的 node\u0026lt;key, value\u0026gt;.",
+  "keywords": [
+    "DataStructure", "opensource"
+  ],
+  "articleBody": " 众所周知，C++标准库的 unordered_map向来不是一个好的选择。开源市场上有非常多的高性能哈希表可供选择，phmap继承自 absl-hashmap，有着非常好的插入、查找性能。在著名的Comprehensive C++ Hashmap Benchmarks 2022榜单中名列前茅。事实上，我比对了 phmap::flat_hash_map与榜单中综合性能第一的 ankerl::unordered_dense::map，我的benchmark中只有遍历哈希表时，flat_hash_map的性能低于 unordered_dense::map，其余无论是插入还是随即查找，大部分情况下 flat_hash_map的性能都更优。本文简单介绍了 flat_hash_map相关情况，以及一些使用上的建议与坑点。\nflat_hash_map 和 node_hash_map区别 phmap中有提供了两类哈希表，其内部布局示意图如下：\n由上图（忽略了bucket的细节）可以看出，flat_hash_map的最大的优点在于\nnode之间的内存是连续的(虽然可能中间存在空node)，遍历的时候对cache更加友好 并且相比于 node_hash_map版少一次寻址过程（std::unordered_map的设计与 node_hash_map）相同。 而 flat_*系列的缺点就是在 rehash的时候:\n会引发原来的value失效（这里的失效指的是原来的那个对象所对应的内存失效，而不是value所包含的内容失效，例如，value是一个指针，那它的值——所指向的对象，不会受到影响）。举个例子： flat_hash_map\u003cint, Data\u003e mp; node_hash_map\u003cint, Data\u003e nodemp; mp[0] = Data(); nodemp[0] = Data(); auto\u0026 mp0 = mp[0]; auto\u0026 nodemp0 = nodemp[0]; // tigger rehash for (int i = 1; i \u003c= 10; i ++) { mp[i] = Data(); nodemp[i] = Data(); } assert(std::addressof(mp[0]) != std::addressof(mp0)); assert(std::addressof(nodemp[0]) == std::addressof(nodemp0)); 原因就是 flat_hash_map的内存布局导致的。而 node_hash_map或者 std::unordered_map就保证不会出现这种情况，因为当他们rehash的时候，只需要将bucket内的指针重新分配，指针的值还是指向原来的 node.\n由上述原因引发的性能问题： 当 node很大的时候，flat_hash_map每次 rehash 需要重新构造的开销大，而 node_hash_map只需要重新构造相同数量的指针。并且遍历时也因为两个node之间相隔较大使得 cache locality 下降。 使用建议(单线程) 绝大多数情况下直接用 flat_hash_map:\nint -\u003e int int -\u003e string string-\u003eint string(sso) -\u003e string(sso) string(none-sso)-\u003estring(none-sso) 少数情况用 node_hash_map:\nkey -\u003e Large Data 这种情况强烈建议用 flat_hash_map",
+  "wordCount" : "568",
+  "inLanguage": "en",
+  "image":"https://caaatch22.github.io/img/phmap/flat_hash_map-vs-node_hash_map.png","datePublished": "2023-07-23T21:23:15Z",
+  "dateModified": "2023-07-23T21:23:15Z",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://caaatch22.github.io/posts/parallel-hashmap/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Mingjie's Home",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://caaatch22.github.io/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+
+<body class="" id="top">
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    } else if (localStorage.getItem("pref-theme") === "light") {
+        document.body.classList.remove('dark')
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+    }
+
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://caaatch22.github.io" accesskey="h" title="Mingjie&#39;s Home (Alt + H)">Mingjie&#39;s Home</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://caaatch22.github.io/about/" title="About">
+                    <span>About</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://caaatch22.github.io/cv/" title="CV">
+                    <span>CV</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://caaatch22.github.io/archives/" title="Archives">
+                    <span>Archives</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://caaatch22.github.io/search/" title="Search (Alt &#43; /)" accesskey=/>
+                    <span>Search</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    <div class="breadcrumbs"><a href="https://caaatch22.github.io">Home</a>&nbsp;»&nbsp;<a href="https://caaatch22.github.io/posts/">Posts</a></div>
+    <h1 class="post-title">
+      parallel-hashmap
+    </h1>
+    <div class="post-meta"><span title='2023-07-23 21:23:15 +0000 UTC'>July 23, 2023</span>&nbsp;·&nbsp;3 min
+
+</div>
+  </header> <aside id="toc-container" class="toc-container wide">
+    <div class="toc">
+        <details  open>
+            <summary accesskey="c" title="(Alt + C)">
+                <span class="details">Table of Contents</span>
+            </summary>
+
+            <div class="inner"><ul>
+                    <li>
+                        <a href="#flat_hash_map-%e5%92%8c-node_hash_map%e5%8c%ba%e5%88%ab" aria-label="flat_hash_map 和 node_hash_map区别">flat_hash_map 和 node_hash_map区别</a></li>
+                    <li>
+                        <a href="#%e4%bd%bf%e7%94%a8%e5%bb%ba%e8%ae%ae%e5%8d%95%e7%ba%bf%e7%a8%8b" aria-label="使用建议(单线程)">使用建议(单线程)</a></li>
+                    <li>
+                        <a href="#parallel_flat_hash_map" aria-label="parallel_flat_hash_map">parallel_flat_hash_map</a></li>
+                    <li>
+                        <a href="#benchmarks" aria-label="benchmarks">benchmarks</a></li>
+                    <li>
+                        <a href="#%e4%b8%80%e4%b8%aa%e5%b0%8f%e9%97%ae%e9%a2%98" aria-label="一个小问题">一个小问题</a>
+                    </li>
+                </ul>
+            </div>
+        </details>
+    </div>
+</aside>
+<script>
+    let activeElement;
+    let elements;
+    window.addEventListener('DOMContentLoaded', function (event) {
+        checkTocPosition();
+
+        elements = document.querySelectorAll('h1[id],h2[id],h3[id],h4[id],h5[id],h6[id]');
+         
+         activeElement = elements[0];
+         const id = encodeURI(activeElement.getAttribute('id')).toLowerCase();
+         document.querySelector(`.inner ul li a[href="#${id}"]`).classList.add('active');
+     }, false);
+
+    window.addEventListener('resize', function(event) {
+        checkTocPosition();
+    }, false);
+
+    window.addEventListener('scroll', () => {
+        
+        activeElement = Array.from(elements).find((element) => {
+            if ((getOffsetTop(element) - window.pageYOffset) > 0 && 
+                (getOffsetTop(element) - window.pageYOffset) < window.innerHeight/2) {
+                return element;
+            }
+        }) || activeElement
+
+        elements.forEach(element => {
+             const id = encodeURI(element.getAttribute('id')).toLowerCase();
+             if (element === activeElement){
+                 document.querySelector(`.inner ul li a[href="#${id}"]`).classList.add('active');
+             } else {
+                 document.querySelector(`.inner ul li a[href="#${id}"]`).classList.remove('active');
+             }
+         })
+     }, false);
+
+    const main = parseInt(getComputedStyle(document.body).getPropertyValue('--article-width'), 10);
+    const toc = parseInt(getComputedStyle(document.body).getPropertyValue('--toc-width'), 10);
+    const gap = parseInt(getComputedStyle(document.body).getPropertyValue('--gap'), 10);
+
+    function checkTocPosition() {
+        const width = document.body.scrollWidth;
+
+        if (width - main - (toc * 2) - (gap * 4) > 0) {
+            document.getElementById("toc-container").classList.add("wide");
+        } else {
+            document.getElementById("toc-container").classList.remove("wide");
+        }
+    }
+
+    function getOffsetTop(element) {
+        if (!element.getClientRects().length) {
+            return 0;
+        }
+        let rect = element.getBoundingClientRect();
+        let win = element.ownerDocument.defaultView;
+        return rect.top + win.pageYOffset;   
+    }
+</script>
+
+  <div class="post-content"><blockquote>
+<p>众所周知，C++标准库的 <code>unordered_map</code>向来不是一个好的选择。开源市场上有非常多的高性能哈希表可供选择，<a href="https://github.com/greg7mdp/parallel-hashmap">phmap</a>继承自 <code>absl-hashmap</code>，有着非常好的插入、查找性能。在著名的<a href="https://martin.ankerl.com/2022/08/27/hashmap-bench-01/#benchmark-results-table">Comprehensive C++ Hashmap Benchmarks 2022</a>榜单中名列前茅。事实上，我比对了 <code>phmap::flat_hash_map</code>与榜单中综合性能第一的 <code>ankerl::unordered_dense::map</code>，我的benchmark中只有遍历哈希表时，<code>flat_hash_map</code>的性能低于 <code>unordered_dense::map</code>，其余无论是插入还是随即查找，大部分情况下 <code>flat_hash_map</code>的性能都更优。本文简单介绍了 <code>flat_hash_map</code>相关情况，以及一些使用上的建议与坑点。</p>
+</blockquote>
+<h3 id="flat_hash_map-和-node_hash_map区别">flat_hash_map 和 node_hash_map区别<a hidden class="anchor" aria-hidden="true" href="#flat_hash_map-和-node_hash_map区别">#</a></h3>
+<p>phmap中有提供了两类哈希表，其内部布局示意图如下：</p>
+<p><img loading="lazy" src="/img/phmap/flat_hash_map-vs-node_hash_map.png" alt=""  />
+</p>
+<p>由上图（忽略了bucket的细节）可以看出，<code>flat_hash_map</code>的最大的优点在于</p>
+<ol>
+<li>node之间的内存是连续的(虽然可能中间存在空node)，遍历的时候对cache更加友好</li>
+<li>并且相比于 <code>node_hash_map</code>版少一次寻址过程（<code>std::unordered_map</code>的设计与 <code>node_hash_map</code>）相同。</li>
+</ol>
+<p>而 <code>flat_*</code>系列的缺点就是在 <code>rehash</code>的时候:</p>
+<ol>
+<li>会引发原来的value<strong>失效</strong>（这里的失效指的是原来的那个对象所对应的内存失效，而不是value所包含的内容失效，例如，value是一个指针，那它的值——所指向的对象，不会受到影响）。举个例子：</li>
+</ol>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>flat_hash_map<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">int</span>, Data<span style="color:#f92672">&gt;</span> mp;
+</span></span><span style="display:flex;"><span>node_hash_map<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">int</span>, Data<span style="color:#f92672">&gt;</span> nodemp;
+</span></span><span style="display:flex;"><span>mp[<span style="color:#ae81ff">0</span>] <span style="color:#f92672">=</span> Data();
+</span></span><span style="display:flex;"><span>nodemp[<span style="color:#ae81ff">0</span>] <span style="color:#f92672">=</span> Data();
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">auto</span><span style="color:#f92672">&amp;</span> mp0 <span style="color:#f92672">=</span> mp[<span style="color:#ae81ff">0</span>];
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">auto</span><span style="color:#f92672">&amp;</span> nodemp0 <span style="color:#f92672">=</span> nodemp[<span style="color:#ae81ff">0</span>];
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// tigger rehash
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span><span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">int</span> i <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span>; i <span style="color:#f92672">&lt;=</span> <span style="color:#ae81ff">10</span>; i <span style="color:#f92672">++</span>) {
+</span></span><span style="display:flex;"><span>	mp[i] <span style="color:#f92672">=</span> Data();
+</span></span><span style="display:flex;"><span>	nodemp[i] <span style="color:#f92672">=</span> Data(); 
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>assert(std<span style="color:#f92672">::</span>addressof(mp[<span style="color:#ae81ff">0</span>]) <span style="color:#f92672">!=</span> std<span style="color:#f92672">::</span>addressof(mp0));
+</span></span><span style="display:flex;"><span>assert(std<span style="color:#f92672">::</span>addressof(nodemp[<span style="color:#ae81ff">0</span>]) <span style="color:#f92672">==</span> std<span style="color:#f92672">::</span>addressof(nodemp0));
+</span></span></code></pre></div><p>原因就是 <code>flat_hash_map</code>的内存布局导致的。而 <code>node_hash_map</code>或者 <code>std::unordered_map</code>就保证不会出现这种情况，因为当他们rehash的时候，只需要将bucket内的指针重新分配，指针的值还是指向原来的 <code>node&lt;key, value&gt;</code>.</p>
+<ol start="2">
+<li>由上述原因引发的性能问题： 当 <code>node&lt;pair, value&gt;</code>很大的时候，<code>flat_hash_map</code>每次 rehash 需要重新构造的开销大，而 <code>node_hash_map</code>只需要重新构造相同数量的指针。并且遍历时也因为两个node之间相隔较大使得 cache locality 下降。</li>
+</ol>
+<h3 id="使用建议单线程">使用建议(单线程)<a hidden class="anchor" aria-hidden="true" href="#使用建议单线程">#</a></h3>
+<p>绝大多数情况下直接用 <code>flat_hash_map</code>:</p>
+<ol>
+<li><code>int -&gt; int</code></li>
+<li><code>int -&gt; string</code></li>
+<li><code>string-&gt;int</code></li>
+<li><code>string(sso) -&gt; string(sso)</code></li>
+<li><code>string(none-sso)-&gt;string(none-sso)</code></li>
+</ol>
+<p>少数情况用 <code>node_hash_map</code>:</p>
+<ol>
+<li><code>key -&gt; Large Data</code></li>
+</ol>
+<p>这种情况强烈建议用 <code>flat_hash_map&lt;key, ptr&lt;Large Data&gt;&gt;</code>代替</p>
+<p>有意思的一点是为什么经过实测 <code>string(none-sso) -&gt; string(none-sso)</code>这种情况下仍然是 <code>flat_hash_map</code>更快一点，难道string(none-sso)不是Large Data吗？</p>
+<p>事实上，<code>string</code> 虽然可能很大，但是其 <code>raw data</code>存在另外分配的一个空间（超过短字符串优化限定大小时），所以当rehash的时候，新生成的string只需要move由来的string就可以了。下图展示了其内存布局：</p>
+<p><img loading="lazy" src="/img/phmap/flat_map_string_nonesso.png" alt=""  />
+</p>
+<p><strong>另外，如果提前知道需要插入的pair的数量（或者大致数量），特别是只作为一个look-up table使用时（一次性插入，只查询或更改已存在的key），那么使用提前 <code>reverse</code>是个明智的选择，这能有效提高哈希表的性能。一般需要reserve成需要插入数量的 <em>两倍</em> 而不是一倍 ，因为与vector这样的容器不同的是，为了防止过于频繁的碰撞，会在每个bucket还没满的时候就进行扩容</strong></p>
+<h3 id="parallel_flat_hash_map">parallel_flat_hash_map<a hidden class="anchor" aria-hidden="true" href="#parallel_flat_hash_map">#</a></h3>
+<p><code>phmap</code>库除了包含继承自 <code>abseil</code>的 <code>{flat/node}_hash_{set/map}</code>外，还有支持并发操作下的 <code>parallel_*</code>系列。以 <code>parallel_flat_hash_map</code>为例，其实现如下图：</p>
+<p><img loading="lazy" src="/img/phmap/parallel_hash_map.png" alt=""  />
+</p>
+<p>一个 <code>parallel_flat_hash_map</code>有（默认 2^4 = ）16 个 <code>子flat_hash_map</code>组成。这样做可以</p>
+<ol>
+<li>更加细粒度的使用锁，从而减少锁之间的等待</li>
+<li>一次rehash一个 <code>submap</code>，减小修改操作的开销</li>
+</ol>
+<p>基本的使用方法也很简单，需要在模板参数上指定一个锁，一般使用（std::mutex或者std::shared_mutex，官方文档说shared_mutex性能更优，我个人的测试下mutex性能更优，但是相差不大）。其余的使用上与非parallel版本基本一致，以下是简单的例子：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// 前两个模板参数是key, value，最后两个模板参数是 N (2^N表示子map的数量， N默认为4)， 和指定的锁
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>phmap<span style="color:#f92672">::</span>parallel_flat_hash_map<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">int</span>, <span style="color:#66d9ef">int</span>,
+</span></span><span style="display:flex;"><span>phmap<span style="color:#f92672">::</span>priv<span style="color:#f92672">::</span>hash_default_hash<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">int</span><span style="color:#f92672">&gt;</span>,
+</span></span><span style="display:flex;"><span>phmap<span style="color:#f92672">::</span>priv<span style="color:#f92672">::</span>hash_default_eq<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">int</span><span style="color:#f92672">&gt;</span>,
+</span></span><span style="display:flex;"><span>phmap<span style="color:#f92672">::</span>priv<span style="color:#f92672">::</span>Allocator<span style="color:#f92672">&lt;</span>std<span style="color:#f92672">::</span>pair<span style="color:#f92672">&lt;</span>constint, <span style="color:#66d9ef">int</span><span style="color:#f92672">&gt;&gt;</span>, <span style="color:#ae81ff">4</span>, std<span style="color:#f92672">::</span>mutex<span style="color:#f92672">&gt;</span>
+</span></span><span style="display:flex;"><span>para_mp;
+</span></span><span style="display:flex;"><span>para_mp[<span style="color:#ae81ff">0</span>] <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>para_mp.subcnt(); <span style="color:#75715e">// return sub map count
+</span></span></span></code></pre></div><p>经过测试，在插入和修改操作混合的情况下（随机插入1000000个数，非重复数字在600000以上），<code>parallel_mp</code>耗时 <code>80ms </code>左右，而手动给 <code>flat_hash_map </code>加锁耗时 <code>250ms</code>左右。</p>
+<p><strong>另外</strong>，既然 <code>parallel_*</code>是由多个子map形成，那个在特定条件下，我们甚至可以无需锁就能保证线程安全。</p>
+<p>具体操作如下：</p>
+<ol>
+<li>已知所有的需要插入的key</li>
+<li>每个线程需要有一个线程idx标识，线程数量少于 <code>子map</code>数量</li>
+<li>对于特定的key，得到hashval后将这个key的所有相关操作绑定到某个特定线程上进行。</li>
+</ol>
+<p>这样就可以实现无锁并发</p>
+<p>我们可以通过下面这个例子具体观察：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">template</span> <span style="color:#f92672">&lt;</span><span style="color:#66d9ef">typename</span> K, <span style="color:#66d9ef">typename</span> V<span style="color:#f92672">&gt;</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">using</span> para_mp <span style="color:#f92672">=</span> parallel_flat_hash_map<span style="color:#f92672">&lt;</span>K, V<span style="color:#f92672">&gt;</span>;
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">const</span> <span style="color:#66d9ef">int</span> n <span style="color:#f92672">=</span> <span style="color:#ae81ff">1e6</span>;
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">auto</span> <span style="color:#66d9ef">const</span> keys <span style="color:#f92672">=</span> random_vector<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">int</span><span style="color:#f92672">&gt;</span>(<span style="color:#ae81ff">1</span>, n);
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">constexpr</span> <span style="color:#66d9ef">int64_t</span> num_threads <span style="color:#f92672">=</span> <span style="color:#ae81ff">8</span>;
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">auto</span> thread_fn <span style="color:#f92672">=</span> [<span style="color:#f92672">&amp;</span>num_threads](para_mp<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">int</span>, <span style="color:#66d9ef">int</span><span style="color:#f92672">&gt;&amp;</span> mp, vector<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">int</span><span style="color:#f92672">&gt;</span> <span style="color:#66d9ef">const</span><span style="color:#f92672">&amp;</span> keys,
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">int</span> thread_idx) {
+</span></span><span style="display:flex;"><span>	size_t modulo <span style="color:#f92672">=</span> mp.subcnt() <span style="color:#f92672">/</span> num_threads;
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">int64_t</span> i <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>; i <span style="color:#f92672">&lt;</span>keys.size(); <span style="color:#f92672">++</span>i) {
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">int</span> key <span style="color:#f92672">=</span> keys[i];
+</span></span><span style="display:flex;"><span>		size_t hashval <span style="color:#f92672">=</span> mp.hash(key);
+</span></span><span style="display:flex;"><span>		size_t idx <span style="color:#f92672">=</span> mp.subidx(hashval);
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">if</span> (idx <span style="color:#f92672">/</span> modulo <span style="color:#f92672">==</span>
+</span></span><span style="display:flex;"><span>				thread_idx)  <span style="color:#75715e">// if the submap is suitable for this thread
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>		{
+</span></span><span style="display:flex;"><span>			mp[key] <span style="color:#f92672">=</span> rng();  <span style="color:#75715e">// insert random value
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>};
+</span></span><span style="display:flex;"><span>std<span style="color:#f92672">::</span>unique_ptr<span style="color:#f92672">&lt;</span>std<span style="color:#f92672">::</span><span style="color:#66d9ef">thread</span><span style="color:#f92672">&gt;</span> threads[num_threads];
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">int</span> i <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>; i <span style="color:#f92672">&lt;</span> num_threads; i<span style="color:#f92672">++</span>) {
+</span></span><span style="display:flex;"><span>	threads[i].reset(
+</span></span><span style="display:flex;"><span>			<span style="color:#66d9ef">new</span> std<span style="color:#f92672">::</span><span style="color:#66d9ef">thread</span>(thread_fn, std<span style="color:#f92672">::</span>ref(mp), std<span style="color:#f92672">::</span>cref(keys), i));
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>timer.reset();
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">int64_t</span> i <span style="color:#f92672">=</span><span style="color:#ae81ff">0</span>; i <span style="color:#f92672">&lt;</span> num_threads; <span style="color:#f92672">++</span>i)
+</span></span><span style="display:flex;"><span>threads[i]<span style="color:#f92672">-&gt;</span>join();
+</span></span></code></pre></div><p>上面的代码基本展示了无锁使用 <code>parallel_*</code>的过程，我们会将hashval按照 submap 进行区分，如果 <code>idx = mp.subidx(hashval)</code> 表示这个key对应的 submap。在上述代码中，一个线程对应两个 submap可以进行插入。</p>
+<p>这种用法的局限性也很明显：线程数量需要是 submap 数量的倍数；一个线程一定要对应一个下标传入需要处理的函数；总之不是很好用&hellip;</p>
+<p>（在多线程下只用map更加有效的方法或许是对于不同的key直接用不同的线程进行处理，且提前reserve防止rehash的时候迭代器失效）</p>
+<h3 id="benchmarks">benchmarks<a hidden class="anchor" aria-hidden="true" href="#benchmarks">#</a></h3>
+<p>以下操作的个数都为 <code>1'000'000</code>次，最后一列string-&gt;string 插入次数为 <code>100'000</code>次</p>
+<p><em>vector作为baseline插入pair&lt;K,V&gt;进行比较</em></p>
+<table>
+<thead>
+<tr>
+<th>benchmarks(insert)</th>
+<th>insert ints</th>
+<th>insert ints(reserve first)</th>
+<th>insert string(sso)-&gt;ptr</th>
+<th>insert int-&gt;LargeData</th>
+<th>insert string(8)-&gt;string(4096)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>std::vector</td>
+<td>17ms</td>
+<td>7ms</td>
+<td>33ms</td>
+<td>102ms</td>
+<td>153ms</td>
+</tr>
+<tr>
+<td>std::unordered_map</td>
+<td>170ms</td>
+<td>72ms</td>
+<td>343ms</td>
+<td>249ms</td>
+<td>213ms</td>
+</tr>
+<tr>
+<td>flat_hash_map</td>
+<td>47ms</td>
+<td>34ms</td>
+<td>90ms</td>
+<td>462ms</td>
+<td>182ms</td>
+</tr>
+<tr>
+<td>node_hash_map</td>
+<td>152ms</td>
+<td>68ms</td>
+<td>182ms</td>
+<td>236ms</td>
+<td>183ms</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>benchmarks(read)</th>
+<th>iterate ints</th>
+<th>find int</th>
+<th>iterate string</th>
+<th>find string</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>std::vector</td>
+<td>0ms</td>
+<td>*</td>
+<td>3ms</td>
+<td>*</td>
+</tr>
+<tr>
+<td>std::unordered_map</td>
+<td>20ms</td>
+<td>52ms</td>
+<td>55ms</td>
+<td>152ms</td>
+</tr>
+<tr>
+<td>flat_hash_map</td>
+<td>3ms</td>
+<td>23ms</td>
+<td>8ms</td>
+<td>71ms</td>
+</tr>
+<tr>
+<td>node_hash_map</td>
+<td>14ms</td>
+<td>38ms</td>
+<td>14ms</td>
+<td>108ms</td>
+</tr>
+</tbody>
+</table>
+<p><em>About parallel_flat_hash_map</em></p>
+<table>
+<thead>
+<tr>
+<th>inserting 1000000 ints</th>
+<th>1-thread</th>
+<th>8-threads</th>
+<th>8-threads</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>flat_hash_map</td>
+<td>31ms</td>
+<td>23ms(no lock)</td>
+<td>214ms(mutex manually)</td>
+</tr>
+<tr>
+<td>parallel_flat_hash_map</td>
+<td>35ms</td>
+<td>*</td>
+<td>70ms(mutex/shared_mutex)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="一个小问题">一个小问题<a hidden class="anchor" aria-hidden="true" href="#一个小问题">#</a></h3>
+<p>在测试的时候发现，无论是 <code>flat_hash_map</code>还是 <code>node_hash_map</code>都没法插入 <code>None-moveable</code>的数据，但是 <code>std::unordered_map</code>可以。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>structNonCopy {
+</span></span><span style="display:flex;"><span>	NonCopy() <span style="color:#f92672">=</span> <span style="color:#66d9ef">default</span>;
+</span></span><span style="display:flex;"><span>	NonCopy(NonCopyconst<span style="color:#f92672">&amp;</span>) <span style="color:#f92672">=</span> <span style="color:#66d9ef">delete</span>;
+</span></span><span style="display:flex;"><span>	NonCopy<span style="color:#f92672">&amp;</span><span style="color:#66d9ef">operator</span><span style="color:#f92672">=</span>(NonCopyconst<span style="color:#f92672">&amp;</span>) <span style="color:#f92672">=</span> <span style="color:#66d9ef">delete</span>;
+</span></span><span style="display:flex;"><span>	NonCopy<span style="color:#f92672">&amp;</span><span style="color:#66d9ef">operator</span><span style="color:#f92672">=</span>(NonCopy<span style="color:#f92672">&amp;&amp;</span> rhs) <span style="color:#f92672">=</span> <span style="color:#66d9ef">default</span>;
+</span></span><span style="display:flex;"><span>	NonCopy(NonCopy<span style="color:#f92672">&amp;&amp;</span> rhs) <span style="color:#f92672">=</span> <span style="color:#66d9ef">default</span>;
+</span></span><span style="display:flex;"><span>};
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>structNonMove {
+</span></span><span style="display:flex;"><span>	NonMove() <span style="color:#f92672">=</span> <span style="color:#66d9ef">default</span>;
+</span></span><span style="display:flex;"><span>	NonMove(NonMoveconst<span style="color:#f92672">&amp;</span>) <span style="color:#f92672">=</span> <span style="color:#66d9ef">default</span>;
+</span></span><span style="display:flex;"><span>	NonMove<span style="color:#f92672">&amp;</span><span style="color:#66d9ef">operator</span><span style="color:#f92672">=</span>(NonMoveconst<span style="color:#f92672">&amp;</span>) <span style="color:#f92672">=</span> <span style="color:#66d9ef">default</span>;
+</span></span><span style="display:flex;"><span>	NonMove(NonMove<span style="color:#f92672">&amp;&amp;</span>) <span style="color:#f92672">=</span> <span style="color:#66d9ef">delete</span>;
+</span></span><span style="display:flex;"><span>	NonMove<span style="color:#f92672">&amp;</span><span style="color:#66d9ef">operator</span><span style="color:#f92672">=</span>(NonMove<span style="color:#f92672">&amp;&amp;</span>) <span style="color:#f92672">=</span> <span style="color:#66d9ef">delete</span>;
+</span></span><span style="display:flex;"><span>};
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">template</span> <span style="color:#f92672">&lt;</span>K, V<span style="color:#f92672">&gt;</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">using</span> fmp <span style="color:#f92672">=</span> flat_hash_map<span style="color:#f92672">&lt;</span>K, V<span style="color:#f92672">&gt;</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">template</span> <span style="color:#f92672">&lt;</span>K, V<span style="color:#f92672">&gt;</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">using</span> nodemp <span style="color:#f92672">=</span> node_hash_map<span style="color:#f92672">&lt;</span>K, V<span style="color:#f92672">&gt;</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>TEST_CASE(<span style="color:#e6db74">&#34;hash_map&#34;</span>) {
+</span></span><span style="display:flex;"><span>	fmp<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">int</span>, NonCopy<span style="color:#f92672">&gt;</span> mp_nocp;
+</span></span><span style="display:flex;"><span>	std<span style="color:#f92672">::</span>unordered_map<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">int</span>, NonCopy<span style="color:#f92672">&gt;</span> stdmp_nocp;
+</span></span><span style="display:flex;"><span>	nodemp<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">int</span>, NonCopy<span style="color:#f92672">&gt;</span> nodemp_nocp;
+</span></span><span style="display:flex;"><span>	fmp<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">int</span>, tbs<span style="color:#f92672">::</span>NonMove<span style="color:#f92672">&gt;</span> mp_nomv;
+</span></span><span style="display:flex;"><span>	std<span style="color:#f92672">::</span>unordered_map<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">int</span>, NonMove<span style="color:#f92672">&gt;</span> stdmp_nomv;
+</span></span><span style="display:flex;"><span>	nodemp<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">int</span>, NonMove<span style="color:#f92672">&gt;</span> nodemp_nomv;
+</span></span><span style="display:flex;"><span>	constint n <span style="color:#f92672">=</span> <span style="color:#ae81ff">1e6</span>;
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">int</span> i <span style="color:#f92672">=</span><span style="color:#ae81ff">0</span>; i <span style="color:#f92672">&lt;</span> n; i<span style="color:#f92672">++</span>) {
+</span></span><span style="display:flex;"><span>		stdmp_nocp[i] <span style="color:#f92672">=</span> std<span style="color:#f92672">::</span>move(NonCopy());
+</span></span><span style="display:flex;"><span>    mp_nocp[i] <span style="color:#f92672">=</span> std<span style="color:#f92672">::</span>move(NonCopy());
+</span></span><span style="display:flex;"><span>    node_nocp[i] <span style="color:#f92672">=</span> std<span style="color:#f92672">::</span>move(NonCopy());
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">int</span> i <span style="color:#f92672">=</span><span style="color:#ae81ff">0</span>; i <span style="color:#f92672">&lt;</span> n; i<span style="color:#f92672">++</span>) {
+</span></span><span style="display:flex;"><span>    stdmp_nomv.emplace(i, NonMove());
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e">// the following code can&#39;t pass complile
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#75715e">// for (int i = 0; i &lt; n; i++) {
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#75715e">//   nodemp_nomv.emplace(i, NonMove());
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#75715e">// }
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#75715e">// for (int i = 0; i &lt; n; i++) {
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#75715e">//   mp_nomv.emplace(i, NonMove());
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#75715e">// }
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>}
+</span></span></code></pre></div><p>如果说 <code>flat_hash_map</code>在 rehash的时候需要move所以禁止使用NoneMoveable还可以理解，但是 <code>node_hash_map</code>的行为应该和 <code>unordered_map</code>是一致，还是有这个问题。</p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="https://caaatch22.github.io/tags/datastructure/">DataStructure</a></li>
+      <li><a href="https://caaatch22.github.io/tags/opensource/">opensource</a></li>
+    </ul>
+<nav class="paginav">
+  <a class="prev" href="https://caaatch22.github.io/posts/advanced-cache/">
+    <span class="title">« Prev</span>
+    <br>
+    <span>Computer Architecture —— 高级缓存技术</span>
+  </a>
+  <a class="next" href="https://caaatch22.github.io/posts/icpc%E8%A5%BF%E5%AE%89%E6%B8%B8%E8%AE%B0/">
+    <span class="title">Next »</span>
+    <br>
+    <span>ICPC西安游记</span>
+  </a>
+</nav>
+
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+    <span>&copy; 2024 <a href="https://caaatch22.github.io">Mingjie&#39;s Home</a></span>
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>

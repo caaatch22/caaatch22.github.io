@@ -1,0 +1,324 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>C&#43;&#43; on Mingjie&#39;s Home</title>
+    <link>https://caaatch22.github.io/tags/c&#43;&#43;/</link>
+    <description>Recent content in C&#43;&#43; on Mingjie&#39;s Home</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh-cn</language>
+    <lastBuildDate>Fri, 01 Sep 2023 15:51:19 +0000</lastBuildDate><atom:link href="https://caaatch22.github.io/tags/c++/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>C&#43;&#43;内存模型 —— 现代Architecture的妥协</title>
+      <link>https://caaatch22.github.io/posts/c-%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B--%E7%8E%B0%E4%BB%A3architecture%E7%9A%84%E5%A6%A5%E5%8D%8F/</link>
+      <pubDate>Fri, 01 Sep 2023 15:51:19 +0000</pubDate>
+      
+      <guid>https://caaatch22.github.io/posts/c-%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B--%E7%8E%B0%E4%BB%A3architecture%E7%9A%84%E5%A6%A5%E5%8D%8F/</guid>
+      <description>介绍 什么是内存模型(Memory Model)呢？这里介绍的内存模型并非C++对象的内存排布模型，而是一个非编程语言层面的概念。我们知道在C++11中，标准引入了 std::atomic&amp;lt;&amp;gt;原子对象，同时还引入了
+memory_order_relaxed memory_order_consume memory_order_acquire memory_order_release memory_order_acq_rel memory_order_seq_cst 这六种 memory order。引入可以让我们进行无锁编程，而如果你想要更高性能的程序，你就必须深挖这六种内存模型的含义并正确应用。（当然，在不显式指明memory order的情况下，你能保证获得正确的代码，但存在性能损失）
+内存模型 在介绍C++ memory order之前，我们先回答另一个问题。你的计算机执行的程序就是你写的程序吗? —— 显然不是的。
+原因也很简单，为了更高效的执行指令，编译器、CPU结构、缓存及其他硬件系统都会对指令进行增删，修改，重排。但要回答具体进行了什么样的修改，又是一个极其复杂的问题。或者说，整个现代体系结构，就是在保证程序正确性的前提下利用各种手段对程序优化。我们可以粗略的将其分成几个部分：
+source code order: 程序员在源代码中指定的顺序 program code order: 基本上可以看成汇编/机器码的顺序，它可以由编译器优化后得到 execution code order: CPU执行指令顺序也不见得与汇编相同，不同CPU在执行相同机器码时任然存在优化空间。 perceived order/physical order: 最终的执行顺序。即便CPU按照某种确定指令执行，物理时间上的执行顺序仍然可能不同。例如，在超标量CPU中，一次可以fetch and decode多个指令，这些指令之间的物理执行顺序就是不确定的；由于不同层级缓存之间延时不同，以及缓存之间的通信需要等带来的不确定的执行顺序等 上图简要说明了你的源代码可能经历的优化步骤。
+这些优化的一个主要原因在于 掩盖memory access操作与CPU执行速度上的巨大鸿沟。如果没有cache，CPU每个访存指令都需要stall一两百个时钟周期，这是不可接受的。但是引入cache的同时又会带来 cache coherence等问题，这也是造成x初始为0，两个线程同时执行 x++，而x最终不一定为 2的元凶。而一个内存模型则对上述并发程序的同一块内存进行了一定的限制，它给出了在并发程序下，任意一组写操作时，可能读到的值。 不同体系结构(x86, arm, power&amp;hellip;)通过不同的内存模型来保证程序的正确性。
+bonus question: 不同等级的cache latency？
+answer: l1: 1ns, l2: 5ns, l3: 50~100ns, main memory: 200ns
+Sequential Consistency(SC) SC是最严格的内存模型，也被称作non-weak memory model。在该模型下，多线程程序执行的可做如下分析：对于每一步，随机选择一个线程，并执行该线程执行中的下一步（例如，按程序或编译的顺序）。重复这个过程，直到整个程序终止。这实际上等效于按照（程序或编译的）顺序执行所有线程的所有步骤，并以某种方式交错它们，从而产生所有步骤的单一总顺序。SC不允许重新排列线程的步骤。因此，每当访问对象时，都会检索该顺序中存储在对象中的最后一个值。（注意，内存模型中说的重新排列与编译器层面无关，编译器自然是可以讲没有data dependance的读写操作进行重排的，只要保证程序的正确性即可。内存模型中的重排指的是在硬件执行阶段，由于cache hierarchy等引发的一些问题导致指令物理执行顺序被改变）。</description>
+      <content:encoded><![CDATA[<!-- raw HTML omitted -->
+<!-- raw HTML omitted -->
+<h2 id="介绍">介绍</h2>
+<p>什么是内存模型(Memory Model)呢？这里介绍的内存模型并非<a href="https://citeseerx.ist.psu.edu/document?repid=rep1&amp;type=pdf&amp;doi=160489e8b12cd9a44cbff0cd85fb6aa05437d1ac">C++对象的内存排布模型</a>，而是一个非编程语言层面的概念。我们知道在C++11中，标准引入了 <code>std::atomic&lt;&gt;</code>原子对象，同时还引入了</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>memory_order_relaxed
+</span></span><span style="display:flex;"><span>memory_order_consume
+</span></span><span style="display:flex;"><span>memory_order_acquire
+</span></span><span style="display:flex;"><span>memory_order_release
+</span></span><span style="display:flex;"><span>memory_order_acq_rel
+</span></span><span style="display:flex;"><span>memory_order_seq_cst
+</span></span></code></pre></div><p>这六种 <code>memory order</code>。引入可以让我们进行<strong>无锁编程</strong>，而如果你想要更高性能的程序，你就必须深挖这六种内存模型的含义并正确应用。（当然，在不显式指明memory order的情况下，你能保证获得正确的代码，但存在性能损失）</p>
+<h2 id="内存模型">内存模型</h2>
+<p>在介绍C++ memory order之前，我们先回答另一个问题。<em>你的计算机执行的程序就是你写的程序吗? —— 显然不是的。</em></p>
+<p>原因也很简单，为了更高效的执行指令，编译器、CPU结构、缓存及其他硬件系统都会对指令进行增删，修改，重排。但要回答具体进行了什么样的修改，又是一个极其复杂的问题。或者说，整个现代体系结构，就是在保证程序正确性的前提下利用各种手段对程序优化。我们可以粗略的将其分成几个部分：</p>
+<ol>
+<li><strong>source code order:</strong> 程序员在源代码中指定的顺序</li>
+<li><strong>program code order:</strong> 基本上可以看成汇编/机器码的顺序，它可以由编译器优化后得到</li>
+<li><strong>execution code order:</strong> CPU执行指令顺序也不见得与汇编相同，不同CPU在执行相同机器码时任然存在优化空间。</li>
+<li><strong>perceived order/physical order:</strong> 最终的执行顺序。即便CPU按照某种确定指令执行，物理时间上的执行顺序仍然可能不同。例如，在超标量CPU中，一次可以fetch and decode多个指令，这些指令之间的物理执行顺序就是不确定的；由于不同层级缓存之间延时不同，以及缓存之间的通信需要等带来的不确定的执行顺序等</li>
+</ol>
+<p><img loading="lazy" src="/img/memory-model/optimization-by-different-parts-of-computer.png" alt="optimizations-by-compyter"  />
+</p>
+<p>上图简要说明了你的源代码可能经历的优化步骤。</p>
+<p>这些优化的一个主要原因在于 掩盖memory access操作与CPU执行速度上的巨大鸿沟。如果没有cache，CPU每个访存指令都需要stall一两百个时钟周期，这是不可接受的。但是引入cache的同时又会带来 <code>cache coherence</code>等问题，这也是造成x初始为0，两个线程同时执行 <code>x++</code>，而x最终不一定为 <code>2</code>的元凶。<strong>而一个内存模型则对上述并发程序的同一块内存进行了一定的限制，它给出了在并发程序下，任意一组写操作时，可能读到的值。</strong> 不同体系结构(x86, arm, power&hellip;)通过不同的内存模型来保证程序的正确性。</p>
+<blockquote>
+<p>bonus question: 不同等级的cache latency？</p>
+<p>answer: l1: 1ns, l2: 5ns, l3: 50~100ns, main memory: 200ns</p>
+</blockquote>
+<h3 id="sequential-consistencysc">Sequential Consistency(SC)</h3>
+<p>SC是最严格的内存模型，也被称作non-weak memory model。在该模型下，多线程程序执行的可做如下分析：对于每一步，随机选择一个线程，并执行该线程执行中的下一步（例如，按程序或编译的顺序）。重复这个过程，直到整个程序终止。这实际上等效于按照（程序或编译的）顺序执行所有线程的所有步骤，并以某种方式交错它们，从而产生所有步骤的单一总顺序。SC不允许重新排列线程的步骤。因此，每当访问对象时，都会检索该顺序中存储在对象中的最后一个值。（注意，内存模型中说的重新排列与编译器层面无关，编译器自然是可以讲没有data dependance的读写操作进行重排的，只要保证程序的正确性即可。内存模型中的重排指的是在硬件执行阶段，由于cache hierarchy等引发的一些问题导致指令物理执行顺序被改变）。</p>
+<p>也就是说，我们可以抽象出一个简单的内存结构：
+<img loading="lazy" src="/img/memory-model/SC-model.png" alt="SC-model"  />
+
+在这种结构中，我们隐藏了cache与store buffer的存在，或者说SC协议允许我们无视这两个硬件。
+那么，我们对于下面表格中的问题就有确定的答案：</p>
+<table>
+<thead>
+<tr>
+<th>Thread 1</th>
+<th>Thread 2</th>
+<th>main</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>x = 1</td>
+<td>y = 1</td>
+<td>x = 0, y = 0</td>
+</tr>
+<tr>
+<td>y&rsquo; = y</td>
+<td>x&rsquo; = x</td>
+<td>Spawn thread 1, 2; Wait for threads</td>
+</tr>
+</tbody>
+</table>
+<p>显然，在SC模型中最终的结果只可能是：</p>
+<ol>
+<li>x = 1, y = 1;</li>
+<li>x = 0, y = 1;</li>
+<li>x = 1, y = 0;</li>
+</ol>
+<p>而不会出现 x = 0; y = 0的情况。</p>
+<p>SC模型很美好，分析起来简单，心智负担小。但是为了保证顺序一致性，他付出了一定的性能代价。所以，并没有哪个成熟的体系结构真正使用SC模型。现代体系结构纷纷为了性能而做出了不同程度的妥协。</p>
+<h3 id="x86-tso">x86-TSO</h3>
+<p>x86-TSO(Total Store Order)，它比SC更<em>弱</em>，但仍是现代CPU约束最强的内存模型其中之一。tso的架构可以用以下抽象来代替：
+<img loading="lazy" src="/img/memory-model/TSO-model.png" alt="TSO-model"  />
+
+注意，这并非真实的x86的架构(毕竟连cache都没有)，只是x86-tso模型保证我们得到这样的抽象。这里的store buffer(或者叫write buffer)也不一定对应着硬件上的store buffer。它也可以是cache hierarchy的一部分，他们之间有一致性协议进行约束来保证上图中的效果。</p>
+<p>TSO模型最重要的几个特性：</p>
+<ul>
+<li>store buffer是FIFO的，读取线程必须读取其自身最近缓冲的写操作，如果有的话，读取的地址与该写操作一致。否则，读取操作将从共享内存中满足。</li>
+<li>mfence 指令会清空该hardware thread的store buffer</li>
+<li>要执行一个带锁的指令，线程必须首先获取全局锁。在指令结束时，它会清空自己的store buffer并释放锁。当一个线程持有锁时，其他线程无法读取。这基本上意味着带锁的指令强制实现了顺序一致性。</li>
+<li>线程的可以在任何时间传播到共享内存中，除非另一个线程持有锁。</li>
+</ul>
+<p>在TSO下，对于上述表格中的问题，则可能出现 <code>x = 0, y = 0</code>的结果：<code>x = 1</code>与 <code>y = 1</code>都被放到store buffer上而未被flush到shared memory中。</p>
+<p>也就是说：
+x86-TSO does not permit local reordering <strong>except of reads after writes to different addresses.</strong></p>
+<pre tabindex="0"><code class="language-assemble" data-lang="assemble">thread 1, thread 2    可能会     thread 1, thread 2
+write a,  write b     ----&gt;      read b,   read a
+read b,   read a                 write a,  write b
+</code></pre><p>要解决这个问题也很简单，在write后加上mfence指令即可，它会将store buffer中的存储刷到shared memory中。
+这也是TSO比SC理论性能更高的原因，它舍弃了一定的正确性，来减少每次写操作都flush store buffer的开销。</p>
+<blockquote>
+<p>Fun Fact: intel和amd从没承认过他们的x86一定符合x86-tso内存模型，但是他们进行过黑盒测试，结果证明了这一点。（就连设计者都难以reason出理论上的结果，而是通过测试证明的）</p>
+</blockquote>
+<h3 id="arm-and-power">ARM and POWER</h3>
+<p>Arm and power则有着更加宽松的内存模型。为了理解这样一台机器的行为，我们可以认为每个hardware thread都拥有自己的内存副本，如下图所示。所有内存副本和它们的interconnection（即除了线程以外的一切）的集合通常被称为<em>storage subsystem</em>。一个线程的写操作可能以<strong>任何顺序</strong>传播到其他线程，并且不同地址的写操作的传播可以任意交错，除非它们受到屏障或缓存一致性的限制。也可以将屏障视为从执行它们的硬件线程传播到每个其他线程的操作。
+<img loading="lazy" src="/img/memory-model/ARM-model.png" alt="Arm-Model"  />
+</p>
+<p>由于每个线程都有自己的子存储系统，它们之间的同步就需要fence进行保障。ARM和POWER提供了barrier(fence)指令(分别是 <code>dbm</code> 和 <code>sync</code>)来约束下面几种顺序：</p>
+<ol>
+<li>Read/Read之间fence:保证他们按照program
+order执行</li>
+<li>Read/Write屏障: 确保在写操作被提交（因此传播并对其他人可见）之前，读操作被满足并提交。</li>
+<li>Write/Write屏障：确保第一个写操作在第二个写操作被提交之前被提交并传播到所有其他线程。</li>
+<li>Write/Read屏障：确保在读操作被满足之前，写操作已被提交并传播到所有其他线程。
+POWER架构还提供了一个额外的“轻量级同步”指令，称为 <code>lwsync</code>，它比sync指令更弱，也因此可能更快。具体作用不在此处赘述。</li>
+</ol>
+<p>除了屏障之外，这些体系结构还提供以下依赖关系来强制顺序：</p>
+<ul>
+<li>Address dependency：当第一条指令读取的值用于计算第二条指令的地址时，从一个读操作到程序顺序后的读或写之间存在地址依赖。</li>
+<li>Control dependency：当第一条指令读取的值用于计算在第二条指令之前的程序顺序条件分支的条件时，从一个读操作到程序顺序后的读/写之间存在控制依赖。</li>
+<li>Data dependency：当第一条指令读取的值用于计算由第二条指令写入的值时，从一个读操作到程序顺序后的写之间存在数据依赖。</li>
+</ul>
+<p>在ARM和POWER处理器中，read-to-read的control dependency力度较小，因为它们可以在条件分支之前进行推测性执行，从而在第一次读取之前满足第二次读取。为了增加read-to-Read的控制依赖的影响力，可以在条件分支和第二次读取之间添加一个ISB（ARM）或isync（POWER）指令。
+相反，read-to-write的control dependency具有一定的影响力：在分支被提交之前，写操作不会被其他任何线程看到，因此也不会在第一次读取的值固定之前被看到。
+总结一下，从一个读取到另一个读取，如果存在address dependency 或带有 ISB/isync 的控制依赖，将阻止第二个读取在第一个读取之前被满足，而纯粹的control dependency则不会。从读取到写入，地址、控制或数据依赖都将阻止写入在读取的值固定之前对任何其他线程可见。</p>
+<h2 id="c-memory-order">C++ memory order</h2>
+<p>对于 <code>weak memory model</code>，特别是上面介绍的ARM的内存模型，想要精细的控制程序的允许重排的程度需要非常大的心智负担。（光是不同体系结构，不同等级的fence指令就令人望而却步）。因此C++11标准提供的六种memory order就是从语言层面来约束最终希望达到的对程序被优化程度的限制。现在我们再看这几种memory order就比较清晰了。（以下说法并不严谨，但是作为程序员的take away完全足够了。</p>
+<table>
+<thead>
+<tr>
+<th>Memory Order</th>
+<th>Explaination</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>memory_order_relaxed</td>
+<td>表示这个R/W操作除了原子性外没有任何其他限制，他可能会被重排到程序的任何位置（当然，编译器不会允许将他重排到同一个线程对同一个原子变量写操作的前面，这违背了正确性）</td>
+</tr>
+<tr>
+<td>memory_order_consume</td>
+<td>(只用于读) 后面依赖此原子变量的访存指令不允许重排至此条指令之前。 注意，当前标准中的memory_order_consume是<a href="https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0371r0.html%E6%89%80%E4%BB%A5%E4%B8%8D%E8%A6%81%E4%BD%BF%E7%94%A8">没有实际用处的</a>， 一般情况下不要使用</td>
+</tr>
+<tr>
+<td>memory_order_acuqire</td>
+<td>(只用于读) 后面访存指令不允许重排至此条指令之前</td>
+</tr>
+<tr>
+<td>memory_order_release</td>
+<td>(只用于写) 前面访存指令不允许重排至此条指令之后。当此条指令的结果对其他线程可见后，之前的所有指令都可见</td>
+</tr>
+<tr>
+<td>memory_order_acq_rel</td>
+<td>acquire + release语意</td>
+</tr>
+<tr>
+<td>memory_order_seq_cst</td>
+<td>满足sequential_consistency内存模型</td>
+</tr>
+</tbody>
+</table>
+<!-- raw HTML omitted -->
+<p>在默认情况下，<code>std::atomic&lt;&gt;</code>相关函数总是选用 <code>std::memory_order_seq_cst</code>，它能有效地帮我们避免错误。但是，我们既然都使用 <code>atomic</code>而不是 <code>mutex</code>了，自然是对性能有较高要求。
+<img loading="lazy" src="/img/memory-model/memory-barriers-performance.png" alt="memory barriers and performance"  />
+ 从上图中可以看出，<code>memory_order_relaxed</code>的写性能和 <code>non-atomic</code>几乎没有差别，而 <code>seq_cst</code>则要慢许多。</p>
+<p>另一方面，使用不同等级的 <code>memory order</code>也能更好的表达你的代码的意图：</p>
+<h3 id="relaxed-model">relaxed-model</h3>
+<p>最典型的例子就是一个线程安全的计数器。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>std<span style="color:#f92672">::</span>atomic<span style="color:#f92672">&lt;</span>size_t<span style="color:#f92672">&gt;</span> counter;
+</span></span><span style="display:flex;"><span>counter.fetch_add(<span style="color:#ae81ff">1</span>, std<span style="color:#f92672">::</span>memory_order_relaxed);
+</span></span></code></pre></div><p>你只是单纯的记录某件事情发生了几次。常用的还有智能指针中的引用计数的递增递减等</p>
+<h3 id="acuqire-release-model">acuqire-release model</h3>
+<p>如果代码改成：<code>counter.fetch_add(1, std::memory_order_release);</code>那么这个counter就极有可能是某个数组的下标：你对某一个数组append了一个数，然后你才将其<strong>release(发布)</strong>，告诉系统不允许将你对数组的append操作重排到counter增加之后；这样在其他线程中，其他线程就无法因为counter没更新而占有你已经append的位置。</p>
+<p>acuqire-release 经常成对出现，因为他们共同表示了这样的一个模型：
+<img loading="lazy" src="/img/memory-model/acquire-release-protocal.gif" alt="acuqire-release protocal"  />
+</p>
+<p>图中 <code>{a, b}</code>是我们需要在不同线程之间同步的值，那么线程1准备好 <code>{a, b}</code>后，<strong>release(发布) x</strong>，即 <code>x.store(1, memory_order_release)</code>，这时我们保证了 <code>{a, b}</code>值的更新一定是 <code>x = 1</code>的时候可见的（因为{a, b}的更新操作不会被重排到x.store之后）；那么在读线程，我们就可以根据 x 判断 <code>{a, b}</code>是否被更新:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">while</span>(x.load(memory_order_acquire) <span style="color:#f92672">!=</span> <span style="color:#ae81ff">1</span>)
+</span></span><span style="display:flex;"><span>  ;
+</span></span><span style="display:flex;"><span>  [a<span style="color:#960050;background-color:#1e0010">&#39;</span>, b<span style="color:#960050;background-color:#1e0010">&#39;</span>] <span style="color:#f92672">=</span> {a, b};  <span style="color:#75715e">// acuire语义保证了这句话不会被重排到x.load之前
+</span></span></span></code></pre></div><p>还有就是acq_sel_model了，这三种模型就是我们用std::atomic最常用的三种memory order.</p>
+<h2 id="其他">其他</h2>
+<ol>
+<li>你可能已经注意到了，X86-TSO内存模型非常严格，它已经为我们提供了
+<ul>
+<li>all load are acquire-loads, all stores are release-stores</li>
+<li>all read-modify-write operations are acquire-release</li>
+</ul>
+</li>
+</ol>
+<p><strong>也就是说x86平台下不存在真正的memory-order-relexed</strong></p>
+<ol start="2">
+<li>为什么<code>atomic&lt;&gt;</code>比<code>mutex</code>更高效？最终不都是依赖于硬件提供的 barrier 以及 CAS, test and set等low level primitive吗？</li>
+</ol>
+<ul>
+<li><strong>atomic 做的事情</strong>：原子指令修改内存，内存栅栏保障修改可见，<em>必要时锁总线</em>。</li>
+<li><strong>mutex 大致做的事情</strong>：短暂原子 CAS(compare and set) 自旋如果未成功上锁，futex(&amp;lock, FUTEX_WAIT&hellip; ) 退避进入阻塞等待直到 lock 值变化时唤醒。futex 在设计上期望做到如果无争用，则可以不进内核态，<strong>不进内核态的 fast path 的开销等价于 atomic 判断</strong>。内核里维护按地址维护一张 wait queue 的哈希表，发现锁变量值的变化（解锁）时，唤醒对应的 wait queue 中的一个 task。wait queue 这个哈希表的槽在更新时也会遭遇争用，这时继续通过 spin lock 保护。
+<img loading="lazy" src="/img/memory-model/futex.png" alt="futex"  />
+</li>
+</ul>
+<p>说白了就是mutex会陷入内核态（大部分情况下），而内核使用比较复杂的算法维护锁</p>
+<ol start="3">
+<li></li>
+</ol>
+<p><code>std::atomic&lt;&gt;</code>一定是无锁的吗？</p>
+<p><strong>wrong!</strong></p>
+<p>举个例子：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">long</span> x;
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">A</span> {<span style="color:#66d9ef">long</span> x;}
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">B</span> {<span style="color:#66d9ef">long</span> x; <span style="color:#66d9ef">long</span> y;}
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">C</span> {<span style="color:#66d9ef">long</span> x; <span style="color:#66d9ef">long</span> y; <span style="color:#66d9ef">long</span> z;}
+</span></span></code></pre></div><p>那么atomic<!-- raw HTML omitted -->， T取x, A, B, C的时候哪些是lock-free，哪些不是呢？</p>
+<p>我们可以用std::atomic<!-- raw HTML omitted -->::is_lock_free()找出答案。上述选项中，T = x, A的时候一定是lock_free的，T = C的时候一定不是lock_free的。</p>
+<blockquote>
+<p>C++17提供std::is_always_lock_free可以在编译器进行判断，如果为false不代表一定是 no lock_free的</p>
+</blockquote>
+<h2 id="reference">reference</h2>
+<ul>
+<li><a href="https://www.youtube.com/watch?v=ZQFzMfHIxng&amp;t=896s&amp;ab_channel=CppCon">介绍atomic的talk，比较全面</a></li>
+<li><a href="https://herbsutter.com/2013/02/11/atomic-weapons-the-c-memory-model-and-modern-hardware/">Sutter的talk, atomic weapons</a></li>
+<li><a href="https://arxiv.org/pdf/1803.04432.pdf">Memory Models for C/C++ Programmers</a></li>
+<li></li>
+</ul>
+]]></content:encoded>
+    </item>
+    
+    <item>
+      <title>C&#43;&#43; CRTP</title>
+      <link>https://caaatch22.github.io/posts/c-crtp/</link>
+      <pubDate>Sat, 20 May 2023 17:33:40 +0000</pubDate>
+      
+      <guid>https://caaatch22.github.io/posts/c-crtp/</guid>
+      <description>原先只是了解这个名词，想着C++20后静态多态直接用 concept来实现就好了就没细看，没必要整这些模板元编程的奇技淫巧。没想到面试某量化C++开发的时候被狠狠拷打&amp;hellip;&amp;hellip;.
+CRTP (curiously recurring template pattern) 一般认为，CRTP可以用来实现静态多态
+template &amp;lt;typename T&amp;gt; class Base { void func() { static_cast&amp;lt;T*&amp;gt;(this)-&amp;gt;funcImpl(); } }; class Derived : public Base&amp;lt;Derived&amp;gt; { void funcImpl() { // do works here } }; 通过CRTP可以使得类具有类似于虚函数的效果，同时又没有虚函数调用时的开销(虚函数调用需要通过虚函数指针查找虚函数表进行调用)，同时类的对象的体积相比使用虚函数也会减少(不需要存储虚函数指针)，但是缺点是无法动态绑定，感觉有点过于鸡肋。
+有什么用呢？可以用来向纯虚类一样做接口：（以下类似的代码在大量数学库中出现）
+template &amp;lt;typename ChildType&amp;gt; struct VectorBase { ChildType &amp;amp;underlying() { return static_cast&amp;lt;ChildType &amp;amp;&amp;gt;(*this); } inline ChildType &amp;amp;operator+=(const ChildType &amp;amp;rhs) { this-&amp;gt;underlying() = this-&amp;gt;underlying() + rhs; return this-&amp;gt;underlying(); } }; struct Vec3f : public VectorBase&amp;lt;Vec3f&amp;gt; { float x{}, y{}, z{}; Vec3f() = default; Vec3f(float x, float y, float z) : x(x), y(y), z(z) {} }; inline Vec3f operator+(const Vec3f &amp;amp;lhs, const Vec3f &amp;amp;rhs) { Vec3f result; result.</description>
+      <content:encoded><![CDATA[<blockquote>
+<p>原先只是了解这个名词，想着C++20后静态多态直接用 <code>concept</code>来实现就好了就没细看，没必要整这些模板元编程的奇技淫巧。没想到面试某量化C++开发的时候被狠狠拷打&hellip;&hellip;.</p>
+</blockquote>
+<h2 id="crtp-curiously-recurring-template-pattern">CRTP (<strong>curiously recurring template pattern</strong>)</h2>
+<p>一般认为，CRTP可以用来实现静态多态</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">template</span> <span style="color:#f92672">&lt;</span><span style="color:#66d9ef">typename</span> T<span style="color:#f92672">&gt;</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Base</span> {
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">func</span>() {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">static_cast</span><span style="color:#f92672">&lt;</span>T<span style="color:#f92672">*&gt;</span>(<span style="color:#66d9ef">this</span>)<span style="color:#f92672">-&gt;</span>funcImpl();
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>};
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Derived</span> <span style="color:#f92672">:</span> <span style="color:#66d9ef">public</span> Base<span style="color:#f92672">&lt;</span>Derived<span style="color:#f92672">&gt;</span> {
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">funcImpl</span>() {
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// do works here
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  }
+</span></span><span style="display:flex;"><span>};
+</span></span></code></pre></div><p>通过CRTP可以使得类具有类似于虚函数的效果，同时又没有虚函数调用时的开销(虚函数调用需要通过虚函数指针查找虚函数表进行调用)，同时类的对象的体积相比使用虚函数也会减少(不需要存储虚函数指针)，但是缺点是无法动态绑定，感觉有点过于鸡肋。</p>
+<p>有什么用呢？可以用来向纯虚类一样做接口：（以下类似的代码在大量数学库中出现）</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">template</span> <span style="color:#f92672">&lt;</span><span style="color:#66d9ef">typename</span> ChildType<span style="color:#f92672">&gt;</span> 
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">VectorBase</span> {
+</span></span><span style="display:flex;"><span>  ChildType <span style="color:#f92672">&amp;</span>underlying() { <span style="color:#66d9ef">return</span> <span style="color:#66d9ef">static_cast</span><span style="color:#f92672">&lt;</span>ChildType <span style="color:#f92672">&amp;&gt;</span>(<span style="color:#f92672">*</span><span style="color:#66d9ef">this</span>); }
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">inline</span> ChildType <span style="color:#f92672">&amp;</span><span style="color:#66d9ef">operator</span><span style="color:#f92672">+=</span>(<span style="color:#66d9ef">const</span> ChildType <span style="color:#f92672">&amp;</span>rhs) {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">this</span><span style="color:#f92672">-&gt;</span>underlying() <span style="color:#f92672">=</span> <span style="color:#66d9ef">this</span><span style="color:#f92672">-&gt;</span>underlying() <span style="color:#f92672">+</span> rhs;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#66d9ef">this</span><span style="color:#f92672">-&gt;</span>underlying();
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>};
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">Vec3f</span> <span style="color:#f92672">:</span> <span style="color:#66d9ef">public</span> VectorBase<span style="color:#f92672">&lt;</span>Vec3f<span style="color:#f92672">&gt;</span> {
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">float</span> x{}, y{}, z{};
+</span></span><span style="display:flex;"><span>  Vec3f() <span style="color:#f92672">=</span> <span style="color:#66d9ef">default</span>;
+</span></span><span style="display:flex;"><span>  Vec3f(<span style="color:#66d9ef">float</span> x, <span style="color:#66d9ef">float</span> y, <span style="color:#66d9ef">float</span> z) <span style="color:#f92672">:</span> x(x), y(y), z(z) {}
+</span></span><span style="display:flex;"><span>};
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">inline</span> Vec3f <span style="color:#66d9ef">operator</span><span style="color:#f92672">+</span>(<span style="color:#66d9ef">const</span> Vec3f <span style="color:#f92672">&amp;</span>lhs, <span style="color:#66d9ef">const</span> Vec3f <span style="color:#f92672">&amp;</span>rhs) {
+</span></span><span style="display:flex;"><span>  Vec3f result;
+</span></span><span style="display:flex;"><span>  result.x <span style="color:#f92672">=</span> lhs.x <span style="color:#f92672">+</span> rhs.x;
+</span></span><span style="display:flex;"><span>  result.y <span style="color:#f92672">=</span> lhs.y <span style="color:#f92672">+</span> rhs.y;
+</span></span><span style="display:flex;"><span>  result.z <span style="color:#f92672">=</span> lhs.z <span style="color:#f92672">+</span> rhs.z;
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">return</span> result;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>定义好VectorBase后，Vec3f, Vec4f等直接实现接口就好。相比虚函数的形式，在空间和runtime都有优势。</p>
+<h3 id="enable_shared_from_this-">enable_shared_from_this ?</h3>
+<p>另一个常见的用处是与 <code>shared_ptr</code>配套的 <code>std::enable_shared_from_this</code>。若我们有一个用shared_ptr管理的资源，当我们想要接管该资源，返回一个接管 <code>this</code>的 <code>shared_ptr</code>时</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#75715e">// buggy
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span><span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">Bad</span> {
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">auto</span> <span style="color:#a6e22e">get</span>() <span style="color:#f92672">-&gt;</span> shared_ptr<span style="color:#f92672">&lt;</span>Bad<span style="color:#f92672">&gt;</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> std<span style="color:#f92672">::</span>shared_ptr<span style="color:#f92672">&lt;</span>Bad<span style="color:#f92672">&gt;</span>(<span style="color:#66d9ef">this</span>);
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>};
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>TEST() {
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">auto</span> p1 <span style="color:#f92672">=</span> std<span style="color:#f92672">::</span>make_shared<span style="color:#f92672">&lt;</span>Bad<span style="color:#f92672">&gt;</span>();
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">auto</span> p2 <span style="color:#f92672">=</span> p1<span style="color:#f92672">-&gt;</span>get();
+</span></span><span style="display:flex;"><span>  assert(p2.use_cont() <span style="color:#f92672">==</span> <span style="color:#ae81ff">1</span>);  <span style="color:#75715e">// Unexpected!
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>}
+</span></span></code></pre></div><p>上述代码错误的原因在于<strong>std::make_shared总是创建一个控制块</strong>，从而导致p1, p2虽然管理的对象相同，却并不知道彼此的存在。两者的 <code>ref-cnt</code>都是1，在析构的时候该对象会被析构两次。类似的bug还有 <em>effective modern c++ Item19</em> 中的例子：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>std<span style="color:#f92672">::</span>vector<span style="color:#f92672">&lt;</span>std<span style="color:#f92672">::</span>shared_ptr<span style="color:#f92672">&lt;</span>Widge<span style="color:#f92672">&gt;&gt;</span> processedWidgets;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Widget</span> {
+</span></span><span style="display:flex;"><span> <span style="color:#66d9ef">public</span><span style="color:#f92672">:</span>
+</span></span><span style="display:flex;"><span>  ...
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">void</span> process() {
+</span></span><span style="display:flex;"><span>    ...  <span style="color:#75715e">// process
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    processedWidgets.emplace_back(<span style="color:#66d9ef">this</span>);  <span style="color:#75715e">// buggy!
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  }
+</span></span><span style="display:flex;"><span>};
+</span></span></code></pre></div><p>正确的做法是</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Widget</span><span style="color:#f92672">:</span> <span style="color:#66d9ef">public</span> std<span style="color:#f92672">::</span>enable_shared_from_this<span style="color:#f92672">&lt;</span>Widget<span style="color:#f92672">&gt;</span> {
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">process</span>() {
+</span></span><span style="display:flex;"><span>    ...  <span style="color:#75715e">// process
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    processedWidgets.emplace_back(std<span style="color:#f92672">::</span>shared_from_this());
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>};
+</span></span></code></pre></div><p>而这里的解决方案就是CRTP。实现大概就是借用一个 <code>weak_ptr</code>，在std::shared_from_this时候利用这个weak_ptr进行新的shared_ptr的拷贝构造，从而增加引用计数。</p>
+]]></content:encoded>
+    </item>
+    
+  </channel>
+</rss>

@@ -1,0 +1,553 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>icpc on Mingjie&#39;s Home</title>
+    <link>https://caaatch22.github.io/tags/icpc/</link>
+    <description>Recent content in icpc on Mingjie&#39;s Home</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh-cn</language>
+    <lastBuildDate>Mon, 29 May 2023 13:35:22 +0000</lastBuildDate><atom:link href="https://caaatch22.github.io/tags/icpc/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>ICPC西安游记</title>
+      <link>https://caaatch22.github.io/posts/icpc%E8%A5%BF%E5%AE%89%E6%B8%B8%E8%AE%B0/</link>
+      <pubDate>Mon, 29 May 2023 13:35:22 +0000</pubDate>
+      
+      <guid>https://caaatch22.github.io/posts/icpc%E8%A5%BF%E5%AE%89%E6%B8%B8%E8%AE%B0/</guid>
+      <description>没写记录，学弟写了，直接用
+ICPC西安邀请赛</description>
+      <content:encoded><![CDATA[<p><del>没写记录，学弟写了，直接用</del></p>
+<p><a href="https://tthac09.github.io/2023/05/24/icpc2023-xian-invitational-notes/">ICPC西安邀请赛</a></p>
+]]></content:encoded>
+    </item>
+    
+    <item>
+      <title>将Wavelet Tree用于算法竞赛</title>
+      <link>https://caaatch22.github.io/posts/%E7%AE%97%E6%B3%95%E7%AB%9E%E8%B5%9B%E4%B8%AD%E7%9A%84wavelet-tree/</link>
+      <pubDate>Tue, 10 Jan 2023 16:18:32 +0000</pubDate>
+      
+      <guid>https://caaatch22.github.io/posts/%E7%AE%97%E6%B3%95%E7%AB%9E%E8%B5%9B%E4%B8%AD%E7%9A%84wavelet-tree/</guid>
+      <description>Wavelet Tree for Competitive Programming 最近在学FM-Index相关算法用于数据库，了解到Wavelet Tree这一数据结构，发现其还可以应用在算法竞赛中。网上相关中文资料比较少，权当自己做个学习笔记
+开始之前 在学习wavelet tree前，不妨看看他能解决什么样的问题。
+假设我们有一长为 $n$ 的序列 $A[0&amp;hellip;n - 1]$ 。在算法竞赛中，典型的数据量是 $n = 1e5, |A[i]| &amp;lt;= 1e9$
+区间 $[L, R)$ 中元素$x$的出现次数 区间 $[L, R)$ 中的第k小数 区间 $[L, R)$ 上 小于等于x的数的个数 &amp;hellip; 以上问题都可以通过可持久化线段树在解决。那为什么还需要wavelet tree呢，我们都知道可持久化线段树的常数很大，并且十分消耗空间，在有些苛刻的题目下可能会被卡 好吧应该都是金牌题，不是我该考虑的 。利用wavelet tree可以在$log(\sigma)$时间内完成的同时（且优秀的常数），若使用bitvector优化空间，空间上大概比可持久化线段树少一个量级。最重要的一点是，我个人觉得他比主席树更加直观易懂。 $\sigma$ = | $\Sigma = {1, 2, \cdots, \sigma}$| （用于序列上时是值域大小）。
+用wavelet tree的缺点就是带修改操作比较难写，码量较大，一般不会在比赛时使用。
+Wavelet Tree 该图给出了用序列 $A = [7, 3, 5, 6, 1, 3, 2, 7, 8, 4]$ 构建的wavelet tree的形态。对于树上的每个节点，我们会将其按照值域分成两个部分$[low, mid), [mid, high)$。通过 稳定划分（stable_partition，即不改变相对顺序的情况下划分）将该节点上的序列中小于 $mid$的划分到左子树中，大于等于mid的划分到右子树中，递归直至节点中只有一种值时为叶节点。需要注意的是，我们并不会在叶子节点中直接存储序列的值，而是通过某个方法使得我们能够使用较小的空间的情况下得到足够的信息。</description>
+      <content:encoded><![CDATA[<h1 id="wavelet-tree-for-competitive-programming">Wavelet Tree for Competitive Programming</h1>
+<blockquote>
+<p>最近在学<em>FM-Index</em>相关算法用于数据库，了解到Wavelet Tree这一数据结构，发现其还可以应用在算法竞赛中。网上相关中文资料比较少，权当自己做个学习笔记</p>
+</blockquote>
+<h2 id="开始之前">开始之前</h2>
+<p>在学习<code>wavelet tree</code>前，不妨看看他能解决什么样的问题。</p>
+<p>假设我们有一长为 $n$ 的序列 $A[0&hellip;n - 1]$ 。在算法竞赛中，典型的数据量是  $n = 1e5,  |A[i]| &lt;= 1e9$</p>
+<ul>
+<li>区间 $[L, R)$ 中元素$x$的<code>出现次数</code></li>
+<li>区间 $[L, R)$ 中的<code>第k小数</code></li>
+<li>区间 $[L, R)$ 上 <code>小于等于x的数的个数</code></li>
+<li>&hellip;</li>
+</ul>
+<p>以上问题都可以通过<em>可持久化线段树</em>在解决。那为什么还需要wavelet tree呢，我们都知道可持久化线段树的常数很大，并且十分消耗空间，在有些苛刻的题目下可能会被卡  <del>好吧应该都是金牌题，不是我该考虑的</del> 。利用wavelet tree可以在$log(\sigma)$时间内完成的同时（且优秀的常数），若使用<code>bitvector</code>优化空间，空间上大概比可持久化线段树少一个量级。最重要的一点是，我个人觉得他比主席树更加直观易懂。
+$\sigma$ = | $\Sigma = {1, 2, \cdots, \sigma}$| （用于序列上时是值域大小）。</p>
+<blockquote>
+<p>用wavelet tree的缺点就是带修改操作比较难写，码量较大，一般不会在比赛时使用。</p>
+</blockquote>
+<h2 id="wavelet-tree">Wavelet Tree</h2>
+<p><img loading="lazy" src="/img/waveletTree/waveletTree.png" alt=""  />
+</p>
+<p>该图给出了用序列 $A = [7, 3, 5, 6, 1, 3, 2, 7, 8, 4]$ 构建的wavelet tree的形态。对于树上的每个节点，我们会将其按照值域分成两个部分$[low, mid), [mid, high)$。通过 <strong>稳定划分</strong>（stable_partition，即不改变相对顺序的情况下划分）将该节点上的序列中小于 $mid$的划分到左子树中，大于等于mid的划分到右子树中，递归直至节点中只有一种值时为叶节点。需要注意的是，我们并不会在叶子节点中直接存储序列的值，而是通过某个方法使得我们能够使用较小的空间的情况下得到足够的信息。</p>
+<p>设根节点编号为 $u = 1$ ，其左子树的根节点为 $2 * u$ , 右子树的根节点为 $2 * u + 1$ ，以此类推。每个节点都对应一对左闭右开的区间 $[lo, hi)$，表示该节点中数值的值域范围。同时有一个 $mid = \lfloor \frac{lo + hi}{2} \rfloor$ ，表示该节点左右子树分裂标准，即左子树中值域范围是 $[lo, mid)$ , 右子树 $[mid, hi)$ 。</p>
+<p>在wavelet tree中，我们实际上在维护一个二维数组<code>vector&lt;vector&lt;int&gt;&gt; c</code>，我们不妨叫他<strong>前缀计数数组</strong>，其中 <strong><code>c[u][i]</code>表示的是u结点中下标为[0, i)中的数有多少个小于该节点对应的mid</strong>。另外，若$u$结点中有$n$个数，那么<code>c[u].size() = n + 1</code>， 我们另<code>c[u][0] = 0</code>。例如，下图给出了部分结点对应的 <code>c[u][i]</code>数组
+<img loading="lazy" src="/img/waveletTree/Counting-array.png" alt=""  />
+</p>
+<p>现在，我们来看如何用这个构建好的前缀计数数组完成以下的查询问题：</p>
+<h3 id="rankint-val-int-pos">rank(int val, int pos)</h3>
+<p>该函数返回区间 $[0, pos)$ 中值为$val$的数的个数（我也不知道为什么叫rank。。。或许这个名称是由bitvector中继承而来？）。有了这个函数，我们就容易得到区间 $[i, j)$ 内某个数的出现次数，就是 $rank(val, j) - rank(val, i)$</p>
+<p>设 $rank_u (val, pos)$ 为结点$u$中值为val的数在 $[0, pos)$ 中的出现次数（ $pos &lt;= size(u)$ ）$mid$为节点$u$分裂标准，我们可以得到：</p>
+<ul>
+<li>若 $val &lt; mid$，则 $rank_u(val, pos) = rank_{LeftChild(u)}(val, c[u][pos])$</li>
+<li>若 $val &gt;= mid$,  $rank_u(val, pos) = rank_{RightChild(u)}(val, pos - c[u][pos])$</li>
+</ul>
+<p>如何理解上述变化呢，其实也很简单，就是要理解<code>c[u][i]</code>的意义，它同时也表示将u结点中下标为i的点映射到子结点中后他的位置。而映射规则为<strong>若这个数小于mid，则将其映射到左儿子的c[u][i]处；若这个数大于等于mid，则将其映射到右儿子的i-c[u][i]处</strong> 不理解的可再仔细想想<code>c[u][i]</code>的这两个解释之间的等价性。</p>
+<p>有了上述说明，我们就容易递归的完成$rank$操作。例如，假设我们需要得到 $rank_1(val = 3, pos = 7)$
+-由于 $3&lt;mid，c[1][7] = 4$, 则递归左子树 $rank_2(3, 4)$；</p>
+<ul>
+<li>左子树中，$3 &gt;= (mid = 2), 4-c[2][4] = 3$，递归到右子树 $rank_5(3, 3)$</li>
+<li>右子树中，$3 &gt;= (mid = 3), 3-c[5][3] = 2$，递归到右子树</li>
+<li>右子树为叶子节点，则此时结点内的树的个数（即为上一步中 $3-c[5][3] = 2$）为$val$的个数</li>
+</ul>
+<h3 id="quantileint-k-int-l-int-r">quantile(int k, int l, int r)</h3>
+<p>该函数返回区间 $[l, r)$间的第k小数（最小的为第一小）。我们知道，<code>c[u][l]</code>表示下标为结点 $u$中有多少个下标在 $[0， l)$中的数被映射到了左子树。那么，</p>
+<ul>
+<li>若<code>c[u][r] - c[u][l] &gt;= k</code>，则区间 $[l, r)$内第k小即为左子树中的第k小。</li>
+<li>若<code>c[u][r] - c[u][l] &lt; k</code>，则区间 $[l, r)$内第k小即为右子树中的第<code>k - (c[u][r] - c[u][l])</code>小。</li>
+</ul>
+<p>从而我们可以递归的进行求解。</p>
+<h3 id="c数组的构建">c数组的构建</h3>
+<p>实际上上面已经讲的差不多了，直接看代码：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#75715e">// 参数都是该结点对应序列相关
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">// u: 该结点编号
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">// begin， end: 该结点对应序列的首个，末尾迭代器
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">// lo, hi： 该结点对应值域为 [lo, hi)
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span><span style="color:#66d9ef">void</span> <span style="color:#a6e22e">build</span>(iter begin, iter end, <span style="color:#66d9ef">int</span> lo, <span style="color:#66d9ef">int</span> hi, <span style="color:#66d9ef">int</span> u) {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span>(hi <span style="color:#f92672">-</span> lo <span style="color:#f92672">==</span> <span style="color:#ae81ff">1</span>) {
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span>;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int</span> m <span style="color:#f92672">=</span> (lo <span style="color:#f92672">+</span> hi) <span style="color:#f92672">/</span> <span style="color:#ae81ff">2</span>;
+</span></span><span style="display:flex;"><span>    c[u].reserve(end <span style="color:#f92672">-</span> begin <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span>); <span style="color:#75715e">// reverse只分配空间不进行构造，所以后面还可以push_back
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    c[u].push_back(<span style="color:#ae81ff">0</span>);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">auto</span> it <span style="color:#f92672">=</span> begin; it <span style="color:#f92672">!=</span> end; <span style="color:#f92672">++</span>it) {
+</span></span><span style="display:flex;"><span>        c[u].push_back(c[u].back() <span style="color:#f92672">+</span> (<span style="color:#f92672">*</span>it <span style="color:#f92672">&lt;</span> m));
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// 稳定划分，将[begin, end)间的小于m的值划分到前半部分，pivot为后半部分首个迭代器
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">auto</span> pivot <span style="color:#f92672">=</span> stable_partition(begin, end, [<span style="color:#f92672">=</span>](<span style="color:#66d9ef">int</span> i){<span style="color:#66d9ef">return</span> i <span style="color:#f92672">&lt;</span> m};);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    build(begin, pivot, lo, m, <span style="color:#ae81ff">2</span> <span style="color:#f92672">*</span> u);
+</span></span><span style="display:flex;"><span>    build(pivot, end, m, hi, <span style="color:#ae81ff">2</span> <span style="color:#f92672">*</span> u <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span>);
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>到这个，我们已经可以利用没有进行空间优化的wavelet tree轻松切掉这道 <a href="https://www.luogu.com.cn/problem/P3834">可持久化线段树的模板题</a>了，代码如下</p>
+<h2 id="模板">模板</h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;bits/stdc++.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">using</span> <span style="color:#66d9ef">namespace</span> std;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">WaveletTree</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">using</span> iter <span style="color:#f92672">=</span> vector<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">int</span><span style="color:#f92672">&gt;::</span>iterator;
+</span></span><span style="display:flex;"><span>    vector<span style="color:#f92672">&lt;</span>vector<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">int</span><span style="color:#f92672">&gt;&gt;</span> c;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">const</span> <span style="color:#66d9ef">int</span> SIGMA;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    WaveletTree(vector<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">int</span><span style="color:#f92672">&gt;</span> a, <span style="color:#66d9ef">int</span> sigma)<span style="color:#f92672">:</span> c(sigma<span style="color:#f92672">*</span><span style="color:#ae81ff">2</span>), SIGMA(sigma) {
+</span></span><span style="display:flex;"><span>        build(a.begin(), a.end(), <span style="color:#ae81ff">0</span>, SIGMA, <span style="color:#ae81ff">1</span>);
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">build</span>(iter begin, iter end, <span style="color:#66d9ef">int</span> lo, <span style="color:#66d9ef">int</span> hi, <span style="color:#66d9ef">int</span> u) {
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span>(hi <span style="color:#f92672">-</span> lo <span style="color:#f92672">==</span> <span style="color:#ae81ff">1</span>) <span style="color:#66d9ef">return</span>;
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">int</span> m <span style="color:#f92672">=</span> (lo <span style="color:#f92672">+</span> hi) <span style="color:#f92672">/</span> <span style="color:#ae81ff">2</span>;
+</span></span><span style="display:flex;"><span>        c[u].reserve(end <span style="color:#f92672">-</span> begin <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span>);
+</span></span><span style="display:flex;"><span>        c[u].push_back(<span style="color:#ae81ff">0</span>);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">auto</span> it <span style="color:#f92672">=</span> begin; it <span style="color:#f92672">!=</span> end; <span style="color:#f92672">++</span>it) {
+</span></span><span style="display:flex;"><span>            c[u].push_back(c[u].back() <span style="color:#f92672">+</span> (<span style="color:#f92672">*</span>it <span style="color:#f92672">&lt;</span> m));
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">auto</span> p <span style="color:#f92672">=</span> stable_partition(begin, end, [<span style="color:#f92672">=</span>](<span style="color:#66d9ef">int</span> i)
+</span></span><span style="display:flex;"><span>                                  { <span style="color:#66d9ef">return</span> i <span style="color:#f92672">&lt;</span> m; });
+</span></span><span style="display:flex;"><span>        build(begin, p, lo, m, <span style="color:#ae81ff">2</span> <span style="color:#f92672">*</span> u);
+</span></span><span style="display:flex;"><span>        build(p, end, m, hi, <span style="color:#ae81ff">2</span> <span style="color:#f92672">*</span> u <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span>);
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// occurrences of val in position[0, i)
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">int</span> <span style="color:#a6e22e">rank</span>(<span style="color:#66d9ef">int</span> val, <span style="color:#66d9ef">int</span> i) <span style="color:#66d9ef">const</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span>(val <span style="color:#f92672">&lt;</span> <span style="color:#ae81ff">0</span> or val <span style="color:#f92672">&gt;=</span> SIGMA) <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">int</span> lo <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>, hi <span style="color:#f92672">=</span> SIGMA, u <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">while</span>(hi <span style="color:#f92672">-</span> lo <span style="color:#f92672">&gt;</span> <span style="color:#ae81ff">1</span>) {
+</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">int</span> m <span style="color:#f92672">=</span> (lo <span style="color:#f92672">+</span> hi) <span style="color:#f92672">/</span> <span style="color:#ae81ff">2</span>;
+</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">if</span>(val <span style="color:#f92672">&lt;</span> m) {
+</span></span><span style="display:flex;"><span>                i <span style="color:#f92672">=</span> c[u][i], hi <span style="color:#f92672">=</span> m;
+</span></span><span style="display:flex;"><span>                u <span style="color:#f92672">=</span> u <span style="color:#f92672">*</span> <span style="color:#ae81ff">2</span>;
+</span></span><span style="display:flex;"><span>            } <span style="color:#66d9ef">else</span> {
+</span></span><span style="display:flex;"><span>                i <span style="color:#f92672">-=</span> c[u][i], lo <span style="color:#f92672">=</span> m;
+</span></span><span style="display:flex;"><span>                u <span style="color:#f92672">=</span> u <span style="color:#f92672">*</span> <span style="color:#ae81ff">2</span> <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>            }
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> i;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// get kth smallest number in [l, r)
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">int</span> <span style="color:#a6e22e">quantile</span>(<span style="color:#66d9ef">int</span> k, <span style="color:#66d9ef">int</span> l, <span style="color:#66d9ef">int</span> r) <span style="color:#66d9ef">const</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// assert(k &gt; 0 &amp;&amp; k &lt;= j - i);
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>        <span style="color:#66d9ef">int</span> lo <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>, hi <span style="color:#f92672">=</span> SIGMA, u <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">while</span>(hi <span style="color:#f92672">-</span> lo <span style="color:#f92672">&gt;</span> <span style="color:#ae81ff">1</span>) {
+</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">int</span> m <span style="color:#f92672">=</span> (lo <span style="color:#f92672">+</span> hi) <span style="color:#f92672">/</span> <span style="color:#ae81ff">2</span>;
+</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">int</span> nl <span style="color:#f92672">=</span> c[u][l], nr <span style="color:#f92672">=</span> c[u][r];
+</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">if</span>(k <span style="color:#f92672">&lt;=</span> nr <span style="color:#f92672">-</span> nl) {
+</span></span><span style="display:flex;"><span>                r <span style="color:#f92672">=</span> nr, l <span style="color:#f92672">=</span> nl, hi <span style="color:#f92672">=</span> m;
+</span></span><span style="display:flex;"><span>                u <span style="color:#f92672">=</span> <span style="color:#ae81ff">2</span> <span style="color:#f92672">*</span> u;
+</span></span><span style="display:flex;"><span>            } <span style="color:#66d9ef">else</span> {
+</span></span><span style="display:flex;"><span>                k <span style="color:#f92672">-=</span> nr <span style="color:#f92672">-</span> nl;
+</span></span><span style="display:flex;"><span>                r <span style="color:#f92672">-=</span> nr, l <span style="color:#f92672">-=</span> nl, lo <span style="color:#f92672">=</span> m;
+</span></span><span style="display:flex;"><span>                u <span style="color:#f92672">=</span> <span style="color:#ae81ff">2</span> <span style="color:#f92672">*</span> u <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>            }
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> lo;   
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>};
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">int</span> <span style="color:#a6e22e">main</span>() {
+</span></span><span style="display:flex;"><span>    ios<span style="color:#f92672">::</span>sync_with_stdio(false);
+</span></span><span style="display:flex;"><span>    cin.tie(<span style="color:#66d9ef">nullptr</span>); cout.tie(<span style="color:#66d9ef">nullptr</span>);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int</span> n, q;
+</span></span><span style="display:flex;"><span>    cin <span style="color:#f92672">&gt;&gt;</span> n <span style="color:#f92672">&gt;&gt;</span> q;
+</span></span><span style="display:flex;"><span>    vector<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">int</span><span style="color:#f92672">&gt;</span> a(n);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">int</span> <span style="color:#f92672">&amp;</span>x : a) {
+</span></span><span style="display:flex;"><span>        cin <span style="color:#f92672">&gt;&gt;</span> x;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    WaveletTree wt(a, <span style="color:#f92672">*</span>max_element(a.begin(), a.end()) <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span>);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">while</span>(q <span style="color:#f92672">--</span>) {
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">int</span> k, l, r;
+</span></span><span style="display:flex;"><span>        cin <span style="color:#f92672">&gt;&gt;</span> l <span style="color:#f92672">&gt;&gt;</span> r <span style="color:#f92672">&gt;&gt;</span> k;
+</span></span><span style="display:flex;"><span>        l<span style="color:#f92672">--</span>;
+</span></span><span style="display:flex;"><span>        cout <span style="color:#f92672">&lt;&lt;</span> wt.quantile(k, l, r) <span style="color:#f92672">&lt;&lt;</span> <span style="color:#e6db74">&#39;\n&#39;</span>;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div>]]></content:encoded>
+    </item>
+    
+    <item>
+      <title>xcpc template</title>
+      <link>https://caaatch22.github.io/posts/xcpc-template/</link>
+      <pubDate>Thu, 17 Mar 2022 23:38:14 +0000</pubDate>
+      
+      <guid>https://caaatch22.github.io/posts/xcpc-template/</guid>
+      <description>icpc模板 Previous Next &amp;nbsp; &amp;nbsp; / [pdf] View the PDF file here. algorithm-template Competitive Programming template
+basic algorithm 双指针 离散化，去重 前缀和与差分 二分 单调栈 单调队列 尺取法 归并排序，快速排序，第k小 树的中心 拓扑排序 math 素数，筛素数，素性测试， 反素数 质因数分解，预处理质因数 欧拉函数 组合数 拓展欧几里得，线性同余方程 中国剩余定理 容斥原理 高斯消元，高斯异或 矩阵乘法 博弈论，Nim游戏 莫比乌斯反演 BSGS FFT 生成函数 线性基 date strcture 并查集 Sparse table Trie, 01Trie 树状数组 线段树，扫描线 树链剖分 可持久化线段树，kth number, 主席树 splay 分块 莫队 点分治 kdtree Graph Floyd bellman-ford, spfa，判负环 dijkstra， 拆点 分层图最短路 差分约束 最小生成树 prim, kruskal 瓶颈生成树 kruskal重构树 lca 二分图匹配 欧拉回路欧拉路径 强连通分量 2-sat 网络流相关 string 字符串hash KMP， 前缀函数 Z-algorithm ac自动机 SA SAM dp 01pack, 完全背包，多重背包及优化，分组背包 线性dp, LCS, LIS, 编辑距离 区间dp 字符串压缩 数位dp 状压dp 树形dp 基环树dp 单调队列优化dp 斜率优化dp Geometry 常用模板 二维凸包 github地址 https://github.</description>
+      <content:encoded><![CDATA[<h2 id="icpc模板">icpc模板</h2>
+<script src= '/js/pdf-js/build/pdf.js'></script>
+
+<style>
+  #embed-pdf-container {
+    position: relative;
+    width: 100%;
+    height: auto;
+    min-height: 20vh;
+     
+  }
+  
+  .pdf-canvas {
+    border: 1px solid black;
+    direction: ltr;
+    width: 100%;
+    height: auto;
+    display: none;
+  }
+  
+  #the-canvas {
+    border: 1px solid black;
+    direction: ltr;
+    width: 100%;
+    height: auto;
+    display: none;
+  }
+  
+  
+  .pdf-loadingWrapper {
+    display: none;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 350px;
+  }
+  
+  .pdf-loading {
+    display: inline-block;
+    width: 50px;
+    height: 50px;
+    border: 3px solid #d2d0d0;;
+    border-radius: 50%;
+    border-top-color: #383838;
+    animation: spin 1s ease-in-out infinite;
+    -webkit-animation: spin 1s ease-in-out infinite;
+  }
+  
+  
+  
+  
+  
+  #overlayText {
+    word-wrap: break-word;
+    display: grid;
+    justify-content: end;
+  }
+  
+  #overlayText a {
+    position: relative;
+    top: 10px;
+    right: 4px;
+    color: #000;
+    margin: auto;
+    background-color: #eeeeee;
+    padding: 0.3em 1em;
+    border: solid 2px;
+    border-radius: 12px;
+    border-color: #00000030;
+    text-decoration: none;
+  }
+  
+  #overlayText svg {
+    height: clamp(1em, 2vw, 1.4em);
+    width:  clamp(1em, 2vw, 1.4em);
+  }
+  
+  
+  
+  @keyframes spin {
+    to { -webkit-transform: rotate(360deg); }
+  }
+  @-webkit-keyframes spin {
+    to { -webkit-transform: rotate(360deg); }
+  }
+  </style><div class="embed-pdf-container" id="embed-pdf-container-e21a8caf">
+    <div class="pdf-loadingWrapper" id="pdf-loadingWrapper-e21a8caf">
+        <div class="pdf-loading" id="pdf-loading-e21a8caf"></div>
+    </div>
+    <div id="overlayText">
+      <a href="/catch22-algorithm-template.pdf" aria-label="Download" download>
+        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18">
+            <path d="M9 13c.3 0 .5-.1.7-.3L15.4 7 14 5.6l-4 4V1H8v8.6l-4-4L2.6 7l5.7 5.7c.2.2.4.3.7.3zm-7 2h14v2H2z" />
+        </svg>
+      </a>
+    </div>
+    <canvas class="pdf-canvas" id="pdf-canvas-e21a8caf"></canvas>
+</div>
+
+<div class="pdf-paginator" id="pdf-paginator-e21a8caf">
+    <button id="pdf-prev-e21a8caf">Previous</button>
+    <button id="pdf-next-e21a8caf">Next</button> &nbsp; &nbsp;
+    <span>
+      <span class="pdf-pagenum" id="pdf-pagenum-e21a8caf"></span> / <span class="pdf-pagecount" id="pdf-pagecount-e21a8caf"></span>
+    </span>
+    <a class="pdf-source" id="pdf-source-e21a8caf" href="/catch22-algorithm-template.pdf">[pdf]</a>
+</div>
+
+<noscript>
+View the PDF file <a class="pdf-source" id="pdf-source-noscript-e21a8caf" href="/catch22-algorithm-template.pdf">here</a>.
+</noscript>
+
+<script type="text/javascript">
+    (function(){
+    var url = '\/catch22-algorithm-template.pdf';
+
+    var hidePaginator = "" === "true";
+    var hideLoader = "" === "true";
+    var selectedPageNum = parseInt("") || 1;
+
+    
+    var pdfjsLib = window['pdfjs-dist/build/pdf'];
+
+    
+    if (pdfjsLib.GlobalWorkerOptions.workerSrc == '')
+      pdfjsLib.GlobalWorkerOptions.workerSrc = "https:\/\/caaatch22.github.io" + 'js/pdf-js/build/pdf.worker.js';
+
+    
+    var pdfDoc = null,
+        pageNum = selectedPageNum,
+        pageRendering = false,
+        pageNumPending = null,
+        scale = 3,
+        canvas = document.getElementById('pdf-canvas-e21a8caf'),
+        ctx = canvas.getContext('2d'),
+        paginator = document.getElementById("pdf-paginator-e21a8caf"),
+        loadingWrapper = document.getElementById('pdf-loadingWrapper-e21a8caf');
+
+
+    
+    showPaginator();
+    showLoader();
+
+    
+
+    function renderPage(num) {
+      pageRendering = true;
+      
+      pdfDoc.getPage(num).then(function(page) {
+        var viewport = page.getViewport({scale: scale});
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+
+        
+        var renderContext = {
+          canvasContext: ctx,
+          viewport: viewport
+        };
+        var renderTask = page.render(renderContext);
+
+        
+        renderTask.promise.then(function() {
+          pageRendering = false;
+          showContent();
+
+          if (pageNumPending !== null) {
+            
+            renderPage(pageNumPending);
+            pageNumPending = null;
+          }
+        });
+      });
+
+      
+      document.getElementById('pdf-pagenum-e21a8caf').textContent = num;
+    }
+
+    
+
+    function showContent() {
+      loadingWrapper.style.display = 'none';
+      canvas.style.display = 'block';
+    }
+
+    
+
+    function showLoader() {
+      if(hideLoader) return
+      loadingWrapper.style.display = 'flex';
+      canvas.style.display = 'none';
+    }
+
+    
+
+    function showPaginator() {
+      if(hidePaginator) return
+      paginator.style.display = 'block';
+    }
+
+    
+
+    function queueRenderPage(num) {
+      if (pageRendering) {
+        pageNumPending = num;
+      } else {
+        renderPage(num);
+      }
+    }
+
+    
+
+    function onPrevPage() {
+      if (pageNum <= 1) {
+        return;
+      }
+      pageNum--;
+      queueRenderPage(pageNum);
+    }
+    document.getElementById('pdf-prev-e21a8caf').addEventListener('click', onPrevPage);
+
+    
+
+    function onNextPage() {
+      if (pageNum >= pdfDoc.numPages) {
+        return;
+      }
+      pageNum++;
+      queueRenderPage(pageNum);
+    }
+    document.getElementById('pdf-next-e21a8caf').addEventListener('click', onNextPage);
+
+    
+
+    pdfjsLib.getDocument(url).promise.then(function(pdfDoc_) {
+      pdfDoc = pdfDoc_;
+      var numPages = pdfDoc.numPages;
+      document.getElementById('pdf-pagecount-e21a8caf').textContent = numPages;
+
+      
+      if(pageNum > numPages) {
+        pageNum = numPages
+      }
+
+      
+      renderPage(pageNum);
+    });
+    })();
+</script>
+
+<h1 id="algorithm-template">algorithm-template</h1>
+<blockquote>
+<p>Competitive Programming template</p>
+</blockquote>
+<h2 id="basic-algorithm">basic algorithm</h2>
+<ul>
+<li><input checked="" disabled="" type="checkbox"> 双指针</li>
+<li><input checked="" disabled="" type="checkbox"> 离散化，去重</li>
+<li><input checked="" disabled="" type="checkbox"> 前缀和与差分</li>
+<li><input checked="" disabled="" type="checkbox"> 二分</li>
+<li><input checked="" disabled="" type="checkbox"> 单调栈</li>
+<li><input checked="" disabled="" type="checkbox"> 单调队列</li>
+<li><input checked="" disabled="" type="checkbox"> 尺取法</li>
+<li><input disabled="" type="checkbox"> 归并排序，快速排序，第k小</li>
+<li><input checked="" disabled="" type="checkbox"> 树的中心</li>
+<li><input checked="" disabled="" type="checkbox"> 拓扑排序</li>
+</ul>
+<h2 id="math">math</h2>
+<ul>
+<li><input checked="" disabled="" type="checkbox"> 素数，筛素数，素性测试， 反素数</li>
+<li><input checked="" disabled="" type="checkbox"> 质因数分解，预处理质因数</li>
+<li><input checked="" disabled="" type="checkbox"> 欧拉函数</li>
+<li><input checked="" disabled="" type="checkbox"> 组合数</li>
+<li><input checked="" disabled="" type="checkbox"> 拓展欧几里得，线性同余方程</li>
+<li><input disabled="" type="checkbox"> 中国剩余定理</li>
+<li><input checked="" disabled="" type="checkbox"> 容斥原理</li>
+<li><input checked="" disabled="" type="checkbox"> 高斯消元，高斯异或</li>
+<li><input checked="" disabled="" type="checkbox"> 矩阵乘法</li>
+<li><input disabled="" type="checkbox"> 博弈论，Nim游戏</li>
+<li><input checked="" disabled="" type="checkbox"> 莫比乌斯反演</li>
+<li><input checked="" disabled="" type="checkbox"> BSGS</li>
+<li><input checked="" disabled="" type="checkbox"> FFT</li>
+<li><input disabled="" type="checkbox"> 生成函数</li>
+<li><input disabled="" type="checkbox"> 线性基</li>
+</ul>
+<h2 id="date-strcture">date strcture</h2>
+<ul>
+<li><input checked="" disabled="" type="checkbox"> 并查集</li>
+<li><input checked="" disabled="" type="checkbox"> Sparse table</li>
+<li><input checked="" disabled="" type="checkbox"> Trie, 01Trie</li>
+<li><input checked="" disabled="" type="checkbox"> 树状数组</li>
+<li><input checked="" disabled="" type="checkbox"> 线段树，扫描线</li>
+<li><input checked="" disabled="" type="checkbox"> 树链剖分</li>
+<li><input checked="" disabled="" type="checkbox"> 可持久化线段树，kth number, 主席树</li>
+<li><input disabled="" type="checkbox"> splay</li>
+<li><input disabled="" type="checkbox"> 分块</li>
+<li><input checked="" disabled="" type="checkbox"> 莫队</li>
+<li><input disabled="" type="checkbox"> 点分治</li>
+<li><input disabled="" type="checkbox"> kdtree</li>
+</ul>
+<h2 id="graph">Graph</h2>
+<ul>
+<li><input checked="" disabled="" type="checkbox"> Floyd</li>
+<li><input checked="" disabled="" type="checkbox"> bellman-ford, spfa，判负环</li>
+<li><input checked="" disabled="" type="checkbox"> dijkstra， 拆点</li>
+<li><input checked="" disabled="" type="checkbox"> 分层图最短路</li>
+<li><input checked="" disabled="" type="checkbox"> 差分约束</li>
+<li><input checked="" disabled="" type="checkbox"> 最小生成树 prim, kruskal</li>
+<li><input checked="" disabled="" type="checkbox"> 瓶颈生成树</li>
+<li><input checked="" disabled="" type="checkbox"> kruskal重构树</li>
+<li><input checked="" disabled="" type="checkbox"> lca</li>
+<li><input checked="" disabled="" type="checkbox"> 二分图匹配</li>
+<li><input disabled="" type="checkbox"> 欧拉回路欧拉路径</li>
+<li><input checked="" disabled="" type="checkbox"> 强连通分量</li>
+<li><input checked="" disabled="" type="checkbox"> 2-sat</li>
+<li><input disabled="" type="checkbox"> 网络流相关</li>
+</ul>
+<h2 id="string">string</h2>
+<ul>
+<li><input checked="" disabled="" type="checkbox"> 字符串hash</li>
+<li><input checked="" disabled="" type="checkbox"> KMP， 前缀函数</li>
+<li><input checked="" disabled="" type="checkbox"> Z-algorithm</li>
+<li><input checked="" disabled="" type="checkbox"> ac自动机</li>
+<li><input checked="" disabled="" type="checkbox"> SA</li>
+<li><input checked="" disabled="" type="checkbox"> SAM</li>
+</ul>
+<h2 id="dp">dp</h2>
+<ul>
+<li><input checked="" disabled="" type="checkbox"> 01pack, 完全背包，多重背包及优化，分组背包</li>
+<li><input checked="" disabled="" type="checkbox"> 线性dp, LCS, LIS, 编辑距离</li>
+<li><input checked="" disabled="" type="checkbox"> 区间dp 字符串压缩</li>
+<li><input checked="" disabled="" type="checkbox"> 数位dp</li>
+<li><input disabled="" type="checkbox"> 状压dp</li>
+<li><input checked="" disabled="" type="checkbox"> 树形dp</li>
+<li><input checked="" disabled="" type="checkbox"> 基环树dp</li>
+<li><input checked="" disabled="" type="checkbox"> 单调队列优化dp</li>
+<li><input disabled="" type="checkbox"> 斜率优化dp</li>
+</ul>
+<h2 id="geometry">Geometry</h2>
+<ul>
+<li><input disabled="" type="checkbox"> 常用模板</li>
+<li><input disabled="" type="checkbox"> 二维凸包</li>
+</ul>
+<blockquote>
+<p>github地址 <a href="https://github.com/caaatch22/algorithm-template">https://github.com/caaatch22/algorithm-template</a></p>
+</blockquote>
+]]></content:encoded>
+    </item>
+    
+  </channel>
+</rss>

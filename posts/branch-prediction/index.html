@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>Computer Architecture —— 分支预测 | Mingjie&#39;s Home</title>
+<meta name="keywords" content="ComputerArchitecture">
+<meta name="description" content="H&amp;P那本关于分支预测的部分比较简短且表述有点晦涩，（顺便吐槽一下第五版的中文翻译，建议看英文原版）本文主要参考超标量处理器设计，国人写的，用语符合习惯，强烈推荐！
+Motivation 在处理器中，除了cache之外，另一个重要的内容就是分支预测，它和cache一起左右处理器的性能。以SPECint95作为benchmark，完美的cache和BP(branch-predictor)能使IPC提高两倍左右： 图片来自论文SSMT。当然，这是21世纪之前的结果了。现代处理器分支预测普遍能达到97%~98%以上的精度，在多数浮点benchmark中基本都是99%的准确率。
+为什么需要这么高的精度呢？ 一般情况下，分支指令的占比通常在 15% 到 30% 之间。对于经典五级流水线无分支预测cpu，一个branch会造成一次stall；而对于现代的superscalar且流水线级数远高于5的（一般是二十级以上）cpu，其misprediction penalty是 $M * N$ 的（M = fetch group内指令数, N = branch resolution latency，就是决定分支最终是否跳转需要多少周期）。如下图所示： 我们再做一个定量实验： 假设我们有一个
+$ N = 20 (20\ pipe stages), W = 5 (5\ wide fetch) $ 1 out of 5 instructions is a branch Each 5 instruction-block ends with a branch 的CPU，那么我们取出500条指令需要多少个周期呢？
+100% 预测正确率 100 个时钟周期 (all instructions fetched on the correct path) 无额外工作 99% 预测正确率 100 (correct path) &#43; 20 (wrong path) = 120 个时钟周期 20% 额外指令被取出 98% 预测正确率 100 (correct path) &#43; 20 * 2 (wrong path) = 140 个时钟周期 40% 额外指令被取出 95% 预测正确率 100 (correct path) &#43; 20 * 5 (wrong path) = 200 个时钟周期 100% 额外指令被取出 可以看出，分支预测失败在现代的超标量多流水线cpu中的penalty被极大的放大了。所以分支预测的正确性就显得额外重要。">
+<meta name="author" content="">
+<link rel="canonical" href="https://caaatch22.github.io/posts/branch-prediction/">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.678b5c47efa744d2e0dd0d61101075e6aecdc9a0631e7ad8538f4ec0cca79273.css" integrity="sha256-Z4tcR&#43;&#43;nRNLg3Q1hEBB15q7NyaBjHnrYU49OwMynknM=" rel="preload stylesheet" as="style">
+<script defer crossorigin="anonymous" src="/assets/js/highlight.f413e19d0714851f6474e7ee9632408e58ac146fbdbe62747134bea2fa3415e0.js" integrity="sha256-9BPhnQcUhR9kdOfuljJAjlisFG&#43;9vmJ0cTS&#43;ovo0FeA="
+    onload="hljs.initHighlightingOnLoad();"></script>
+<link rel="icon" href="https://caaatch22.github.io/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://caaatch22.github.io/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://caaatch22.github.io/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://caaatch22.github.io/apple-touch-icon.png">
+<link rel="mask-icon" href="https://caaatch22.github.io/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --hljs-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.2/dist/katex.min.css" integrity="sha384-bYdxxUwYipFNohQlHt0bjN/LCpueqWz13HufFEV1SUatKs1cm4L6fFgCi1jT643X" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.2/dist/katex.min.js" integrity="sha384-Qsn9KnoKISj6dI8g7p1HBlNpVx0I8p1SvlwOldgi3IorMle61nQy4zEahWYtljaz" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.2/dist/contrib/auto-render.min.js" integrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+          
+          
+          delimiters: [
+              {left: '$$', right: '$$', display: true},
+              {left: '$', right: '$', display: false},
+              {left: '\\(', right: '\\)', display: false},
+              {left: '\\[', right: '\\]', display: true}
+          ],
+          
+          throwOnError : false
+        });
+    });
+</script>
+
+
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-WEG841BBW9"></script>
+<script>
+var doNotTrack = false;
+if (!doNotTrack) {
+	window.dataLayer = window.dataLayer || [];
+	function gtag(){dataLayer.push(arguments);}
+	gtag('js', new Date());
+	gtag('config', 'G-WEG841BBW9', { 'anonymize_ip': false });
+}
+</script>
+<meta property="og:title" content="Computer Architecture —— 分支预测" />
+<meta property="og:description" content="H&amp;P那本关于分支预测的部分比较简短且表述有点晦涩，（顺便吐槽一下第五版的中文翻译，建议看英文原版）本文主要参考超标量处理器设计，国人写的，用语符合习惯，强烈推荐！
+Motivation 在处理器中，除了cache之外，另一个重要的内容就是分支预测，它和cache一起左右处理器的性能。以SPECint95作为benchmark，完美的cache和BP(branch-predictor)能使IPC提高两倍左右： 图片来自论文SSMT。当然，这是21世纪之前的结果了。现代处理器分支预测普遍能达到97%~98%以上的精度，在多数浮点benchmark中基本都是99%的准确率。
+为什么需要这么高的精度呢？ 一般情况下，分支指令的占比通常在 15% 到 30% 之间。对于经典五级流水线无分支预测cpu，一个branch会造成一次stall；而对于现代的superscalar且流水线级数远高于5的（一般是二十级以上）cpu，其misprediction penalty是 $M * N$ 的（M = fetch group内指令数, N = branch resolution latency，就是决定分支最终是否跳转需要多少周期）。如下图所示： 我们再做一个定量实验： 假设我们有一个
+$ N = 20 (20\ pipe stages), W = 5 (5\ wide fetch) $ 1 out of 5 instructions is a branch Each 5 instruction-block ends with a branch 的CPU，那么我们取出500条指令需要多少个周期呢？
+100% 预测正确率 100 个时钟周期 (all instructions fetched on the correct path) 无额外工作 99% 预测正确率 100 (correct path) &#43; 20 (wrong path) = 120 个时钟周期 20% 额外指令被取出 98% 预测正确率 100 (correct path) &#43; 20 * 2 (wrong path) = 140 个时钟周期 40% 额外指令被取出 95% 预测正确率 100 (correct path) &#43; 20 * 5 (wrong path) = 200 个时钟周期 100% 额外指令被取出 可以看出，分支预测失败在现代的超标量多流水线cpu中的penalty被极大的放大了。所以分支预测的正确性就显得额外重要。" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://caaatch22.github.io/posts/branch-prediction/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-10-17T23:38:14+00:00" />
+<meta property="article:modified_time" content="2023-10-17T23:38:14+00:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Computer Architecture —— 分支预测"/>
+<meta name="twitter:description" content="H&amp;P那本关于分支预测的部分比较简短且表述有点晦涩，（顺便吐槽一下第五版的中文翻译，建议看英文原版）本文主要参考超标量处理器设计，国人写的，用语符合习惯，强烈推荐！
+Motivation 在处理器中，除了cache之外，另一个重要的内容就是分支预测，它和cache一起左右处理器的性能。以SPECint95作为benchmark，完美的cache和BP(branch-predictor)能使IPC提高两倍左右： 图片来自论文SSMT。当然，这是21世纪之前的结果了。现代处理器分支预测普遍能达到97%~98%以上的精度，在多数浮点benchmark中基本都是99%的准确率。
+为什么需要这么高的精度呢？ 一般情况下，分支指令的占比通常在 15% 到 30% 之间。对于经典五级流水线无分支预测cpu，一个branch会造成一次stall；而对于现代的superscalar且流水线级数远高于5的（一般是二十级以上）cpu，其misprediction penalty是 $M * N$ 的（M = fetch group内指令数, N = branch resolution latency，就是决定分支最终是否跳转需要多少周期）。如下图所示： 我们再做一个定量实验： 假设我们有一个
+$ N = 20 (20\ pipe stages), W = 5 (5\ wide fetch) $ 1 out of 5 instructions is a branch Each 5 instruction-block ends with a branch 的CPU，那么我们取出500条指令需要多少个周期呢？
+100% 预测正确率 100 个时钟周期 (all instructions fetched on the correct path) 无额外工作 99% 预测正确率 100 (correct path) &#43; 20 (wrong path) = 120 个时钟周期 20% 额外指令被取出 98% 预测正确率 100 (correct path) &#43; 20 * 2 (wrong path) = 140 个时钟周期 40% 额外指令被取出 95% 预测正确率 100 (correct path) &#43; 20 * 5 (wrong path) = 200 个时钟周期 100% 额外指令被取出 可以看出，分支预测失败在现代的超标量多流水线cpu中的penalty被极大的放大了。所以分支预测的正确性就显得额外重要。"/>
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "Posts",
+      "item": "https://caaatch22.github.io/posts/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  3 ,
+      "name": "Computer Architecture —— 分支预测",
+      "item": "https://caaatch22.github.io/posts/branch-prediction/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Computer Architecture —— 分支预测",
+  "name": "Computer Architecture —— 分支预测",
+  "description": "H\u0026amp;P那本关于分支预测的部分比较简短且表述有点晦涩，（顺便吐槽一下第五版的中文翻译，建议看英文原版）本文主要参考超标量处理器设计，国人写的，用语符合习惯，强烈推荐！\nMotivation 在处理器中，除了cache之外，另一个重要的内容就是分支预测，它和cache一起左右处理器的性能。以SPECint95作为benchmark，完美的cache和BP(branch-predictor)能使IPC提高两倍左右： 图片来自论文SSMT。当然，这是21世纪之前的结果了。现代处理器分支预测普遍能达到97%~98%以上的精度，在多数浮点benchmark中基本都是99%的准确率。\n为什么需要这么高的精度呢？ 一般情况下，分支指令的占比通常在 15% 到 30% 之间。对于经典五级流水线无分支预测cpu，一个branch会造成一次stall；而对于现代的superscalar且流水线级数远高于5的（一般是二十级以上）cpu，其misprediction penalty是 $M * N$ 的（M = fetch group内指令数, N = branch resolution latency，就是决定分支最终是否跳转需要多少周期）。如下图所示： 我们再做一个定量实验： 假设我们有一个\n$ N = 20 (20\\ pipe stages), W = 5 (5\\ wide fetch) $ 1 out of 5 instructions is a branch Each 5 instruction-block ends with a branch 的CPU，那么我们取出500条指令需要多少个周期呢？\n100% 预测正确率 100 个时钟周期 (all instructions fetched on the correct path) 无额外工作 99% 预测正确率 100 (correct path) + 20 (wrong path) = 120 个时钟周期 20% 额外指令被取出 98% 预测正确率 100 (correct path) + 20 * 2 (wrong path) = 140 个时钟周期 40% 额外指令被取出 95% 预测正确率 100 (correct path) + 20 * 5 (wrong path) = 200 个时钟周期 100% 额外指令被取出 可以看出，分支预测失败在现代的超标量多流水线cpu中的penalty被极大的放大了。所以分支预测的正确性就显得额外重要。",
+  "keywords": [
+    "ComputerArchitecture"
+  ],
+  "articleBody": " H\u0026P那本关于分支预测的部分比较简短且表述有点晦涩，（顺便吐槽一下第五版的中文翻译，建议看英文原版）本文主要参考超标量处理器设计，国人写的，用语符合习惯，强烈推荐！\nMotivation 在处理器中，除了cache之外，另一个重要的内容就是分支预测，它和cache一起左右处理器的性能。以SPECint95作为benchmark，完美的cache和BP(branch-predictor)能使IPC提高两倍左右： 图片来自论文SSMT。当然，这是21世纪之前的结果了。现代处理器分支预测普遍能达到97%~98%以上的精度，在多数浮点benchmark中基本都是99%的准确率。\n为什么需要这么高的精度呢？ 一般情况下，分支指令的占比通常在 15% 到 30% 之间。对于经典五级流水线无分支预测cpu，一个branch会造成一次stall；而对于现代的superscalar且流水线级数远高于5的（一般是二十级以上）cpu，其misprediction penalty是 $M * N$ 的（M = fetch group内指令数, N = branch resolution latency，就是决定分支最终是否跳转需要多少周期）。如下图所示： 我们再做一个定量实验： 假设我们有一个\n$ N = 20 (20\\ pipe stages), W = 5 (5\\ wide fetch) $ 1 out of 5 instructions is a branch Each 5 instruction-block ends with a branch 的CPU，那么我们取出500条指令需要多少个周期呢？\n100% 预测正确率 100 个时钟周期 (all instructions fetched on the correct path) 无额外工作 99% 预测正确率 100 (correct path) + 20 (wrong path) = 120 个时钟周期 20% 额外指令被取出 98% 预测正确率 100 (correct path) + 20 * 2 (wrong path) = 140 个时钟周期 40% 额外指令被取出 95% 预测正确率 100 (correct path) + 20 * 5 (wrong path) = 200 个时钟周期 100% 额外指令被取出 可以看出，分支预测失败在现代的超标量多流水线cpu中的penalty被极大的放大了。所以分支预测的正确性就显得额外重要。\nTaken/Not Taken 静态分支预测 branch delay slots 这是一种软硬件结合的静态分支预测方法，准确的说这不算是一种预测的方法。它要求编译器找出和分支是否发生无关的指令（例如，分支前的指令且没有data dependance）重排到分支指令之后，这样无论分支是否发生，后面的指令都需要执行，以此解决stall的问题。早期的MIPS cpu会采用这种设计。不幸的是，随着cpu的流水线层数越来越多，编译器必须找到N条与该分支指令无关的指令（N为决定分支最终是否跳转需要多少周期）才能喂满delay slots达到没有stall的效果。且随着superscalar架构的流行，这种设计在硬件上也有许多难以解决的冲突，因此最终离开了历史舞台。\nalways Taken or always Not Taken 预测分支总是发生/不发生是最简单的分支预测方法。此外，我们还有这样的规律可以利用： 这是因为在循环中，分支backward跳转发生的几率是很大的。那我们或许可以在此事实上建立一个Backward Branch Taken, Forward Branch Not Taken的预测方法。\nAlways Predict Not-Taken Basically o nothing, simple to implement Know fall-through PC in Fetch Poor Accuracy, especially on backward branches Always Predict Taken Difficult to implement because don’t know target until Decode Poor accuracy on if-then-else Backward Branch Taken, Forward Branch Not Taken Better Accuracy Difficult to implement because don’t know target until Decode 这些方法都能显著提高分支预测的成功率，但是远远还达不到95%以上的准确率。\n动态分支预测 动态分支预测中的动态，按我的理解，指的是根据历史分支跳转情况调整接下来的分支预测方向。\n2-bit predictor 一个最intuitive的方式就是我们用上一次分支是否跳转来预测当前分支是否跳转。注意，这里的上一次指的是 上次执行该分支指令时是否跳转，而并不是依据上一条分支来预测本分支。 实现方式也比较简单：我们将所有分支指令（的地址）都对应一个bit，来表示上次跳转的结果。具体细节可以看后面2-bit predictor\n这种预测方式至少在循环中能有不错的结果——若循环m次，则missprediction为$\\frac{1}{m} \\ or\\ \\frac{2}{m}$（如果第一次默认为不跳转那么第一次循环会被预测错误）。但是在某种极端情况下，它的分支正确率为0%\nfor (int i = 0; i \u003c n; i ++) { if (a[i] % 2 == 0) { // \u003c--- branch A do something; } else { do something else; } } 对于branch A 这个分支，若a数组中的元素为奇偶交替出现，且$a[0]$为奇数，则实际跳转为$TNTNTNTNTN… (T:taken, N: not taken)$；不幸的是，我们将用于该分支的预测的bit初始化为0，那么我们会预测为$NTNTNTNT…$ 其失败率将为100%！\n为了避免这种问题，人们发明了2-bit predictor——每个分支的历史信息用两个bit来维护。其状态图如下： 其实2-bit predictor很类似于LRU-k的思想，对于抖动的程序有更好的效果：比如对于$TTTNTTT$的分支，2-bit predictor会容忍其中的Not Taken，只是将状态由Strongly Taken转变为Weakly Taken，但在$N$发生的下一次仍然会预测为$T$。所以它就可以有效地防止在$TNTNTNTNTN…$的情况下失败率为100%。 另外，对于多重循环：\nfor (int i = 0; i \u003c n; i ++) { for (int j = 0; j \u003c m; j ++) { do something; } } 2-bit predictor 对内层循环的准确率就是$\\frac{1}{m}$的（除了第一次外层循环），这也优于用1-bit predictor的情况。\n我们在来考虑如何实现2-bit predictor: 最直接的方法是我们对每条指令（即便他不是分支指令）都要有一个独立的predictor，那么在32位机器中这就要求存储空间 $2^{30} * 2 bit \\approx 0.25 GB$，这么大的额外的硅芯面积显然是无法接受的。 我们可以用下图所示来存储2-bit predictor的值： 图中的PHT(pattern history table)存放的就是所有PC值对应的2-bit predictor。我们只用了PC值当中的k位来对PHT进行寻址，因此PHT的大小就是$2^{k} \\times 2bit$的。但使用这种方式来寻址PHT，必然就会导致那k-bit相同的PC映射到相同的PHT entry上，这种情况称为aliasing，aliasing会对分支预测的准确度产生影响。这就是设计者得做出的trade-off了，增大k能提高准确率但需要消耗更多硬件。我们还可以将PC的经过某种哈希后再取k位，这样能减少碰撞概率。\n我们按照从用1-bit来记录历史跳转情况到用2-bit记录的思路，是否可以用n-bit来记录，以使得我们的预测跳转部件对程序跳转抖动更加容忍呢？大量的测试表明，再往上加bit的数量已经无益于准确率的提高了。 2-bit predictor是90年代比较主流的分支预测方法，4K-entry BHT, 2 bits/entry 已经基本能达到 80%~90% 左右的正确率了。\nLocal History Branch Prediction 我们现在考虑一种带有“循环节”的分支跳转模式：$TTNNTTNNTTNN…$，我们的2-bit predictor没法“观察”到这种规律并加以利用。那该如何解决呢？我们可以对 每一条分支使用一个寄存器来记录该分支在过去的历史状态，只要这个历史状态很有规律，我们就能利用它，这样的寄存器称为分支历史寄存器（Branch History Register, BHR）。我们用一个n-bit的BHR记录一条指令过去n次的执行情况，对一个BHR，用多个2-bit predictor捕捉规律。\n上图中，我们用一个4-bit的BHR分支记录历史，经过足够多次的预热，当我们的BHR从1011变成0001时，对应的2-bit predictor从11变成了00。这样就捕捉了图中TTTTNTTTTN...的循环规律。 引入BHR增加了硬件的复杂性，对于BHR需要预热/训练的次数，取决于BHR的位数，位数越多需要训练次数越多，但也能预测更大的循环节的分支。为了减少硬件开销，我们也可以只用PC的k个bit来对应一个BHR，如下图所示： 这也会带来不同PC的分支可能被映射到同意BHR的问题，我们可以通过将PC进行哈希、PC与BHR拼接或异或后映射到PHT等方法提升准确度。Again，这也会增加硬件的复杂性。\nGlobal History Branch Prediction 我们通过BHR的设计已经把对同一条分支指令的动态预测处理到极致了（对于没有循环节规律的分支，我们还有办法预测吗？这是不是很像经典的机器学习问题？事实上，早在2000年，就已经提出了用感知机进行动态分支预测的方法，效果也很不错）。\n于是人们又想，分支预测除了本分支历史结果有关，是否还和其他分支有关呢？借助这样的启发式规则，发明了基于全局历史的分支预测方法。对于某一条分支指令，全局指的就是其他分支指令。考虑下面一段代码：\nif(a == 2) a = 0; if(b == 2) b = 0; if(a != bb) { ... }; 分析这一段代码，容易发现当第一条、第二条分支指令不执行时（即操作a = 0、b = 0），第三条指令一定会执行。如何记录全局分支呢？与局部历史分支预测类似的，我们用一个寄存器来记录全局历史分支跳转情况，这个寄存器称为 Global History Register（GHR）。与BHR不同的是，我们不需要对所有PC都记录一个历史分支跳转的值，而只需要一个全局的GHR就可以。一个简单的基于全局历史的分支预测如下： 事实上Global branch predictor对比2-bit predictor在small predictor sizes（我的理解是GHR的位数很少）的时候表现更差（见McFarling93） 这主要是因为不同的分支经常有这相同的“全局历史”，特别是当GHR位数较少时，他们容易被映射到相同的2-bit predictor上。\nTournament Predictors: Adaptively Combining Local and Global Predictors 显然，我们可以想办法结合 Global History Branch Prediction和 Local History Branch Prediction。Tournament Predictor就是一个经典的例子： 我们用一个selector来选择使用Global predictor的结果还是用Loacal Predictor的结果。具体这个selector应该如何实现呢？其基本思想就是用一个类似于2-bit predictor的东西来训练选哪个predictor： 根据以往的分支预测结果训练selector。\nSOTA: TAGE 很多现代CPU都使用了基于 TAGE(TAgged GEometric History Length Branch Prediction) 的思想的分支预测器。这种方法早在2006年就已提出。此后TAGE及其变种连续蝉联CBP(Championship Branch Prediction)比赛的冠军（是的，竟然还有个专门做分支预测的比赛）。\n如图所示，其基本思想是：由多个Global predictor组成，每个global predictor由PC和GHR的不同长度的值映射到BHT表中得到。在此基础上增加了tag和预测结果进行比较。给出的结果于具有最长分支历史且具有匹配标记的预测器。P(0)始终匹配，因为它不使用tag，在P(1)到P(n)中没有任何一个匹配时，使用P(0)。具体细节可以看原论文。\n跳转地址 分支预测除了需要预测该次跳转是否发生，还有一个重要问题就是我们需要预测出target address。 分支的跳转可以分为直接跳转和间接跳转。直接跳转的目标地址以立即数的形式存在指令中，那么我们就能在译码时得到预测的地址，但是由于现代处理器流水线更长，取指就可能被分成多段，所以我们需要在已得到PC时就预测跳转结果地址。对于间接跳转的分支，目标地址存在通用寄存器中，会更加难以预测。下文只简单介绍直接跳转时的 target address 预测，对于间接跳转的地址预测，可以参考《超标量处理器设计》4.3.2\n直接跳转 分为两种情况：\n分支指令不发生跳转： $target\\ addr = cur\\ PC + sizeof(fetch\\ group)$ 分支指令发生跳转： $target\\ addr = cur\\ PC + SignExd(offset)$ 第一种情况我们可以在上述 Taken/Not Taken 得到结果后，若是NT，则马上得到target addr. 而对于第二种情况，我们取指完才能得到target addr，这是不可以接受的。所以我们要在刚知道PC时就进行结果预测。如何预测呢？其实就是用一个cache来记录。由于一个进程的分支指令的地址是不会改变的，即PC为分支的指令一直都是分支指令，那么我们只要将其记录结果下来，就可以在之后的预测中在取得PC时候就通过cache得到target addr 。这里cache被称作BTB(Branch Target Buffer)。 实现也与普通的cache没有多大区别。\nreference 超标量处理器设计 姚永斌 H\u0026P Computer Architecture: A Quantitative Approach coursera上Princeton的Computer Architecture 高级体系结构课程，介绍了超标量乱序多发射结构cpu等 ",
+  "wordCount" : "455",
+  "inLanguage": "en",
+  "datePublished": "2023-10-17T23:38:14Z",
+  "dateModified": "2023-10-17T23:38:14Z",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://caaatch22.github.io/posts/branch-prediction/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Mingjie's Home",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://caaatch22.github.io/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+
+<body class="" id="top">
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    } else if (localStorage.getItem("pref-theme") === "light") {
+        document.body.classList.remove('dark')
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+    }
+
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://caaatch22.github.io" accesskey="h" title="Mingjie&#39;s Home (Alt + H)">Mingjie&#39;s Home</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://caaatch22.github.io/about/" title="About">
+                    <span>About</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://caaatch22.github.io/cv/" title="CV">
+                    <span>CV</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://caaatch22.github.io/archives/" title="Archives">
+                    <span>Archives</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://caaatch22.github.io/search/" title="Search (Alt &#43; /)" accesskey=/>
+                    <span>Search</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    <div class="breadcrumbs"><a href="https://caaatch22.github.io">Home</a>&nbsp;»&nbsp;<a href="https://caaatch22.github.io/posts/">Posts</a></div>
+    <h1 class="post-title">
+      Computer Architecture —— 分支预测
+    </h1>
+    <div class="post-meta"><span title='2023-10-17 23:38:14 +0000 UTC'>October 17, 2023</span>&nbsp;·&nbsp;3 min
+
+</div>
+  </header> <aside id="toc-container" class="toc-container wide">
+    <div class="toc">
+        <details  open>
+            <summary accesskey="c" title="(Alt + C)">
+                <span class="details">Table of Contents</span>
+            </summary>
+
+            <div class="inner"><ul>
+                    <li>
+                        <a href="#motivation" aria-label="Motivation">Motivation</a></li>
+                    <li>
+                        <a href="#takennot-taken" aria-label="Taken/Not Taken">Taken/Not Taken</a><ul>
+                            
+                    <li>
+                        <a href="#%e9%9d%99%e6%80%81%e5%88%86%e6%94%af%e9%a2%84%e6%b5%8b" aria-label="静态分支预测">静态分支预测</a><ul>
+                            
+                    <li>
+                        <a href="#branch-delay-slots" aria-label="branch delay slots">branch delay slots</a></li>
+                    <li>
+                        <a href="#always-taken-or-always-not-taken" aria-label="always Taken or always Not Taken">always Taken or always Not Taken</a></li></ul>
+                    </li>
+                    <li>
+                        <a href="#%e5%8a%a8%e6%80%81%e5%88%86%e6%94%af%e9%a2%84%e6%b5%8b" aria-label="动态分支预测">动态分支预测</a><ul>
+                            
+                    <li>
+                        <a href="#2-bit-predictor" aria-label="2-bit predictor">2-bit predictor</a></li>
+                    <li>
+                        <a href="#local-history-branch-prediction" aria-label="Local History Branch Prediction">Local History Branch Prediction</a></li>
+                    <li>
+                        <a href="#global-history-branch-prediction" aria-label="Global History Branch Prediction">Global History Branch Prediction</a></li>
+                    <li>
+                        <a href="#tournament-predictors-adaptively-combining-local-and-global-predictors" aria-label="Tournament Predictors: Adaptively Combining Local and Global Predictors">Tournament Predictors: Adaptively Combining Local and Global Predictors</a></li>
+                    <li>
+                        <a href="#sota-tage" aria-label="SOTA: TAGE">SOTA: TAGE</a></li></ul>
+                    </li></ul>
+                    </li>
+                    <li>
+                        <a href="#%e8%b7%b3%e8%bd%ac%e5%9c%b0%e5%9d%80" aria-label="跳转地址">跳转地址</a><ul>
+                            
+                    <li>
+                        <a href="#%e7%9b%b4%e6%8e%a5%e8%b7%b3%e8%bd%ac" aria-label="直接跳转">直接跳转</a></li></ul>
+                    </li>
+                    <li>
+                        <a href="#reference" aria-label="reference">reference</a>
+                    </li>
+                </ul>
+            </div>
+        </details>
+    </div>
+</aside>
+<script>
+    let activeElement;
+    let elements;
+    window.addEventListener('DOMContentLoaded', function (event) {
+        checkTocPosition();
+
+        elements = document.querySelectorAll('h1[id],h2[id],h3[id],h4[id],h5[id],h6[id]');
+         
+         activeElement = elements[0];
+         const id = encodeURI(activeElement.getAttribute('id')).toLowerCase();
+         document.querySelector(`.inner ul li a[href="#${id}"]`).classList.add('active');
+     }, false);
+
+    window.addEventListener('resize', function(event) {
+        checkTocPosition();
+    }, false);
+
+    window.addEventListener('scroll', () => {
+        
+        activeElement = Array.from(elements).find((element) => {
+            if ((getOffsetTop(element) - window.pageYOffset) > 0 && 
+                (getOffsetTop(element) - window.pageYOffset) < window.innerHeight/2) {
+                return element;
+            }
+        }) || activeElement
+
+        elements.forEach(element => {
+             const id = encodeURI(element.getAttribute('id')).toLowerCase();
+             if (element === activeElement){
+                 document.querySelector(`.inner ul li a[href="#${id}"]`).classList.add('active');
+             } else {
+                 document.querySelector(`.inner ul li a[href="#${id}"]`).classList.remove('active');
+             }
+         })
+     }, false);
+
+    const main = parseInt(getComputedStyle(document.body).getPropertyValue('--article-width'), 10);
+    const toc = parseInt(getComputedStyle(document.body).getPropertyValue('--toc-width'), 10);
+    const gap = parseInt(getComputedStyle(document.body).getPropertyValue('--gap'), 10);
+
+    function checkTocPosition() {
+        const width = document.body.scrollWidth;
+
+        if (width - main - (toc * 2) - (gap * 4) > 0) {
+            document.getElementById("toc-container").classList.add("wide");
+        } else {
+            document.getElementById("toc-container").classList.remove("wide");
+        }
+    }
+
+    function getOffsetTop(element) {
+        if (!element.getClientRects().length) {
+            return 0;
+        }
+        let rect = element.getBoundingClientRect();
+        let win = element.ownerDocument.defaultView;
+        return rect.top + win.pageYOffset;   
+    }
+</script>
+
+  <div class="post-content"><blockquote>
+<p>H&amp;P那本关于分支预测的部分比较简短且表述有点晦涩，（顺便吐槽一下第五版的中文翻译，建议看英文原版）本文主要参考<a href="https://book.douban.com/subject/26293546/">超标量处理器设计</a>，国人写的，用语符合习惯，强烈推荐！</p>
+</blockquote>
+<h1 id="motivation">Motivation<a hidden class="anchor" aria-hidden="true" href="#motivation">#</a></h1>
+<p>在处理器中，除了cache之外，另一个重要的内容就是分支预测，它和cache一起左右处理器的性能。以SPECint95作为benchmark，完美的cache和BP(branch-predictor)能使IPC提高两倍左右：
+<img loading="lazy" src="/img/branch-prediction/IPC-enhance-with-perfect-BP-Cache.png" alt=""  />
+</p>
+<p>图片来自论文<a href="https://course.ece.cmu.edu/~ece742/f12/lib/exe/fetch.php?media=chappell_ssmt99.pdf">SSMT</a>。当然，这是21世纪之前的结果了。现代处理器分支预测普遍能达到97%~98%以上的精度，在多数浮点benchmark中基本都是99%的准确率。</p>
+<p><strong>为什么需要这么高的精度呢？</strong> 一般情况下，分支指令的占比通常在 <strong>15% 到 30%</strong> 之间。对于经典五级流水线无分支预测cpu，一个branch会造成一次stall；而对于现代的superscalar且流水线级数远高于5的（一般是二十级以上）cpu，其misprediction penalty是 $M * N$ 的（M = fetch group内指令数, N = branch resolution latency，就是决定分支最终是否跳转需要多少周期）。如下图所示：
+<img loading="lazy" src="/img/branch-prediction/mispredict-penalty.png" alt=""  />
+
+我们再做一个定量实验：
+假设我们有一个</p>
+<ul>
+<li>$ N = 20 (20\ pipe stages), W = 5 (5\ wide fetch) $</li>
+<li>1 out of 5 instructions is a branch</li>
+<li>Each 5 instruction-block ends with a branch</li>
+</ul>
+<p>的CPU，那么我们取出500条指令需要多少个周期呢？</p>
+<ul>
+<li>100% 预测正确率
+<ul>
+<li>100 个时钟周期 (all instructions fetched on the correct path)</li>
+<li>无额外工作</li>
+</ul>
+</li>
+<li>99% 预测正确率
+<ul>
+<li>100 (correct path) + 20 (wrong path) = 120 个时钟周期</li>
+<li>20% 额外指令被取出</li>
+</ul>
+</li>
+<li>98% 预测正确率
+<ul>
+<li>100 (correct path) + 20 * 2 (wrong path) = 140 个时钟周期</li>
+<li>40% 额外指令被取出</li>
+</ul>
+</li>
+<li>95% 预测正确率
+<ul>
+<li>100 (correct path) + 20 * 5 (wrong path) = 200 个时钟周期</li>
+<li>100% 额外指令被取出</li>
+</ul>
+</li>
+</ul>
+<p>可以看出，分支预测失败在现代的超标量多流水线cpu中的penalty被极大的放大了。所以分支预测的正确性就显得额外重要。</p>
+<h1 id="takennot-taken">Taken/Not Taken<a hidden class="anchor" aria-hidden="true" href="#takennot-taken">#</a></h1>
+<h2 id="静态分支预测">静态分支预测<a hidden class="anchor" aria-hidden="true" href="#静态分支预测">#</a></h2>
+<h3 id="branch-delay-slots">branch delay slots<a hidden class="anchor" aria-hidden="true" href="#branch-delay-slots">#</a></h3>
+<p>这是一种软硬件结合的静态分支预测方法，准确的说这不算是一种<em>预测</em>的方法。它要求编译器找出和分支是否发生无关的指令（例如，分支前的指令且没有data dependance）重排到分支指令之后，这样无论分支是否发生，后面的指令都需要执行，以此解决stall的问题。早期的MIPS cpu会采用这种设计。不幸的是，随着cpu的流水线层数越来越多，编译器必须找到N条与该分支指令无关的指令（N为决定分支最终是否跳转需要多少周期）才能喂满delay slots达到没有stall的效果。且随着superscalar架构的流行，这种设计在硬件上也有许多难以解决的冲突，因此最终离开了历史舞台。</p>
+<h3 id="always-taken-or-always-not-taken">always Taken or always Not Taken<a hidden class="anchor" aria-hidden="true" href="#always-taken-or-always-not-taken">#</a></h3>
+<p>预测分支总是发生/不发生是最简单的分支预测方法。此外，我们还有这样的规律可以利用：
+<img loading="lazy" src="/img/branch-prediction/static-BP.png" alt=""  />
+
+这是因为在循环中，分支backward跳转发生的几率是很大的。那我们或许可以在此事实上建立一个<em>Backward Branch Taken, Forward Branch Not Taken</em>的预测方法。</p>
+<ol>
+<li>Always Predict Not-Taken
+<ul>
+<li>Basically o nothing, simple to implement</li>
+<li>Know fall-through PC in Fetch</li>
+<li>Poor Accuracy, especially on backward branches</li>
+</ul>
+</li>
+<li>Always Predict Taken
+<ul>
+<li>Difficult to implement because don’t know target until Decode</li>
+<li>Poor accuracy on if-then-else</li>
+</ul>
+</li>
+<li>Backward Branch Taken, Forward Branch Not Taken
+<ul>
+<li>Better Accuracy</li>
+<li>Difficult to implement because don’t know target until Decode</li>
+</ul>
+</li>
+</ol>
+<p>这些方法都能显著提高分支预测的成功率，但是远远还达不到95%以上的准确率。</p>
+<h2 id="动态分支预测">动态分支预测<a hidden class="anchor" aria-hidden="true" href="#动态分支预测">#</a></h2>
+<p>动态分支预测中的<em>动态</em>，按我的理解，指的是根据<strong>历史分支跳转情况</strong>调整接下来的分支预测方向。</p>
+<h3 id="2-bit-predictor">2-bit predictor<a hidden class="anchor" aria-hidden="true" href="#2-bit-predictor">#</a></h3>
+<p>一个最intuitive的方式就是我们用上一次分支是否跳转来预测当前分支是否跳转。注意，这里的上一次指的是 上次执行<strong>该分支指令</strong>时是否跳转，而并<strong>不是依据上一条分支来预测本分支</strong>。
+实现方式也比较简单：我们将所有分支指令（的地址）都对应一个bit，来表示上次跳转的结果。具体细节可以看后面2-bit predictor</p>
+<p>这种预测方式至少在循环中能有不错的结果——若循环m次，则missprediction为$\frac{1}{m} \ or\ \frac{2}{m}$（如果第一次默认为不跳转那么第一次循环会被预测错误）。但是在某种极端情况下，它的分支正确率为0%</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">int</span> i <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>; i <span style="color:#f92672">&lt;</span> n; i <span style="color:#f92672">++</span>) {
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">if</span> (a[i] <span style="color:#f92672">%</span> <span style="color:#ae81ff">2</span> <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span>) {  <span style="color:#75715e">// &lt;--- branch A
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">do</span> something;
+</span></span><span style="display:flex;"><span>  } <span style="color:#66d9ef">else</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">do</span> something <span style="color:#66d9ef">else</span>;
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>对于branch A 这个分支，若a数组中的元素为奇偶交替出现，且$a[0]$为奇数，则实际跳转为$TNTNTNTNTN&hellip; (T:taken, N: not taken)$；不幸的是，我们将用于该分支的预测的bit初始化为0，那么我们会预测为$NTNTNTNT&hellip;$ 其失败率将为100%！</p>
+<p>为了避免这种问题，人们发明了2-bit predictor——每个分支的历史信息用两个bit来维护。其状态图如下：
+<img loading="lazy" src="/img/branch-prediction/2bit-predictor.svg" alt=""  />
+
+其实<code>2-bit predictor</code>很类似于<code>LRU-k</code>的思想，对于<em>抖动</em>的程序有更好的效果：比如对于$TTTNTTT$的分支，<code>2-bit predictor</code>会<em>容忍</em>其中的Not Taken，只是将状态由<code>Strongly Taken</code>转变为<code>Weakly Taken</code>，但在$N$发生的下一次仍然会预测为$T$。所以它就可以有效地防止在$TNTNTNTNTN&hellip;$的情况下失败率为100%。
+另外，对于多重循环：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">int</span> i <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>; i <span style="color:#f92672">&lt;</span> n; i <span style="color:#f92672">++</span>) {
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">int</span> j <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>; j <span style="color:#f92672">&lt;</span> m; j <span style="color:#f92672">++</span>) {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">do</span> something;
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>2-bit predictor 对内层循环的准确率就是$\frac{1}{m}$的（除了第一次外层循环），这也优于用1-bit predictor的情况。</p>
+<p>我们在来考虑如何实现<code>2-bit predictor:</code>
+最直接的方法是我们对每条指令（即便他不是分支指令）都要有一个独立的predictor，那么在32位机器中这就要求存储空间 $2^{30} * 2 bit \approx  0.25 GB$，这么大的额外的硅芯面积显然是无法接受的。
+我们可以用下图所示来存储2-bit predictor的值：
+<img loading="lazy" src="/img/branch-prediction/2-bit-predictor-impl.png" alt=""  />
+
+图中的PHT(pattern history table)存放的就是所有PC值对应的2-bit predictor。我们只用了PC值当中的k位来对PHT进行寻址，因此PHT的大小就是$2^{k} \times 2bit$的。但使用这种方式来寻址PHT，必然就会导致那k-bit相同的PC映射到相同的PHT entry上，这种情况称为<code>aliasing</code>，aliasing会对分支预测的准确度产生影响。这就是设计者得做出的trade-off了，增大k能提高准确率但需要消耗更多硬件。我们还可以将PC的经过某种哈希后再取k位，这样能减少碰撞概率。</p>
+<p>我们按照从用1-bit来记录历史跳转情况到用2-bit记录的思路，是否可以用n-bit来记录，以使得我们的预测跳转部件对程序跳转抖动<strong>更加容忍</strong>呢？大量的测试表明，再往上加bit的数量已经无益于准确率的提高了。
+<code>2-bit predictor</code>是90年代比较主流的分支预测方法，4K-entry BHT, 2 bits/entry 已经基本能达到 <strong>80%~90%</strong> 左右的正确率了。</p>
+<h3 id="local-history-branch-prediction">Local History Branch Prediction<a hidden class="anchor" aria-hidden="true" href="#local-history-branch-prediction">#</a></h3>
+<p>我们现在考虑一种带有“循环节”的分支跳转模式：$TTNNTTNNTTNN&hellip;$，我们的2-bit predictor没法“观察”到这种规律并加以利用。那该如何解决呢？我们可以对 <strong>每一条分支使用一个寄存器来记录该分支在过去的历史状态</strong>，只要这个历史状态很有规律，我们就能利用它，这样的寄存器称为分支历史寄存器（Branch History Register, BHR）。我们用一个n-bit的BHR记录一条指令过去n次的执行情况，对一个BHR，用多个2-bit predictor捕捉规律。</p>
+<p><img loading="lazy" src="/img/branch-prediction/Local-BHR.png" alt=""  />
+
+上图中，我们用一个4-bit的BHR分支记录历史，经过足够多次的预热，当我们的BHR从<code>1011</code>变成<code>0001</code>时，对应的2-bit predictor从<code>11</code>变成了<code>00</code>。这样就捕捉了图中<code>TTTTNTTTTN...</code>的循环规律。
+引入BHR增加了硬件的复杂性，对于BHR需要预热/训练的次数，取决于<strong>BHR的位数，位数越多需要训练次数越多，但也能预测更大的循环节的分支</strong>。为了减少硬件开销，我们也可以只用PC的k个bit来对应一个BHR，如下图所示：
+<img loading="lazy" src="/img/branch-prediction/BHR-impl.png" alt=""  />
+
+这也会带来不同PC的分支可能被映射到同意BHR的问题，我们可以通过将PC进行哈希、PC与BHR拼接或异或后映射到PHT等方法提升准确度。Again，这也会增加硬件的复杂性。</p>
+<h3 id="global-history-branch-prediction">Global History Branch Prediction<a hidden class="anchor" aria-hidden="true" href="#global-history-branch-prediction">#</a></h3>
+<p>我们通过BHR的设计已经把对同一条分支指令的动态预测处理到极致了（对于没有循环节规律的分支，我们还有办法预测吗？这是不是很像经典的机器学习问题？事实上，早在2000年，就已经提出了<a href="https://www.cs.cmu.edu/afs/cs/academic/class/15740-f18/www/papers/hpca01-jiminez-perceptron.pdf">用感知机进行动态分支预测的方法</a>，效果也很不错）。</p>
+<p>于是人们又想，分支预测除了本分支历史结果有关，是否还和其他分支有关呢？借助这样的启发式规则，发明了基于全局历史的分支预测方法。对于某一条分支指令，全局指的就是其他分支指令。考虑下面一段代码：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">if</span>(a <span style="color:#f92672">==</span> <span style="color:#ae81ff">2</span>) a <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span>(b <span style="color:#f92672">==</span> <span style="color:#ae81ff">2</span>) b <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span>(a <span style="color:#f92672">!=</span> bb) { ... };
+</span></span></code></pre></div><p>分析这一段代码，容易发现当第一条、第二条分支指令不执行时（即操作a = 0、b = 0），第三条指令一定会执行。如何记录全局分支呢？与局部历史分支预测类似的，我们用一个寄存器来记录全局历史分支跳转情况，这个寄存器称为 <strong>Global History Register（GHR）</strong>。与BHR不同的是，我们不需要对所有PC都记录一个历史分支跳转的值，而只需要一个全局的GHR就可以。一个简单的基于全局历史的分支预测如下：
+<img loading="lazy" src="/img/branch-prediction/GHR-impl.png" alt=""  />
+</p>
+<p>事实上Global branch predictor对比2-bit predictor在small predictor sizes（我的理解是GHR的位数很少）的时候表现更差（见<a href="https://citeseerx.ist.psu.edu/document?repid=rep1&amp;type=pdf&amp;doi=3501e3787a267dd572fe06c3dc1c70a76dc9702b">McFarling93</a>）
+这主要是因为不同的分支经常有这相同的“全局历史”，特别是当GHR位数较少时，他们容易被映射到相同的2-bit predictor上。</p>
+<h3 id="tournament-predictors-adaptively-combining-local-and-global-predictors">Tournament Predictors: Adaptively Combining Local and Global Predictors<a hidden class="anchor" aria-hidden="true" href="#tournament-predictors-adaptively-combining-local-and-global-predictors">#</a></h3>
+<p>显然，我们可以想办法结合<code> Global History Branch Prediction</code>和 <code>Local History Branch Prediction</code>。Tournament Predictor就是一个经典的例子：
+<img loading="lazy" src="/img/branch-prediction/tournament-predictor.png" alt="tournament-predictor"  />
+</p>
+<p>我们用一个selector来选择使用Global predictor的结果还是用Loacal Predictor的结果。具体这个selector应该如何实现呢？其基本思想就是用一个<strong>类似于2-bit predictor的东西来训练选哪个predictor</strong>：
+<img loading="lazy" src="/img/branch-prediction/tournament-predictor-impl.png" alt=""  />
+
+根据以往的分支预测结果训练selector。</p>
+<h3 id="sota-tage">SOTA: TAGE<a hidden class="anchor" aria-hidden="true" href="#sota-tage">#</a></h3>
+<p>很多现代CPU都使用了基于 TAGE(TAgged GEometric History Length Branch Prediction) 的思想的分支预测器。这种方法早在2006年就已提出。此后TAGE及其变种连续蝉联<a href="https://jilp.org/cbp2016/">CBP(Championship Branch Prediction)</a>比赛的冠军（是的，竟然还有个专门做分支预测的比赛）。</p>
+<p><img loading="lazy" src="/img/branch-prediction/TAGE.png" alt="TAGE"  />
+
+如图所示，其基本思想是：由多个Global predictor组成，每个global predictor由PC和GHR的不同长度的值映射到BHT表中得到。在此基础上增加了tag和预测结果进行比较。给出的结果于具有最长分支历史且具有匹配标记的预测器。P(0)始终匹配，因为它不使用tag，在P(1)到P(n)中没有任何一个匹配时，使用P(0)。具体细节可以看<a href="https://www.irisa.fr/caps/people/seznec/JILP-COTTAGE.pdf">原论文</a>。</p>
+<h1 id="跳转地址">跳转地址<a hidden class="anchor" aria-hidden="true" href="#跳转地址">#</a></h1>
+<p>分支预测除了需要预测该次跳转是否发生，还有一个重要问题就是我们<strong>需要预测出target address</strong>。
+分支的跳转可以分为<code>直接跳转</code>和<code>间接跳转</code>。直接跳转的目标地址以立即数的形式存在指令中，那么我们就能在译码时得到预测的地址，但是由于现代处理器流水线更长，取指就可能被分成多段，所以我们需要在已得到PC时就预测跳转结果地址。对于间接跳转的分支，目标地址存在通用寄存器中，会更加难以预测。下文只简单介绍直接跳转时的 target address 预测，对于间接跳转的地址预测，可以参考《超标量处理器设计》4.3.2</p>
+<h2 id="直接跳转">直接跳转<a hidden class="anchor" aria-hidden="true" href="#直接跳转">#</a></h2>
+<p>分为两种情况：</p>
+<ol>
+<li>分支指令不发生跳转：
+$target\ addr = cur\ PC + sizeof(fetch\ group)$</li>
+<li>分支指令发生跳转：
+$target\ addr = cur\ PC + SignExd(offset)$</li>
+</ol>
+<p>第一种情况我们可以在上述 Taken/Not Taken 得到结果后，若是NT，则马上得到target addr.
+而对于第二种情况，我们取指完才能得到target addr，这是不可以接受的。所以我们要在刚知道PC时就进行结果预测。如何预测呢？其实就是用一个cache来记录。由于一个进程的分支指令的地址是不会改变的，即PC为分支的指令一直都是分支指令，那么我们只要将其记录结果下来，就可以在之后的预测中在取得PC时候就通过cache得到target addr 。这里cache被称作BTB(Branch Target Buffer)。
+<img loading="lazy" src="/img/branch-prediction/BTB.png" alt="BTB"  />
+
+实现也与普通的cache没有多大区别。</p>
+<h1 id="reference">reference<a hidden class="anchor" aria-hidden="true" href="#reference">#</a></h1>
+<ul>
+<li><a href="https://book.douban.com/subject/26293546/">超标量处理器设计 姚永斌</a></li>
+<li>H&amp;P Computer Architecture: A Quantitative Approach</li>
+<li><a href="https://www.coursera.org/learn/comparch/home/info">coursera上Princeton的Computer Architecture</a> 高级体系结构课程，介绍了超标量乱序多发射结构cpu等</li>
+</ul>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="https://caaatch22.github.io/tags/computerarchitecture/">ComputerArchitecture</a></li>
+    </ul>
+<nav class="paginav">
+  <a class="next" href="https://caaatch22.github.io/posts/c-%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B--%E7%8E%B0%E4%BB%A3architecture%E7%9A%84%E5%A6%A5%E5%8D%8F/">
+    <span class="title">Next »</span>
+    <br>
+    <span>C&#43;&#43;内存模型 —— 现代Architecture的妥协</span>
+  </a>
+</nav>
+
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+    <span>&copy; 2024 <a href="https://caaatch22.github.io">Mingjie&#39;s Home</a></span>
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>

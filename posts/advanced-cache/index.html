@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>Computer Architecture —— 高级缓存技术 | Mingjie&#39;s Home</title>
+<meta name="keywords" content="ComputerArchitecture">
+<meta name="description" content="本文不会介绍cache的组织形式等基本内容，但也算不上什么&quot;Advanced&quot;。主要包含一些从硬件层面优化cache的手段。
+优化cache的几种方法 pipeline caches 上图为教科书上经常出现的cache形式(2-way associative为例)，它很精炼的解释了cache的实现。但也稍微引入了些“误导”：
+图中v、tag和data部分画在连续的一行上，仿佛硬件上他们就是同一块 SRAM 的不同bit 图中识别tag与data是并行完成的，这很好，某种意义上能降低时延；但我们经常遗忘一个事实，只有读cache的时候我们才能这么操作（或者说在写cache时，读取data block是没有意义的） 对于第一点，在实际的实现当中，tag和data部分都是分开放置的，tag一般是由一种叫CAM(Context-Addressable Memory)的材料构成。当然，这与pi不pipeline没什么关系；
+读cache主要就两个部分：比较tag，获取data；我们暂且不考虑以pipeline的方式优化，那么serial的先比较tag再读data一定不如parallel的方式进行吗？当我们并行的读取tag和data的时候，我们会发现，读出来的data有可能没用（没有匹配的tag）；并且，在n-way set associate cache中，我们会浪费的读出$n-1$个data项；这给我们什么启示呢？如果我们串行的读cache，那么我们可以在比较tag阶段就知道我们想要的数据在不在cache当中；更有意义的是，根据tag比较的结果，我们就知道哪一路的数据是需要被访问的（提前知道了在n-way中的哪一way），那么我们访问data block时，就无需多路选择器，直接访问指定的way，将其他way的data访问的使能信号置为无效，这种做法的优点在于有效减小功耗。
+serial的做法肯定比parallel的延时要大，若这时访问cache处于处理器的critical path(关键路径)上，我们可以再将其进行流水线化。 我们现在再来看看写cache时的情况：
+写cache时，只有通过tag比较，确认要写的地址在cache中后，才可以写data SRAM，在主频较高的处理器中，这些操作很难在一个周期内完成，这也要求我们将其流水线化。下图为对cache进行写操作使用的流水线示意图：
+在上图的实现方式中，store第一个周期读取Tag并进行比较，根据比较的结果，在第二个周期选择是否将数据写到Data SRAM中。还需要注意的是，当执行load指令时，它想要的数据可能正好在store指令的流水线寄存器中（RAW的情况；上图中的DelayedStoreData寄存器），而不是来自于Data SRAM。因此需要一种机制检测这种情况，这需要将load指令所携带的地址和store指令的流水线寄存器(即DelayedStoreAddr寄存器)进行比较，如果相等，那么就将store指令的数据作为load指令的结果。
+由此可以看出，对写D-Cache使用流水线之后，不仅增加了流水线本身的硬件，也带来了其他一些额外的硬件开销。其实。不仅在Cache中有这种现象，在处理器的其他部分增加流水线的级数，也会伴随着其他方面的硬件需求,因此过深的流水线带来的硬件复杂度是非常高的，就像Intel的Pentium 4处理器，并不会从过深的流水线中得到预想的好处。当然，cache的流水线化已经是一种广泛使用的用于降低latency的方法了。
+write buffers 我愿称之为buffer of buffer，本来cache就起buffer的作用了，但我们再加一个buffer，如下图所示： 这和多一级的cache有什么不同呢？这是一个专门为写操作设计的buffer（注意：load也可能造成写操作）。原因在于我们知道写通常比读更慢，特别对于write-through来说；其次，当上层cache满后，需要先将dirty cache line写回下层cache，再读取下层cache中的数据。若下层cache只有一个读写端口，那么这种串行的过程导致D-Cache发生缺失的处理时间变得很长，此时就可以采用write buffer来解决这个问题。脏状态的cache-line会首先放到写级存中，等到下级存储器有空闲的时候，才会将写缓存中的数据写到下级存储器中。
+对于write buffer，我们还可以对其进行 合并(merging) 操作。所谓merging，指的是将在同一个cache-line上的数据一并写入下层cache中，而非多次写入同一个cache-line。 上图中的右侧表示了一个采用了merging write buffer策略的写缓冲区。
+critial word first and early restart 先来看一下cache miss时的cpu： 图中展示了一个blocking cache在cache miss时，cpu stall，而后cache将需要取得的cache-line放入后，cpu resume的timeline。我们可以发现，若我们只需要cache-line中的第3个word，cpu完全可以提早resume。如下图所示： 这就是early restart，而critial word first指的是，是在此基础上，在取cache-block时，不按照0~7 word的顺序而是按照3,4,5,6,7,0,1,2的顺序获取，配合early restart以减小miss penalty。
+当然，这种优化手段一般在cache-block size越大的时候效果越好。
+non-blocking caches 本节主要参考了超标量处理器设计9.6.2">
+<meta name="author" content="">
+<link rel="canonical" href="https://caaatch22.github.io/posts/advanced-cache/">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.678b5c47efa744d2e0dd0d61101075e6aecdc9a0631e7ad8538f4ec0cca79273.css" integrity="sha256-Z4tcR&#43;&#43;nRNLg3Q1hEBB15q7NyaBjHnrYU49OwMynknM=" rel="preload stylesheet" as="style">
+<script defer crossorigin="anonymous" src="/assets/js/highlight.f413e19d0714851f6474e7ee9632408e58ac146fbdbe62747134bea2fa3415e0.js" integrity="sha256-9BPhnQcUhR9kdOfuljJAjlisFG&#43;9vmJ0cTS&#43;ovo0FeA="
+    onload="hljs.initHighlightingOnLoad();"></script>
+<link rel="icon" href="https://caaatch22.github.io/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://caaatch22.github.io/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://caaatch22.github.io/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://caaatch22.github.io/apple-touch-icon.png">
+<link rel="mask-icon" href="https://caaatch22.github.io/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --hljs-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.2/dist/katex.min.css" integrity="sha384-bYdxxUwYipFNohQlHt0bjN/LCpueqWz13HufFEV1SUatKs1cm4L6fFgCi1jT643X" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.2/dist/katex.min.js" integrity="sha384-Qsn9KnoKISj6dI8g7p1HBlNpVx0I8p1SvlwOldgi3IorMle61nQy4zEahWYtljaz" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.2/dist/contrib/auto-render.min.js" integrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+          
+          
+          delimiters: [
+              {left: '$$', right: '$$', display: true},
+              {left: '$', right: '$', display: false},
+              {left: '\\(', right: '\\)', display: false},
+              {left: '\\[', right: '\\]', display: true}
+          ],
+          
+          throwOnError : false
+        });
+    });
+</script>
+
+
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-WEG841BBW9"></script>
+<script>
+var doNotTrack = false;
+if (!doNotTrack) {
+	window.dataLayer = window.dataLayer || [];
+	function gtag(){dataLayer.push(arguments);}
+	gtag('js', new Date());
+	gtag('config', 'G-WEG841BBW9', { 'anonymize_ip': false });
+}
+</script>
+<meta property="og:title" content="Computer Architecture —— 高级缓存技术" />
+<meta property="og:description" content="本文不会介绍cache的组织形式等基本内容，但也算不上什么&quot;Advanced&quot;。主要包含一些从硬件层面优化cache的手段。
+优化cache的几种方法 pipeline caches 上图为教科书上经常出现的cache形式(2-way associative为例)，它很精炼的解释了cache的实现。但也稍微引入了些“误导”：
+图中v、tag和data部分画在连续的一行上，仿佛硬件上他们就是同一块 SRAM 的不同bit 图中识别tag与data是并行完成的，这很好，某种意义上能降低时延；但我们经常遗忘一个事实，只有读cache的时候我们才能这么操作（或者说在写cache时，读取data block是没有意义的） 对于第一点，在实际的实现当中，tag和data部分都是分开放置的，tag一般是由一种叫CAM(Context-Addressable Memory)的材料构成。当然，这与pi不pipeline没什么关系；
+读cache主要就两个部分：比较tag，获取data；我们暂且不考虑以pipeline的方式优化，那么serial的先比较tag再读data一定不如parallel的方式进行吗？当我们并行的读取tag和data的时候，我们会发现，读出来的data有可能没用（没有匹配的tag）；并且，在n-way set associate cache中，我们会浪费的读出$n-1$个data项；这给我们什么启示呢？如果我们串行的读cache，那么我们可以在比较tag阶段就知道我们想要的数据在不在cache当中；更有意义的是，根据tag比较的结果，我们就知道哪一路的数据是需要被访问的（提前知道了在n-way中的哪一way），那么我们访问data block时，就无需多路选择器，直接访问指定的way，将其他way的data访问的使能信号置为无效，这种做法的优点在于有效减小功耗。
+serial的做法肯定比parallel的延时要大，若这时访问cache处于处理器的critical path(关键路径)上，我们可以再将其进行流水线化。 我们现在再来看看写cache时的情况：
+写cache时，只有通过tag比较，确认要写的地址在cache中后，才可以写data SRAM，在主频较高的处理器中，这些操作很难在一个周期内完成，这也要求我们将其流水线化。下图为对cache进行写操作使用的流水线示意图：
+在上图的实现方式中，store第一个周期读取Tag并进行比较，根据比较的结果，在第二个周期选择是否将数据写到Data SRAM中。还需要注意的是，当执行load指令时，它想要的数据可能正好在store指令的流水线寄存器中（RAW的情况；上图中的DelayedStoreData寄存器），而不是来自于Data SRAM。因此需要一种机制检测这种情况，这需要将load指令所携带的地址和store指令的流水线寄存器(即DelayedStoreAddr寄存器)进行比较，如果相等，那么就将store指令的数据作为load指令的结果。
+由此可以看出，对写D-Cache使用流水线之后，不仅增加了流水线本身的硬件，也带来了其他一些额外的硬件开销。其实。不仅在Cache中有这种现象，在处理器的其他部分增加流水线的级数，也会伴随着其他方面的硬件需求,因此过深的流水线带来的硬件复杂度是非常高的，就像Intel的Pentium 4处理器，并不会从过深的流水线中得到预想的好处。当然，cache的流水线化已经是一种广泛使用的用于降低latency的方法了。
+write buffers 我愿称之为buffer of buffer，本来cache就起buffer的作用了，但我们再加一个buffer，如下图所示： 这和多一级的cache有什么不同呢？这是一个专门为写操作设计的buffer（注意：load也可能造成写操作）。原因在于我们知道写通常比读更慢，特别对于write-through来说；其次，当上层cache满后，需要先将dirty cache line写回下层cache，再读取下层cache中的数据。若下层cache只有一个读写端口，那么这种串行的过程导致D-Cache发生缺失的处理时间变得很长，此时就可以采用write buffer来解决这个问题。脏状态的cache-line会首先放到写级存中，等到下级存储器有空闲的时候，才会将写缓存中的数据写到下级存储器中。
+对于write buffer，我们还可以对其进行 合并(merging) 操作。所谓merging，指的是将在同一个cache-line上的数据一并写入下层cache中，而非多次写入同一个cache-line。 上图中的右侧表示了一个采用了merging write buffer策略的写缓冲区。
+critial word first and early restart 先来看一下cache miss时的cpu： 图中展示了一个blocking cache在cache miss时，cpu stall，而后cache将需要取得的cache-line放入后，cpu resume的timeline。我们可以发现，若我们只需要cache-line中的第3个word，cpu完全可以提早resume。如下图所示： 这就是early restart，而critial word first指的是，是在此基础上，在取cache-block时，不按照0~7 word的顺序而是按照3,4,5,6,7,0,1,2的顺序获取，配合early restart以减小miss penalty。
+当然，这种优化手段一般在cache-block size越大的时候效果越好。
+non-blocking caches 本节主要参考了超标量处理器设计9.6.2" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://caaatch22.github.io/posts/advanced-cache/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-08-23T23:38:14+00:00" />
+<meta property="article:modified_time" content="2023-08-23T23:38:14+00:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Computer Architecture —— 高级缓存技术"/>
+<meta name="twitter:description" content="本文不会介绍cache的组织形式等基本内容，但也算不上什么&quot;Advanced&quot;。主要包含一些从硬件层面优化cache的手段。
+优化cache的几种方法 pipeline caches 上图为教科书上经常出现的cache形式(2-way associative为例)，它很精炼的解释了cache的实现。但也稍微引入了些“误导”：
+图中v、tag和data部分画在连续的一行上，仿佛硬件上他们就是同一块 SRAM 的不同bit 图中识别tag与data是并行完成的，这很好，某种意义上能降低时延；但我们经常遗忘一个事实，只有读cache的时候我们才能这么操作（或者说在写cache时，读取data block是没有意义的） 对于第一点，在实际的实现当中，tag和data部分都是分开放置的，tag一般是由一种叫CAM(Context-Addressable Memory)的材料构成。当然，这与pi不pipeline没什么关系；
+读cache主要就两个部分：比较tag，获取data；我们暂且不考虑以pipeline的方式优化，那么serial的先比较tag再读data一定不如parallel的方式进行吗？当我们并行的读取tag和data的时候，我们会发现，读出来的data有可能没用（没有匹配的tag）；并且，在n-way set associate cache中，我们会浪费的读出$n-1$个data项；这给我们什么启示呢？如果我们串行的读cache，那么我们可以在比较tag阶段就知道我们想要的数据在不在cache当中；更有意义的是，根据tag比较的结果，我们就知道哪一路的数据是需要被访问的（提前知道了在n-way中的哪一way），那么我们访问data block时，就无需多路选择器，直接访问指定的way，将其他way的data访问的使能信号置为无效，这种做法的优点在于有效减小功耗。
+serial的做法肯定比parallel的延时要大，若这时访问cache处于处理器的critical path(关键路径)上，我们可以再将其进行流水线化。 我们现在再来看看写cache时的情况：
+写cache时，只有通过tag比较，确认要写的地址在cache中后，才可以写data SRAM，在主频较高的处理器中，这些操作很难在一个周期内完成，这也要求我们将其流水线化。下图为对cache进行写操作使用的流水线示意图：
+在上图的实现方式中，store第一个周期读取Tag并进行比较，根据比较的结果，在第二个周期选择是否将数据写到Data SRAM中。还需要注意的是，当执行load指令时，它想要的数据可能正好在store指令的流水线寄存器中（RAW的情况；上图中的DelayedStoreData寄存器），而不是来自于Data SRAM。因此需要一种机制检测这种情况，这需要将load指令所携带的地址和store指令的流水线寄存器(即DelayedStoreAddr寄存器)进行比较，如果相等，那么就将store指令的数据作为load指令的结果。
+由此可以看出，对写D-Cache使用流水线之后，不仅增加了流水线本身的硬件，也带来了其他一些额外的硬件开销。其实。不仅在Cache中有这种现象，在处理器的其他部分增加流水线的级数，也会伴随着其他方面的硬件需求,因此过深的流水线带来的硬件复杂度是非常高的，就像Intel的Pentium 4处理器，并不会从过深的流水线中得到预想的好处。当然，cache的流水线化已经是一种广泛使用的用于降低latency的方法了。
+write buffers 我愿称之为buffer of buffer，本来cache就起buffer的作用了，但我们再加一个buffer，如下图所示： 这和多一级的cache有什么不同呢？这是一个专门为写操作设计的buffer（注意：load也可能造成写操作）。原因在于我们知道写通常比读更慢，特别对于write-through来说；其次，当上层cache满后，需要先将dirty cache line写回下层cache，再读取下层cache中的数据。若下层cache只有一个读写端口，那么这种串行的过程导致D-Cache发生缺失的处理时间变得很长，此时就可以采用write buffer来解决这个问题。脏状态的cache-line会首先放到写级存中，等到下级存储器有空闲的时候，才会将写缓存中的数据写到下级存储器中。
+对于write buffer，我们还可以对其进行 合并(merging) 操作。所谓merging，指的是将在同一个cache-line上的数据一并写入下层cache中，而非多次写入同一个cache-line。 上图中的右侧表示了一个采用了merging write buffer策略的写缓冲区。
+critial word first and early restart 先来看一下cache miss时的cpu： 图中展示了一个blocking cache在cache miss时，cpu stall，而后cache将需要取得的cache-line放入后，cpu resume的timeline。我们可以发现，若我们只需要cache-line中的第3个word，cpu完全可以提早resume。如下图所示： 这就是early restart，而critial word first指的是，是在此基础上，在取cache-block时，不按照0~7 word的顺序而是按照3,4,5,6,7,0,1,2的顺序获取，配合early restart以减小miss penalty。
+当然，这种优化手段一般在cache-block size越大的时候效果越好。
+non-blocking caches 本节主要参考了超标量处理器设计9.6.2"/>
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "Posts",
+      "item": "https://caaatch22.github.io/posts/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  3 ,
+      "name": "Computer Architecture —— 高级缓存技术",
+      "item": "https://caaatch22.github.io/posts/advanced-cache/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Computer Architecture —— 高级缓存技术",
+  "name": "Computer Architecture —— 高级缓存技术",
+  "description": "本文不会介绍cache的组织形式等基本内容，但也算不上什么\u0026quot;Advanced\u0026quot;。主要包含一些从硬件层面优化cache的手段。\n优化cache的几种方法 pipeline caches 上图为教科书上经常出现的cache形式(2-way associative为例)，它很精炼的解释了cache的实现。但也稍微引入了些“误导”：\n图中v、tag和data部分画在连续的一行上，仿佛硬件上他们就是同一块 SRAM 的不同bit 图中识别tag与data是并行完成的，这很好，某种意义上能降低时延；但我们经常遗忘一个事实，只有读cache的时候我们才能这么操作（或者说在写cache时，读取data block是没有意义的） 对于第一点，在实际的实现当中，tag和data部分都是分开放置的，tag一般是由一种叫CAM(Context-Addressable Memory)的材料构成。当然，这与pi不pipeline没什么关系；\n读cache主要就两个部分：比较tag，获取data；我们暂且不考虑以pipeline的方式优化，那么serial的先比较tag再读data一定不如parallel的方式进行吗？当我们并行的读取tag和data的时候，我们会发现，读出来的data有可能没用（没有匹配的tag）；并且，在n-way set associate cache中，我们会浪费的读出$n-1$个data项；这给我们什么启示呢？如果我们串行的读cache，那么我们可以在比较tag阶段就知道我们想要的数据在不在cache当中；更有意义的是，根据tag比较的结果，我们就知道哪一路的数据是需要被访问的（提前知道了在n-way中的哪一way），那么我们访问data block时，就无需多路选择器，直接访问指定的way，将其他way的data访问的使能信号置为无效，这种做法的优点在于有效减小功耗。\nserial的做法肯定比parallel的延时要大，若这时访问cache处于处理器的critical path(关键路径)上，我们可以再将其进行流水线化。 我们现在再来看看写cache时的情况：\n写cache时，只有通过tag比较，确认要写的地址在cache中后，才可以写data SRAM，在主频较高的处理器中，这些操作很难在一个周期内完成，这也要求我们将其流水线化。下图为对cache进行写操作使用的流水线示意图：\n在上图的实现方式中，store第一个周期读取Tag并进行比较，根据比较的结果，在第二个周期选择是否将数据写到Data SRAM中。还需要注意的是，当执行load指令时，它想要的数据可能正好在store指令的流水线寄存器中（RAW的情况；上图中的DelayedStoreData寄存器），而不是来自于Data SRAM。因此需要一种机制检测这种情况，这需要将load指令所携带的地址和store指令的流水线寄存器(即DelayedStoreAddr寄存器)进行比较，如果相等，那么就将store指令的数据作为load指令的结果。\n由此可以看出，对写D-Cache使用流水线之后，不仅增加了流水线本身的硬件，也带来了其他一些额外的硬件开销。其实。不仅在Cache中有这种现象，在处理器的其他部分增加流水线的级数，也会伴随着其他方面的硬件需求,因此过深的流水线带来的硬件复杂度是非常高的，就像Intel的Pentium 4处理器，并不会从过深的流水线中得到预想的好处。当然，cache的流水线化已经是一种广泛使用的用于降低latency的方法了。\nwrite buffers 我愿称之为buffer of buffer，本来cache就起buffer的作用了，但我们再加一个buffer，如下图所示： 这和多一级的cache有什么不同呢？这是一个专门为写操作设计的buffer（注意：load也可能造成写操作）。原因在于我们知道写通常比读更慢，特别对于write-through来说；其次，当上层cache满后，需要先将dirty cache line写回下层cache，再读取下层cache中的数据。若下层cache只有一个读写端口，那么这种串行的过程导致D-Cache发生缺失的处理时间变得很长，此时就可以采用write buffer来解决这个问题。脏状态的cache-line会首先放到写级存中，等到下级存储器有空闲的时候，才会将写缓存中的数据写到下级存储器中。\n对于write buffer，我们还可以对其进行 合并(merging) 操作。所谓merging，指的是将在同一个cache-line上的数据一并写入下层cache中，而非多次写入同一个cache-line。 上图中的右侧表示了一个采用了merging write buffer策略的写缓冲区。\ncritial word first and early restart 先来看一下cache miss时的cpu： 图中展示了一个blocking cache在cache miss时，cpu stall，而后cache将需要取得的cache-line放入后，cpu resume的timeline。我们可以发现，若我们只需要cache-line中的第3个word，cpu完全可以提早resume。如下图所示： 这就是early restart，而critial word first指的是，是在此基础上，在取cache-block时，不按照0~7 word的顺序而是按照3,4,5,6,7,0,1,2的顺序获取，配合early restart以减小miss penalty。\n当然，这种优化手段一般在cache-block size越大的时候效果越好。\nnon-blocking caches 本节主要参考了超标量处理器设计9.6.2",
+  "keywords": [
+    "ComputerArchitecture"
+  ],
+  "articleBody": " 本文不会介绍cache的组织形式等基本内容，但也算不上什么\"Advanced\"。主要包含一些从硬件层面优化cache的手段。\n优化cache的几种方法 pipeline caches 上图为教科书上经常出现的cache形式(2-way associative为例)，它很精炼的解释了cache的实现。但也稍微引入了些“误导”：\n图中v、tag和data部分画在连续的一行上，仿佛硬件上他们就是同一块 SRAM 的不同bit 图中识别tag与data是并行完成的，这很好，某种意义上能降低时延；但我们经常遗忘一个事实，只有读cache的时候我们才能这么操作（或者说在写cache时，读取data block是没有意义的） 对于第一点，在实际的实现当中，tag和data部分都是分开放置的，tag一般是由一种叫CAM(Context-Addressable Memory)的材料构成。当然，这与pi不pipeline没什么关系；\n读cache主要就两个部分：比较tag，获取data；我们暂且不考虑以pipeline的方式优化，那么serial的先比较tag再读data一定不如parallel的方式进行吗？当我们并行的读取tag和data的时候，我们会发现，读出来的data有可能没用（没有匹配的tag）；并且，在n-way set associate cache中，我们会浪费的读出$n-1$个data项；这给我们什么启示呢？如果我们串行的读cache，那么我们可以在比较tag阶段就知道我们想要的数据在不在cache当中；更有意义的是，根据tag比较的结果，我们就知道哪一路的数据是需要被访问的（提前知道了在n-way中的哪一way），那么我们访问data block时，就无需多路选择器，直接访问指定的way，将其他way的data访问的使能信号置为无效，这种做法的优点在于有效减小功耗。\nserial的做法肯定比parallel的延时要大，若这时访问cache处于处理器的critical path(关键路径)上，我们可以再将其进行流水线化。 我们现在再来看看写cache时的情况：\n写cache时，只有通过tag比较，确认要写的地址在cache中后，才可以写data SRAM，在主频较高的处理器中，这些操作很难在一个周期内完成，这也要求我们将其流水线化。下图为对cache进行写操作使用的流水线示意图：\n在上图的实现方式中，store第一个周期读取Tag并进行比较，根据比较的结果，在第二个周期选择是否将数据写到Data SRAM中。还需要注意的是，当执行load指令时，它想要的数据可能正好在store指令的流水线寄存器中（RAW的情况；上图中的DelayedStoreData寄存器），而不是来自于Data SRAM。因此需要一种机制检测这种情况，这需要将load指令所携带的地址和store指令的流水线寄存器(即DelayedStoreAddr寄存器)进行比较，如果相等，那么就将store指令的数据作为load指令的结果。\n由此可以看出，对写D-Cache使用流水线之后，不仅增加了流水线本身的硬件，也带来了其他一些额外的硬件开销。其实。不仅在Cache中有这种现象，在处理器的其他部分增加流水线的级数，也会伴随着其他方面的硬件需求,因此过深的流水线带来的硬件复杂度是非常高的，就像Intel的Pentium 4处理器，并不会从过深的流水线中得到预想的好处。当然，cache的流水线化已经是一种广泛使用的用于降低latency的方法了。\nwrite buffers 我愿称之为buffer of buffer，本来cache就起buffer的作用了，但我们再加一个buffer，如下图所示： 这和多一级的cache有什么不同呢？这是一个专门为写操作设计的buffer（注意：load也可能造成写操作）。原因在于我们知道写通常比读更慢，特别对于write-through来说；其次，当上层cache满后，需要先将dirty cache line写回下层cache，再读取下层cache中的数据。若下层cache只有一个读写端口，那么这种串行的过程导致D-Cache发生缺失的处理时间变得很长，此时就可以采用write buffer来解决这个问题。脏状态的cache-line会首先放到写级存中，等到下级存储器有空闲的时候，才会将写缓存中的数据写到下级存储器中。\n对于write buffer，我们还可以对其进行 合并(merging) 操作。所谓merging，指的是将在同一个cache-line上的数据一并写入下层cache中，而非多次写入同一个cache-line。 上图中的右侧表示了一个采用了merging write buffer策略的写缓冲区。\ncritial word first and early restart 先来看一下cache miss时的cpu： 图中展示了一个blocking cache在cache miss时，cpu stall，而后cache将需要取得的cache-line放入后，cpu resume的timeline。我们可以发现，若我们只需要cache-line中的第3个word，cpu完全可以提早resume。如下图所示： 这就是early restart，而critial word first指的是，是在此基础上，在取cache-block时，不按照0~7 word的顺序而是按照3,4,5,6,7,0,1,2的顺序获取，配合early restart以减小miss penalty。\n当然，这种优化手段一般在cache-block size越大的时候效果越好。\nnon-blocking caches 本节主要参考了超标量处理器设计9.6.2\nblocking cache：在D-Cache发生缺失并且被解决之前将D-Cache与物理内存之间的数据通路被锁定，只处理当前这个缺失的数据，处理器不能够再执行其他的load/store指令。 这是最容易实现的一种方式，但是考虑到D-Cache缺失的处理时间相对是比较长的，这段时间容易阻塞其他load/store指令的执行，特别是在超标量处理器中，一个周期可能发射多个load/store指令，这样的阻塞就大大减少了程序执行时可以寻找的并行性。\n为了解决这个问题，Kroft提出了non-blocking cache，(aka lookup-free cache, aka out-of-order-memory system)，如下图所示：\n其实就是在cache miss之后，cpu继续发送load/store指令；那么我们可能会有hit after miss，也可能有miss after miss，甚至多次miss连续发生。\n我们来看看我们需要增加哪些结构以支持non-blocking cache。\n采用这种方法之后，load/store指令的D-Cache缺失被处理完的时间可能和原始的指令顺序不一样了。举例来说，两条顺序的指令load1和load2都发生了D-Cache缺失，但是load1指令可能需要到物理内存中才能够找到需要的数据，而load2指令在L2 Cache中就可以找到所需的数据，因此load2指令会更早地得到需要的数据。要处理这个问题，就需要保存那些已经发生缺失的load/store指令的信息，这样当这些缺失的load/store指令被处理完成，将得到的数据写回到D-Cache时，仍然可以知道哪条load/store 指令需要这个数据。\n这个保存原始load/store的结构一般称为MSHR(Miss Status/information Holding Register)，如下图所示：\n上图中(a)称为MSHR的本体，它只用来保存所有产生首次缺失的load/store 指令的信息，它包括三项内容。\n首次缺失(Primary Miss): 对于一个给定的地址来说，访问D-Cache时第一次产生的缺失称为首次缺失。 再次缺失(Secondary Miss): 在发生了首次缺失并且没有被解决完毕之前，后续的访问存储器的指令再次访问这个发生缺失的Cache line，这时就称为再次缺失。 V: valid bit用来指示当前的entry是否被占用，当首次缺失发生时，MSHR本体中的一个表项会被占用，此时valid位会被标记为1。当所需要的Cache line从下级存储器中被取回来时，会释放MSHR本体中被占用的表项，因此valid位会被清零。 Block Address: 指的是Cache line 中数据块(data block)的公共地址。每次当load/store 指令发生D-Cache缺失时，都会在MSHR的本体中在找它所需的数据块是否处于正在被取回的过程中，这需要和Block Address这一项进行比较才可以知道,通过这种方式，所有访向同一个数据块的指令只需要处理一次就可以了，这样可以避免存储器带宽的浪费。 Issued: 表示发生首次缺失的load/store指令是否已经开始处理。由于存储器的带宽有限，占用MSHR本体的首次缺失不一定马上就会被处理。 上图(b)称为LOAD/STORE Table，保存不论是发生首次缺失还是再次缺失的load/store指令，它包括五项内容。\nV: valid位，表示一个entry是否被占用。 MSHR entry: 表示一条发生缺失的load/store指令属于MSHR本体中的哪个表项，由于产生D-Cache缺失的许多load/store指令都可能对应着同一个Cache line，为了避免重复地占用下级存储器的带宽，这些指令只会占据MSHR本体中的一个表项，但是它们需要占用LOAD/STORE Table中不同的表项，这样才能够保证每条指令的信息都不会丢失。同时也会记录下这些指令在MSHR本体中占据了哪个表项，这样当一个Cache line被从下级存储器取回来时，通过和MSHR本体中的block address进行比较，就可以知道它在MSHR本体中的位置。然后就可以在LOAD/STORE table中找到哪些load/store指令属于这个Cache line。 Dest.register: 对于load指令来说，这部分记录目的寄存器的编号(如果采用了寄存器重命名，就需要记录物理寄存器的编号)，就可以将对应的数据送到这部分所记录的寄存器中；而对于store指令来说，这部分用来记录store指令在Store Buffer中的编号。（这与超标量的处理有关，暂时不展开） Type: 记录访问存储器指令的类型，这部分取决于具体指令集的实现，对于MIPS来说，访向存储器的指令类型包括LW(Load Word)、LH(Load Half word)、LB(Load Byte) 、SW(Store Word)、SH(Store Half word)和SB(Store Byte)，通过记录指令的类型，才能够使D-Cache缺失被解决之后，能够继续正确地执行指令。 Offset: 访向存储器的指令所需要的数据在数据块中的位置，例如对于大小是64字节的数据块来说，这部分的位宽需要6位。 通过MSHR本体和LOAD/STORE Table的配合，可以支持非阻塞的操作方式，当一条访向存储器的指令发生D-Cache缺失时，首先会在找MSHR的本体，这个查找过程是将发生D-Cache缺失的地址和MSHR中所有的block adress进行比较，根据比较的结果，处理如下：\n如果发现有相等的表项存在，则表示这个缺失的数据块正在被处理，这是再次缺失,此时只需要将这条访问存储器的指令写到LOAD/STORE Table中就可以了。 如果没有发现相等的项，则表示缺失的数据块是第一次被处理，也就是首次缺失。此时需要将这条访向存储器的指令写到MSHR本体和LOAD/STORETable两个地方。 如果MSHR本体或者LOAD/STORE Table 中的任意一个已经满了，则表示不能够再处理新的访问存储器指令，此时应该暂停流水线继续选择新的load/store指令送到FU中执行，等待之前的某个D-Cache缺失被解决完毕此时MSHR或者LOAD/STORE Table中就会有空闲的空间了，允许流水线继续执行。在现实世界中的处理器一般出于硅片面积和功耗的考虑，MSHR本体的容量不会很大，多为4~8个，也就是 处理器支持4~8个D-Cache缺失同时进行处理 。\nmultibank caches 一般cache上的读写端口都只有一个，这样限制了我们的并行性。那么我们增加cache上的读写端口如何呢？以双端口Cache为例，在这种设计中，所有在cache中的控制通路和数据通路都需要进行复制：两套地址解码器，两个多路选择器，比较器的数量多出一倍，两个Aligner(完成字节或半字读取)，更重要的是Tag SRAM和Data SRAM的每个cell都需要同时支持两个并行的读取操作。这种方法增大了芯片面积，且功耗随之上升，一般不会在实际的处理器上使用。\n那么我们如何既要一次性读取多个数据又要稍微小的硬件代价呢？multibank cache可以实现这样的功能： 我们把cache分成多个不重合的bank，每个bank还是采用单端口的设计。若在一个周期中，我们所要操作的数据“均匀的”分布在不同的bank当中，我们就可以一次性对多块数据进行操作。这时候，我们只需要增加一些控制通路，但是不用让每个cell都支持并行读取，有效地减小了硬件复杂度。\n影响这种multibank cache性能的关键因素是bank-conflict：它指的是 若我们某一周期内对cache的操作数据集中在一个bank上，我们就必须串行的完成访问，相当于丧失了bank的作用。 如何降低bank-conflict呢？一种启发式的切分bank的方法是interleaving得把连续的cache-line分到不同的bank中，如下图： 主要的思想就是我们经常同时对相连得cache-line进行访问，那么把它们放在不同的bank里就能避免bank conflict。\n值得一提的是，multibank也是一种提高main memory bandwidth的技巧。\nsummary 还有一些软件硬件技巧，如prefetch，分块，way-predicting caches等就不一一展开了。\nworking with TLB: VIPT(Virtual Indexed physical Tagged) 在学习TLB相关知识后，我们常认为cpu关于地址翻译的过程是如下图所示的（忽略ASID）：将virtual address经由TLB/page table翻译为物理地址，在利用该物理地址在cache hierarchy中获取数据。\n这种设计在理论上是完全没有问题的，但在真实的处理器中却很少被采用。因为他完全串行了TLB和Cache的访问。事实上我们在上图中可以看出，VA到PA的转化时，低位的offset是完全没有变化的。若物理地址中寻址Cache的部分使用offset就足够的话，那么就不需要等到TLB得到物理地址后再去寻址Cache，而是直接使用虚拟地址的offet部分。 如下图所示：\n相当于用VA做Index，用PA做Tag。这就是VIPT(virtual indexed physical tagged)，当然，这只是VIPT的一种情况。\n假设每个Cache line中包含$2^b$个字节数据，Cache Line的数量是$2^L$，$k$为页大小。那么我们会有几种情况：\n先看前两种情况，实现比较简单，他们的virtual index部分实际上与physical index是一样的（应为在block-offset内，不参与地址翻译）。\n但前两种情况也有缺点，就是这种结构限制了cache的大小，cache的byte数不能超过$2^k（一般为4KB）$。我们现在随便一个l1i-cache就有64~128KiB。要想使用更大的Cache，在不考虑图中(c)结构时，可以采用增加way的个数，这不会引起寻址Cache需要位数的增加。但我们粗略的估算一下，若cache为128KiB，页大小为4KiB，那么我们需要32way的L1i-Cache。根据经验我们不会使用way数这么大的cache，因为这会使得比对tag的时延大大上升。\n那么，如何才能摆脱cache容量受限制这一问题呢？解决方案就是让$L+b\u003ek$，也就是图中(c)的设计，这种设计就是真正的virtual-indexed。但这会遇到 重名(aliasing) 问题：不同的虚拟地址会对应同一个物理地址。例如在页大小为4KB的系统中，有两个不同虚报地址 VA1和VA2，映射到同一个物理地址PA。有一个直接映射结构的Cache，容量为8KB，需要13位的index才可以对其进行寻址，如下图： 此时va1与va2的cache index不同，也就造成了Cache中的不同位置存放着物理存储器中的同一位置中的数据。这造成了Cache的浪费，且还会有一致性上的问题。 如何解决呢？可以用bank的方式或者利用下层cache做标记的方式。这里就不仔细展开了\nreference youtube上一个讲memory hierachy design的系列 超标量处理器设计 姚永斌 H\u0026P Computer Architecture: A Quantitative Approach coursera上Princeton的Computer Architecture 高级体系结构课程，介绍了超标量乱序多发射结构cpu等 ",
+  "wordCount" : "224",
+  "inLanguage": "en",
+  "datePublished": "2023-08-23T23:38:14Z",
+  "dateModified": "2023-08-23T23:38:14Z",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://caaatch22.github.io/posts/advanced-cache/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Mingjie's Home",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://caaatch22.github.io/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+
+<body class="" id="top">
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    } else if (localStorage.getItem("pref-theme") === "light") {
+        document.body.classList.remove('dark')
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+    }
+
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://caaatch22.github.io" accesskey="h" title="Mingjie&#39;s Home (Alt + H)">Mingjie&#39;s Home</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://caaatch22.github.io/about/" title="About">
+                    <span>About</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://caaatch22.github.io/cv/" title="CV">
+                    <span>CV</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://caaatch22.github.io/archives/" title="Archives">
+                    <span>Archives</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://caaatch22.github.io/search/" title="Search (Alt &#43; /)" accesskey=/>
+                    <span>Search</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    <div class="breadcrumbs"><a href="https://caaatch22.github.io">Home</a>&nbsp;»&nbsp;<a href="https://caaatch22.github.io/posts/">Posts</a></div>
+    <h1 class="post-title">
+      Computer Architecture —— 高级缓存技术
+    </h1>
+    <div class="post-meta"><span title='2023-08-23 23:38:14 +0000 UTC'>August 23, 2023</span>&nbsp;·&nbsp;2 min
+
+</div>
+  </header> <aside id="toc-container" class="toc-container wide">
+    <div class="toc">
+        <details  open>
+            <summary accesskey="c" title="(Alt + C)">
+                <span class="details">Table of Contents</span>
+            </summary>
+
+            <div class="inner"><ul>
+                    <li>
+                        <a href="#%e4%bc%98%e5%8c%96cache%e7%9a%84%e5%87%a0%e7%a7%8d%e6%96%b9%e6%b3%95" aria-label="优化cache的几种方法">优化cache的几种方法</a><ul>
+                            
+                    <li>
+                        <a href="#pipeline-caches" aria-label="pipeline caches">pipeline caches</a></li>
+                    <li>
+                        <a href="#write-buffers" aria-label="write buffers">write buffers</a></li>
+                    <li>
+                        <a href="#critial-word-first-and-early-restart" aria-label="critial word first and early restart">critial word first and early restart</a></li>
+                    <li>
+                        <a href="#non-blocking-caches" aria-label="non-blocking caches">non-blocking caches</a></li>
+                    <li>
+                        <a href="#multibank-caches" aria-label="multibank caches">multibank caches</a></li>
+                    <li>
+                        <a href="#summary" aria-label="summary">summary</a></li></ul>
+                    </li>
+                    <li>
+                        <a href="#working-with-tlb-viptvirtual-indexed-physical-tagged" aria-label="working with TLB: VIPT(Virtual Indexed physical Tagged)">working with TLB: VIPT(Virtual Indexed physical Tagged)</a></li>
+                    <li>
+                        <a href="#reference" aria-label="reference">reference</a>
+                    </li>
+                </ul>
+            </div>
+        </details>
+    </div>
+</aside>
+<script>
+    let activeElement;
+    let elements;
+    window.addEventListener('DOMContentLoaded', function (event) {
+        checkTocPosition();
+
+        elements = document.querySelectorAll('h1[id],h2[id],h3[id],h4[id],h5[id],h6[id]');
+         
+         activeElement = elements[0];
+         const id = encodeURI(activeElement.getAttribute('id')).toLowerCase();
+         document.querySelector(`.inner ul li a[href="#${id}"]`).classList.add('active');
+     }, false);
+
+    window.addEventListener('resize', function(event) {
+        checkTocPosition();
+    }, false);
+
+    window.addEventListener('scroll', () => {
+        
+        activeElement = Array.from(elements).find((element) => {
+            if ((getOffsetTop(element) - window.pageYOffset) > 0 && 
+                (getOffsetTop(element) - window.pageYOffset) < window.innerHeight/2) {
+                return element;
+            }
+        }) || activeElement
+
+        elements.forEach(element => {
+             const id = encodeURI(element.getAttribute('id')).toLowerCase();
+             if (element === activeElement){
+                 document.querySelector(`.inner ul li a[href="#${id}"]`).classList.add('active');
+             } else {
+                 document.querySelector(`.inner ul li a[href="#${id}"]`).classList.remove('active');
+             }
+         })
+     }, false);
+
+    const main = parseInt(getComputedStyle(document.body).getPropertyValue('--article-width'), 10);
+    const toc = parseInt(getComputedStyle(document.body).getPropertyValue('--toc-width'), 10);
+    const gap = parseInt(getComputedStyle(document.body).getPropertyValue('--gap'), 10);
+
+    function checkTocPosition() {
+        const width = document.body.scrollWidth;
+
+        if (width - main - (toc * 2) - (gap * 4) > 0) {
+            document.getElementById("toc-container").classList.add("wide");
+        } else {
+            document.getElementById("toc-container").classList.remove("wide");
+        }
+    }
+
+    function getOffsetTop(element) {
+        if (!element.getClientRects().length) {
+            return 0;
+        }
+        let rect = element.getBoundingClientRect();
+        let win = element.ownerDocument.defaultView;
+        return rect.top + win.pageYOffset;   
+    }
+</script>
+
+  <div class="post-content"><blockquote>
+<p>本文不会介绍cache的组织形式等基本内容，但也算不上什么&quot;Advanced&quot;。主要包含一些从硬件层面优化cache的手段。</p>
+</blockquote>
+<h1 id="优化cache的几种方法">优化cache的几种方法<a hidden class="anchor" aria-hidden="true" href="#优化cache的几种方法">#</a></h1>
+<h2 id="pipeline-caches">pipeline caches<a hidden class="anchor" aria-hidden="true" href="#pipeline-caches">#</a></h2>
+<p><img loading="lazy" src="/img/advanced-cache/2way-set-associative.png" alt="2way-set-associative-cache"  />
+</p>
+<p>上图为教科书上经常出现的cache形式(2-way associative为例)，它很精炼的解释了cache的实现。但也稍微引入了些“误导”：</p>
+<ol>
+<li>图中<code>v</code>、<code>tag</code>和<code>data</code>部分画在连续的一行上，仿佛硬件上他们就是同一块 SRAM 的不同bit</li>
+<li>图中识别<code>tag</code>与<code>data</code>是并行完成的，这很好，某种意义上能降低时延；但我们经常遗忘一个事实，只有<em>读cache</em>的时候我们才能这么操作（或者说在写cache时，读取data block是没有意义的）</li>
+</ol>
+<p>对于第一点，在实际的实现当中，tag和data部分都是分开放置的，tag一般是由一种叫<a href="https://en.wikipedia.org/wiki/Content-addressable_memory">CAM(Context-Addressable Memory)</a>的材料构成。当然，这与pi不pipeline没什么关系；</p>
+<p>读cache主要就两个部分：比较tag，获取data；我们暂且不考虑以pipeline的方式优化，那么serial的先比较tag再读data一定不如parallel的方式进行吗？当我们并行的读取tag和data的时候，我们会发现，读出来的data有可能没用（没有匹配的tag）；并且，在n-way set associate cache中，我们会浪费的读出$n-1$个data项；这给我们什么启示呢？如果我们串行的读cache，那么我们可以在比较tag阶段就知道我们想要的数据在不在cache当中；更有意义的是，根据tag比较的结果，我们就知道哪一路的数据是需要被访问的（提前知道了在n-way中的哪一way），那么我们访问data block时，就无需多路选择器，直接访问指定的way，将其他way的data访问的使能信号置为无效，这种做法的优点在于<strong>有效减小功耗</strong>。</p>
+<p>serial的做法肯定比parallel的延时要大，若这时访问cache处于处理器的critical path(关键路径)上，我们可以再将其进行流水线化。
+<img loading="lazy" src="/img/advanced-cache/pipelined-cache.png" alt="pipeline cache"  />
+</p>
+<p>我们现在再来看看写cache时的情况：</p>
+<p>写cache时，只有通过tag比较，确认要写的地址在cache中后，才可以写data SRAM，在主频较高的处理器中，这些操作很难在一个周期内完成，这也要求我们将其流水线化。下图为对cache进行写操作使用的流水线示意图：</p>
+<p><img loading="lazy" src="/img/advanced-cache/pipelined-cache-write.png" alt="pipeline cache in write"  />
+</p>
+<p>在上图的实现方式中，store第一个周期读取Tag并进行比较，根据比较的结果，在第二个周期选择是否将数据写到Data SRAM中。还需要注意的是，当执行load指令时，它想要的数据可能正好在store指令的流水线寄存器中（RAW的情况；上图中的DelayedStoreData寄存器），而不是来自于Data SRAM。因此需要一种机制检测这种情况，这需要将load指令所携带的地址和store指令的流水线寄存器(即DelayedStoreAddr寄存器)进行比较，如果相等，那么就将store指令的数据作为load指令的结果。</p>
+<p>由此可以看出，对写D-Cache使用流水线之后，不仅增加了流水线本身的硬件，也带来了其他一些额外的硬件开销。其实。不仅在Cache中有这种现象，在处理器的其他部分增加流水线的级数，也会伴随着其他方面的硬件需求,因此过深的流水线带来的硬件复杂度是非常高的，就像Intel的Pentium 4处理器，并不会从过深的流水线中得到预想的好处。当然，cache的流水线化已经是一种广泛使用的用于降低latency的方法了。</p>
+<h2 id="write-buffers">write buffers<a hidden class="anchor" aria-hidden="true" href="#write-buffers">#</a></h2>
+<p>我愿称之为buffer of buffer，本来cache就起buffer的作用了，但我们再加一个buffer，如下图所示：
+<img loading="lazy" src="/img/advanced-cache/write-buffer.png" alt="write buffer"  />
+
+这和多一级的cache有什么不同呢？这是一个专门为写操作设计的buffer（注意：load也可能造成写操作）。原因在于我们知道写通常比读更慢，特别对于write-through来说；其次，当上层cache满后，需要先将dirty cache line写回下层cache，再读取下层cache中的数据。若下层cache只有一个读写端口，那么这种串行的过程导致D-Cache发生缺失的处理时间变得很长，此时就可以采用write buffer来解决这个问题。脏状态的cache-line会首先放到写级存中，等到下级存储器有空闲的时候，才会将写缓存中的数据写到下级存储器中。</p>
+<p>对于write buffer，我们还可以对其进行 <strong>合并(merging)</strong> 操作。所谓<code>merging</code>，指的是将在同一个cache-line上的数据一并写入下层cache中，而非多次写入同一个cache-line。
+<img loading="lazy" src="/img/advanced-cache/merging-write-buffer.png" alt="merging write buffer"  />
+</p>
+<p>上图中的右侧表示了一个采用了merging write buffer策略的写缓冲区。</p>
+<h2 id="critial-word-first-and-early-restart">critial word first and early restart<a hidden class="anchor" aria-hidden="true" href="#critial-word-first-and-early-restart">#</a></h2>
+<p>先来看一下cache miss时的cpu：
+<img loading="lazy" src="/img/advanced-cache/cpu-cache-miss.png" alt="timeline in cache miss"  />
+
+图中展示了一个blocking cache在cache miss时，cpu stall，而后cache将需要取得的cache-line放入后，cpu resume的timeline。我们可以发现，若我们只需要cache-line中的第3个word，cpu完全可以提早resume。如下图所示：
+<img loading="lazy" src="/img/advanced-cache/early-restart.png" alt="early restart"  />
+</p>
+<p>这就是<code>early restart</code>，而<code>critial word first</code>指的是，是在此基础上，在取cache-block时，不按照0~7 word的顺序而是按照<code>3,4,5,6,7,0,1,2</code>的顺序获取，配合early restart以减小miss penalty。</p>
+<p>当然，这种优化手段一般在cache-block size越大的时候效果越好。</p>
+<h2 id="non-blocking-caches">non-blocking caches<a hidden class="anchor" aria-hidden="true" href="#non-blocking-caches">#</a></h2>
+<blockquote>
+<p>本节主要参考了超标量处理器设计9.6.2</p>
+</blockquote>
+<p><code>blocking cache</code>：在D-Cache发生缺失并且被解决之前将D-Cache与物理内存之间的数据通路被锁定，只处理当前这个缺失的数据，处理器不能够再执行其他的load/store指令。
+<img loading="lazy" src="/img/advanced-cache/blocking-cache.png" alt="blocking cache"  />
+</p>
+<p>这是最容易实现的一种方式，但是考虑到D-Cache缺失的处理时间相对是比较长的，这段时间容易阻塞其他load/store指令的执行，特别是在超标量处理器中，一个周期可能发射多个load/store指令，这样的阻塞就大大减少了程序执行时可以寻找的并行性。</p>
+<p>为了解决这个问题，Kroft提出了<a href="https://courses.cs.washington.edu/courses/cse548/11au/Kroft-Lockup-Free-Instruction-Fetch.pdf">non-blocking cache</a>，(aka lookup-free cache, aka out-of-order-memory system)，如下图所示：</p>
+<p><img loading="lazy" src="/img/advanced-cache/non-blocking-cache.png" alt="non-blocking cache"  />
+</p>
+<p>其实就是在cache miss之后，cpu继续发送load/store指令；那么我们可能会有hit after miss，也可能有miss after miss，甚至多次miss连续发生。</p>
+<p>我们来看看我们需要增加哪些结构以支持non-blocking cache。</p>
+<p>采用这种方法之后，load/store指令的D-Cache缺失被处理完的时间可能和原始的指令顺序不一样了。举例来说，两条顺序的指令load1和load2都发生了D-Cache缺失，但是load1指令可能需要到物理内存中才能够找到需要的数据，而load2指令在L2 Cache中就可以找到所需的数据，因此load2指令会更早地得到需要的数据。要处理这个问题，就需要保存那些已经发生缺失的load/store指令的信息，这样当这些缺失的load/store指令被处理完成，将得到的数据写回到D-Cache时，仍然可以知道哪条load/store 指令需要这个数据。</p>
+<p>这个保存原始load/store的结构一般称为<strong>MSHR(Miss Status/information Holding Register)</strong>，如下图所示：</p>
+<p><img loading="lazy" src="/img/advanced-cache/MSHR.png" alt="Miss Status/information Holding Register"  />
+</p>
+<p>上图中(a)称为MSHR的本体，它只用来保存所有产生<strong>首次缺失</strong>的load/store 指令的信息，它包括三项内容。</p>
+<blockquote>
+<ol>
+<li>首次缺失(Primary Miss): 对于一个给定的地址来说，访问D-Cache时第一次产生的缺失称为首次缺失。</li>
+<li>再次缺失(Secondary Miss): 在发生了首次缺失并且没有被解决完毕之前，后续的访问存储器的指令再次访问这个发生缺失的Cache line，这时就称为再次缺失。</li>
+</ol>
+</blockquote>
+<ol>
+<li>V: valid bit用来指示当前的entry是否被占用，当首次缺失发生时，MSHR本体中的一个表项会被占用，此时valid位会被标记为1。当所需要的Cache line从下级存储器中被取回来时，会释放MSHR本体中被占用的表项，因此valid位会被清零。</li>
+<li>Block Address: 指的是Cache line 中数据块(data block)的公共地址。每次当load/store 指令发生D-Cache缺失时，都会在MSHR的本体中在找它所需的数据块是否处于正在被取回的过程中，这需要和Block Address这一项进行比较才可以知道,通过这种方式，所有访向同一个数据块的指令只需要处理一次就可以了，这样可以避免存储器带宽的浪费。</li>
+<li>Issued: 表示发生首次缺失的load/store指令是否已经开始处理。由于存储器的带宽有限，占用MSHR本体的首次缺失不一定马上就会被处理。</li>
+</ol>
+<p>上图(b)称为LOAD/STORE Table，保存<strong>不论是发生首次缺失还是再次缺失的load/store指令</strong>，它包括五项内容。</p>
+<ol>
+<li>V: valid位，表示一个entry是否被占用。</li>
+<li>MSHR entry: 表示一条发生缺失的load/store指令属于MSHR本体中的哪个表项，由于产生D-Cache缺失的许多load/store指令都可能对应着同一个Cache line，为了避免重复地占用下级存储器的带宽，这些指令只会占据MSHR本体中的一个表项，但是它们需要占用LOAD/STORE Table中不同的表项，这样才能够保证每条指令的信息都不会丢失。同时也会记录下这些指令在MSHR本体中占据了哪个表项，这样当一个Cache line被从下级存储器取回来时，通过和MSHR本体中的block address进行比较，就可以知道它在MSHR本体中的位置。然后就可以在LOAD/STORE table中找到哪些load/store指令属于这个Cache line。</li>
+<li>Dest.register: 对于load指令来说，这部分记录目的寄存器的编号(如果采用了寄存器重命名，就需要记录物理寄存器的编号)，就可以将对应的数据送到这部分所记录的寄存器中；而对于store指令来说，这部分用来记录store指令在Store Buffer中的编号。（这与超标量的处理有关，暂时不展开）</li>
+<li>Type: 记录访问存储器指令的类型，这部分取决于具体指令集的实现，对于MIPS来说，访向存储器的指令类型包括LW(Load Word)、LH(Load Half word)、LB(Load Byte) 、SW(Store Word)、SH(Store Half word)和SB(Store Byte)，通过记录指令的类型，才能够使D-Cache缺失被解决之后，能够继续正确地执行指令。</li>
+<li>Offset: 访向存储器的指令所需要的数据在数据块中的位置，例如对于大小是64字节的数据块来说，这部分的位宽需要6位。</li>
+</ol>
+<p>通过MSHR本体和LOAD/STORE Table的配合，可以支持非阻塞的操作方式，当一条访向存储器的指令发生D-Cache缺失时，首先会在找MSHR的本体，这个查找过程是将发生D-Cache缺失的地址和MSHR中所有的block adress进行比较，根据比较的结果，处理如下：</p>
+<ol>
+<li>如果发现有相等的表项存在，则表示这个缺失的数据块正在被处理，这是<em>再次缺失</em>,此时只需要将这条访问存储器的指令写到LOAD/STORE Table中就可以了。</li>
+<li>如果没有发现相等的项，则表示缺失的数据块是第一次被处理，也就是<em>首次缺失</em>。此时需要将这条访向存储器的指令写到MSHR本体和LOAD/STORETable两个地方。</li>
+</ol>
+<p>如果MSHR本体或者LOAD/STORE Table 中的任意一个已经满了，则表示不能够再处理新的访问存储器指令，此时应该暂停流水线继续选择新的load/store指令送到FU中执行，等待之前的某个D-Cache缺失被解决完毕此时MSHR或者LOAD/STORE Table中就会有空闲的空间了，允许流水线继续执行。在现实世界中的处理器一般出于硅片面积和功耗的考虑，MSHR本体的容量不会很大，<strong>多为4~8个</strong>，也就是 <strong>处理器支持4~8个D-Cache缺失同时进行处理</strong> 。</p>
+<h2 id="multibank-caches">multibank caches<a hidden class="anchor" aria-hidden="true" href="#multibank-caches">#</a></h2>
+<p>一般cache上的读写端口都只有一个，这样限制了我们的并行性。那么我们增加cache上的读写端口如何呢？以双端口Cache为例，在这种设计中，所有在cache中的控制通路和数据通路都需要进行复制：两套地址解码器，两个多路选择器，比较器的数量多出一倍，两个Aligner(完成字节或半字读取)，更重要的是<strong>Tag SRAM和Data SRAM的每个cell都需要同时支持两个并行的读取操作</strong>。这种方法增大了芯片面积，且功耗随之上升，一般不会在实际的处理器上使用。</p>
+<p>那么我们如何既要一次性读取多个数据又要稍微小的硬件代价呢？<code>multibank cache</code>可以实现这样的功能：
+<img loading="lazy" src="/img/advanced-cache/multibank-cache.png" alt="multibank cache"  />
+</p>
+<p>我们把cache分成多个不重合的bank，每个bank还是采用单端口的设计。若在一个周期中，我们所要操作的数据“均匀的”分布在不同的bank当中，我们就可以一次性对多块数据进行操作。这时候，我们只需要增加一些控制通路，但是不用让每个cell都支持并行读取，有效地减小了硬件复杂度。</p>
+<p>影响这种multibank cache性能的关键因素是bank-conflict：它指的是 <strong>若我们某一周期内对cache的操作数据集中在一个bank上，我们就必须串行的完成访问</strong>，相当于丧失了bank的作用。 如何降低bank-conflict呢？一种启发式的切分bank的方法是<strong>interleaving</strong>得把连续的cache-line分到不同的bank中，如下图：
+<img loading="lazy" src="/img/advanced-cache/interleaving-bank.png" alt=""  />
+</p>
+<p>主要的思想就是我们经常同时对相连得cache-line进行访问，那么把它们放在不同的bank里就能避免bank conflict。</p>
+<p>值得一提的是，multibank也是一种提高main memory bandwidth的技巧。</p>
+<h2 id="summary">summary<a hidden class="anchor" aria-hidden="true" href="#summary">#</a></h2>
+<p>还有一些软件硬件技巧，如prefetch，分块，way-predicting caches等就不一一展开了。</p>
+<p><img loading="lazy" src="/img/advanced-cache/summary.png" alt="cache techniques summary"  />
+</p>
+<h1 id="working-with-tlb-viptvirtual-indexed-physical-tagged">working with TLB: VIPT(Virtual Indexed physical Tagged)<a hidden class="anchor" aria-hidden="true" href="#working-with-tlb-viptvirtual-indexed-physical-tagged">#</a></h1>
+<p>在学习TLB相关知识后，我们常认为cpu关于地址翻译的过程是如下图所示的（忽略ASID）：将virtual address经由TLB/page table翻译为物理地址，在利用该物理地址在cache hierarchy中获取数据。</p>
+<p><img loading="lazy" src="/img/advanced-cache/PIPT.png" alt="physical indexed, physical tagged"  />
+</p>
+<p>这种设计在理论上是完全没有问题的，但在真实的处理器中却很少被采用。因为他完全串行了TLB和Cache的访问。事实上我们在上图中可以看出，VA到PA的转化时，低位的offset是完全没有变化的。<strong>若物理地址中寻址Cache的部分使用offset就足够的话，那么就不需要等到TLB得到物理地址后再去寻址Cache，而是直接使用虚拟地址的offet部分</strong>。 如下图所示：</p>
+<p><img loading="lazy" src="/img/advanced-cache/VIPT.png" alt="virtual indexed, physical tagged"  />
+
+相当于用VA做Index，用PA做Tag。这就是VIPT(virtual indexed physical tagged)，当然，这只是VIPT的一种情况。</p>
+<p>假设每个Cache line中包含$2^b$个字节数据，Cache Line的数量是$2^L$，$k$为页大小。那么我们会有几种情况：</p>
+<p><img loading="lazy" src="/img/advanced-cache/VIPT-3.png" alt=""  />
+
+先看前两种情况，实现比较简单，他们的virtual index部分实际上与physical index是一样的（应为在block-offset内，不参与地址翻译）。</p>
+<p>但前两种情况也有缺点，就是这种结构限制了cache的大小，cache的byte数不能超过$2^k（一般为4KB）$。我们现在随便一个l1i-cache就有64~128KiB。要想使用更大的Cache，在不考虑图中(c)结构时，可以采用增加way的个数，这不会引起寻址Cache需要位数的增加。但我们粗略的估算一下，若cache为128KiB，页大小为4KiB，那么我们需要32way的L1i-Cache。根据经验我们不会使用way数这么大的cache，因为这会使得比对tag的时延大大上升。</p>
+<p>那么，如何才能摆脱cache容量受限制这一问题呢？解决方案就是让$L+b&gt;k$，也就是图中(c)的设计，这种设计就是真正的virtual-indexed。但这会遇到 <strong>重名(aliasing)</strong> 问题：<strong>不同的虚拟地址会对应同一个物理地址</strong>。例如在页大小为4KB的系统中，有两个不同虚报地址 VA1和VA2，映射到同一个物理地址PA。有一个直接映射结构的Cache，容量为8KB，需要13位的index才可以对其进行寻址，如下图：
+<img loading="lazy" src="/img/advanced-cache/VIPT-aliasing.png" alt="VIPT aliasing"  />
+
+此时va1与va2的cache index不同，也就造成了Cache中的不同位置存放着物理存储器中的同一位置中的数据。这造成了Cache的浪费，且还会有一致性上的问题。
+如何解决呢？可以用bank的方式或者利用下层cache做标记的方式。这里就不仔细展开了</p>
+<h1 id="reference">reference<a hidden class="anchor" aria-hidden="true" href="#reference">#</a></h1>
+<ul>
+<li><a href="https://www.youtube.com/watch?v=heZcaz7zjwg&amp;list=PLeWkeA7esB-PN8dBeEjWveHwnpQk7od0m&amp;ab_channel=Prof.Dr.BenH.Juurlink">youtube上一个讲memory hierachy design的系列</a></li>
+<li><a href="https://book.douban.com/subject/26293546/">超标量处理器设计 姚永斌</a></li>
+<li>H&amp;P Computer Architecture: A Quantitative Approach</li>
+<li><a href="https://www.coursera.org/learn/comparch/home/info">coursera上Princeton的Computer Architecture</a> 高级体系结构课程，介绍了超标量乱序多发射结构cpu等</li>
+</ul>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="https://caaatch22.github.io/tags/computerarchitecture/">ComputerArchitecture</a></li>
+    </ul>
+<nav class="paginav">
+  <a class="prev" href="https://caaatch22.github.io/posts/c-%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B--%E7%8E%B0%E4%BB%A3architecture%E7%9A%84%E5%A6%A5%E5%8D%8F/">
+    <span class="title">« Prev</span>
+    <br>
+    <span>C&#43;&#43;内存模型 —— 现代Architecture的妥协</span>
+  </a>
+  <a class="next" href="https://caaatch22.github.io/posts/parallel-hashmap/">
+    <span class="title">Next »</span>
+    <br>
+    <span>parallel-hashmap</span>
+  </a>
+</nav>
+
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+    <span>&copy; 2024 <a href="https://caaatch22.github.io">Mingjie&#39;s Home</a></span>
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>

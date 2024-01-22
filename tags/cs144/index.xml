@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>cs144 on Mingjie&#39;s Home</title>
+    <link>https://caaatch22.github.io/tags/cs144/</link>
+    <description>Recent content in cs144 on Mingjie&#39;s Home</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh-cn</language>
+    <lastBuildDate>Mon, 09 May 2022 22:35:22 +0000</lastBuildDate><atom:link href="https://caaatch22.github.io/tags/cs144/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>cs144-note1</title>
+      <link>https://caaatch22.github.io/posts/cs144-note1/</link>
+      <pubDate>Mon, 09 May 2022 22:35:22 +0000</pubDate>
+      
+      <guid>https://caaatch22.github.io/posts/cs144-note1/</guid>
+      <description>Computer Network introduction dominant model : bidirectional, reliable byte stream connection
+http: hypertext transfer protocol : designed to be a document centric way for programs to communicate. Client &amp;mdash;&amp;gt; Server model
+Bit-Torrent: (peer-to-peer model) a client requests document from other clients, a single client can request from many others. these collections of collaborating clients are called swarms when a client wants to downloads a file, it first find torrent, usually using www and download using http.</description>
+      <content:encoded><![CDATA[<h1 id="computer-network">Computer Network</h1>
+<h2 id="introduction">introduction</h2>
+<p>dominant model : bidirectional, reliable byte stream connection</p>
+<ul>
+<li>
+<p><strong>http</strong>: hypertext transfer protocol : designed to be a document centric way for programs to communicate.
+Client  &mdash;&gt;  Server  model</p>
+</li>
+<li>
+<p><strong>Bit-Torrent</strong>: (peer-to-peer model) a client requests document from other clients, a single client can request from many others.
+these collections of collaborating clients are called <strong>swarms</strong>
+when a client wants to downloads a file, it first find <code>torrent</code>, usually using www and download using http.
+<strong>torrent</strong> file describes information about data file, also tells bit-torrent about the <strong>tracker</strong> (a node keeps track names of clients of the swarm)</p>
+</li>
+<li>
+<p><strong>skype</strong>: client &lt;&ndash;NAT&ndash;&gt;client   two clients request data from each other</p>
+<p><em>NAT</em> : network address translator
+if you&rsquo;re <em>behind a NAT</em>, you can open connections out to the internet, but other nodes on the internet can&rsquo;t easily open connections to you.</p>
+</li>
+</ul>
+<h2 id="the-4-layer-internet-model">The 4 layer Internet Model</h2>
+<h3 id="network-layer-and-link-layer">Network layer and link layer</h3>
+<!-- raw HTML omitted -->
+<p>data is delivered in <strong>packets</strong>
+a packet is a self-contained unit consisting of the data we want to be delivered.</p>
+<p>link layer&rsquo;s job is  to carry the data over one link  at a time.
+<code>ethernet</code> and <code>wifi</code> &ndash;&gt; two examples of different links layers</p>
+<p>Network layer&rsquo;s job is to deliver packets end to end across the internet.
+<strong>a packet is a collection data with header</strong>.
+<!-- raw HTML omitted --></p>
+<p>network layer packet are called <code>datagram</code>.</p>
+<p><img loading="lazy" src="/img/cs144%5cNetwork_link.png" alt=""  />
+</p>
+<h3 id="the-network-layer--is-special">The network layer  is &ldquo;special&rdquo;</h3>
+<p>we must use the internet Protocol (IP)</p>
+<ul>
+<li>IP makes a best-effort attempt to deliver our datagrams to the other end. <strong>But it make no promise</strong></li>
+<li>IP datagrams can get lost, delivered out of order, and be corrupted. <strong>No guarantees</strong>.</li>
+</ul>
+<h3 id="transport-layer">Transport layer</h3>
+<p>the most common transport layer is <strong>TCP</strong> (transmission control protocol)</p>
+<ul>
+<li>guarantee correct in-order delivery of data</li>
+</ul>
+<p>some applications doesn&rsquo;t need reliable delivery, it can use <strong>UDP</strong> (user datagram protocol).</p>
+<ul>
+<li>an alternative transport layer that bundles up application data and hands it to the network layer</li>
+<li>it offers no delivery guarantees at all</li>
+</ul>
+<h3 id="application">Application</h3>
+<p>they have their own protocol to define the syntax and semantics of data flowing between two end points
+(e.g. http, bit-torrent)</p>
+<h3 id="others">others</h3>
+<!-- raw HTML omitted -->
+<h2 id="ip-service-model">IP Service model</h2>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Datagram</td>
+<td>Individually routed packets.</td>
+</tr>
+<tr>
+<td>Unreliable</td>
+<td>packet might be dropped</td>
+</tr>
+<tr>
+<td>Best effort</td>
+<td>only if necessary</td>
+</tr>
+<tr>
+<td>Connectionless</td>
+<td>No per-flow state.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>IP is &ldquo;simple&rdquo;</strong></p>
+<ul>
+<li>faster, lower cost to build and maintain</li>
+<li>The end-to-end principle</li>
+<li>allows a variety of reliable (or unreliable) service to be built on top</li>
+<li>make very few assumptions about link layer</li>
+</ul>
+<p><strong>IP Service Model</strong></p>
+<ol>
+<li>Tried to prevent packets looping forever
+add a hop count field in the header of every datagram (<code>ttl</code>:time to live), start at a number like 128, decremented by every router passes through, when it reaches 0, IP think it be stuck in a loop then drop it.</li>
+<li>will fragment packets if they are too long.
+bc most links have a limit on the size of packets.(ethernet &ndash; 1500bytes)</li>
+<li>uses a header checksum to reduce chances of delivering datagram to wrong destination.</li>
+<li>allows for new version of IP
+<ul>
+<li>IPv4     32 bit addresses</li>
+<li>IPv6     128 bit addresses</li>
+</ul>
+</li>
+<li>allows for new options to be added to header</li>
+</ol>
+<!-- raw HTML omitted -->
+<h2 id="life-of-a-packet">Life of a Packet</h2>
+<h3 id="three-way-handshake">three-way handshake</h3>
+<ol>
+<li>
+<p>Client &mdash;&ndash;sends a synchronized message(同步信息)&mdash;&ndash;&gt; Server   (synchronize, <strong>SYN</strong>)</p>
+</li>
+<li>
+<p>Server &mdash;&ndash;responds with a synchronized message and also acknowledges the client synchronize&mdash;-&gt; Client   (synchronize and acknowledge, <strong>SYN/ACK</strong>)</p>
+</li>
+<li>
+<p>Client &mdash;&ndash;responds by acknowledging the server synchronized &mdash;-&gt; Server   (acknowledge, <strong>ACK</strong>)</p>
+</li>
+</ol>
+<p>IP addressed:  like computer addresses.
+TCP port: tells which applications to deliver data to.</p>
+<p>Web Server usually run on tcp port 80.</p>
+<p><img loading="lazy" src="/img/cs144/inside-the-stream.png" alt=""  />
+</p>
+]]></content:encoded>
+    </item>
+    
+  </channel>
+</rss>

@@ -1,0 +1,561 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>ComputerArchitecture on Mingjie&#39;s Home</title>
+    <link>https://caaatch22.github.io/tags/computerarchitecture/</link>
+    <description>Recent content in ComputerArchitecture on Mingjie&#39;s Home</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh-cn</language>
+    <lastBuildDate>Tue, 17 Oct 2023 23:38:14 +0000</lastBuildDate><atom:link href="https://caaatch22.github.io/tags/computerarchitecture/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Computer Architecture —— 分支预测</title>
+      <link>https://caaatch22.github.io/posts/branch-prediction/</link>
+      <pubDate>Tue, 17 Oct 2023 23:38:14 +0000</pubDate>
+      
+      <guid>https://caaatch22.github.io/posts/branch-prediction/</guid>
+      <description>H&amp;amp;P那本关于分支预测的部分比较简短且表述有点晦涩，（顺便吐槽一下第五版的中文翻译，建议看英文原版）本文主要参考超标量处理器设计，国人写的，用语符合习惯，强烈推荐！
+Motivation 在处理器中，除了cache之外，另一个重要的内容就是分支预测，它和cache一起左右处理器的性能。以SPECint95作为benchmark，完美的cache和BP(branch-predictor)能使IPC提高两倍左右： 图片来自论文SSMT。当然，这是21世纪之前的结果了。现代处理器分支预测普遍能达到97%~98%以上的精度，在多数浮点benchmark中基本都是99%的准确率。
+为什么需要这么高的精度呢？ 一般情况下，分支指令的占比通常在 15% 到 30% 之间。对于经典五级流水线无分支预测cpu，一个branch会造成一次stall；而对于现代的superscalar且流水线级数远高于5的（一般是二十级以上）cpu，其misprediction penalty是 $M * N$ 的（M = fetch group内指令数, N = branch resolution latency，就是决定分支最终是否跳转需要多少周期）。如下图所示： 我们再做一个定量实验： 假设我们有一个
+$ N = 20 (20\ pipe stages), W = 5 (5\ wide fetch) $ 1 out of 5 instructions is a branch Each 5 instruction-block ends with a branch 的CPU，那么我们取出500条指令需要多少个周期呢？
+100% 预测正确率 100 个时钟周期 (all instructions fetched on the correct path) 无额外工作 99% 预测正确率 100 (correct path) + 20 (wrong path) = 120 个时钟周期 20% 额外指令被取出 98% 预测正确率 100 (correct path) + 20 * 2 (wrong path) = 140 个时钟周期 40% 额外指令被取出 95% 预测正确率 100 (correct path) + 20 * 5 (wrong path) = 200 个时钟周期 100% 额外指令被取出 可以看出，分支预测失败在现代的超标量多流水线cpu中的penalty被极大的放大了。所以分支预测的正确性就显得额外重要。</description>
+      <content:encoded><![CDATA[<blockquote>
+<p>H&amp;P那本关于分支预测的部分比较简短且表述有点晦涩，（顺便吐槽一下第五版的中文翻译，建议看英文原版）本文主要参考<a href="https://book.douban.com/subject/26293546/">超标量处理器设计</a>，国人写的，用语符合习惯，强烈推荐！</p>
+</blockquote>
+<h1 id="motivation">Motivation</h1>
+<p>在处理器中，除了cache之外，另一个重要的内容就是分支预测，它和cache一起左右处理器的性能。以SPECint95作为benchmark，完美的cache和BP(branch-predictor)能使IPC提高两倍左右：
+<img loading="lazy" src="/img/branch-prediction/IPC-enhance-with-perfect-BP-Cache.png" alt=""  />
+</p>
+<p>图片来自论文<a href="https://course.ece.cmu.edu/~ece742/f12/lib/exe/fetch.php?media=chappell_ssmt99.pdf">SSMT</a>。当然，这是21世纪之前的结果了。现代处理器分支预测普遍能达到97%~98%以上的精度，在多数浮点benchmark中基本都是99%的准确率。</p>
+<p><strong>为什么需要这么高的精度呢？</strong> 一般情况下，分支指令的占比通常在 <strong>15% 到 30%</strong> 之间。对于经典五级流水线无分支预测cpu，一个branch会造成一次stall；而对于现代的superscalar且流水线级数远高于5的（一般是二十级以上）cpu，其misprediction penalty是 $M * N$ 的（M = fetch group内指令数, N = branch resolution latency，就是决定分支最终是否跳转需要多少周期）。如下图所示：
+<img loading="lazy" src="/img/branch-prediction/mispredict-penalty.png" alt=""  />
+
+我们再做一个定量实验：
+假设我们有一个</p>
+<ul>
+<li>$ N = 20 (20\ pipe stages), W = 5 (5\ wide fetch) $</li>
+<li>1 out of 5 instructions is a branch</li>
+<li>Each 5 instruction-block ends with a branch</li>
+</ul>
+<p>的CPU，那么我们取出500条指令需要多少个周期呢？</p>
+<ul>
+<li>100% 预测正确率
+<ul>
+<li>100 个时钟周期 (all instructions fetched on the correct path)</li>
+<li>无额外工作</li>
+</ul>
+</li>
+<li>99% 预测正确率
+<ul>
+<li>100 (correct path) + 20 (wrong path) = 120 个时钟周期</li>
+<li>20% 额外指令被取出</li>
+</ul>
+</li>
+<li>98% 预测正确率
+<ul>
+<li>100 (correct path) + 20 * 2 (wrong path) = 140 个时钟周期</li>
+<li>40% 额外指令被取出</li>
+</ul>
+</li>
+<li>95% 预测正确率
+<ul>
+<li>100 (correct path) + 20 * 5 (wrong path) = 200 个时钟周期</li>
+<li>100% 额外指令被取出</li>
+</ul>
+</li>
+</ul>
+<p>可以看出，分支预测失败在现代的超标量多流水线cpu中的penalty被极大的放大了。所以分支预测的正确性就显得额外重要。</p>
+<h1 id="takennot-taken">Taken/Not Taken</h1>
+<h2 id="静态分支预测">静态分支预测</h2>
+<h3 id="branch-delay-slots">branch delay slots</h3>
+<p>这是一种软硬件结合的静态分支预测方法，准确的说这不算是一种<em>预测</em>的方法。它要求编译器找出和分支是否发生无关的指令（例如，分支前的指令且没有data dependance）重排到分支指令之后，这样无论分支是否发生，后面的指令都需要执行，以此解决stall的问题。早期的MIPS cpu会采用这种设计。不幸的是，随着cpu的流水线层数越来越多，编译器必须找到N条与该分支指令无关的指令（N为决定分支最终是否跳转需要多少周期）才能喂满delay slots达到没有stall的效果。且随着superscalar架构的流行，这种设计在硬件上也有许多难以解决的冲突，因此最终离开了历史舞台。</p>
+<h3 id="always-taken-or-always-not-taken">always Taken or always Not Taken</h3>
+<p>预测分支总是发生/不发生是最简单的分支预测方法。此外，我们还有这样的规律可以利用：
+<img loading="lazy" src="/img/branch-prediction/static-BP.png" alt=""  />
+
+这是因为在循环中，分支backward跳转发生的几率是很大的。那我们或许可以在此事实上建立一个<em>Backward Branch Taken, Forward Branch Not Taken</em>的预测方法。</p>
+<ol>
+<li>Always Predict Not-Taken
+<ul>
+<li>Basically o nothing, simple to implement</li>
+<li>Know fall-through PC in Fetch</li>
+<li>Poor Accuracy, especially on backward branches</li>
+</ul>
+</li>
+<li>Always Predict Taken
+<ul>
+<li>Difficult to implement because don’t know target until Decode</li>
+<li>Poor accuracy on if-then-else</li>
+</ul>
+</li>
+<li>Backward Branch Taken, Forward Branch Not Taken
+<ul>
+<li>Better Accuracy</li>
+<li>Difficult to implement because don’t know target until Decode</li>
+</ul>
+</li>
+</ol>
+<p>这些方法都能显著提高分支预测的成功率，但是远远还达不到95%以上的准确率。</p>
+<h2 id="动态分支预测">动态分支预测</h2>
+<p>动态分支预测中的<em>动态</em>，按我的理解，指的是根据<strong>历史分支跳转情况</strong>调整接下来的分支预测方向。</p>
+<h3 id="2-bit-predictor">2-bit predictor</h3>
+<p>一个最intuitive的方式就是我们用上一次分支是否跳转来预测当前分支是否跳转。注意，这里的上一次指的是 上次执行<strong>该分支指令</strong>时是否跳转，而并<strong>不是依据上一条分支来预测本分支</strong>。
+实现方式也比较简单：我们将所有分支指令（的地址）都对应一个bit，来表示上次跳转的结果。具体细节可以看后面2-bit predictor</p>
+<p>这种预测方式至少在循环中能有不错的结果——若循环m次，则missprediction为$\frac{1}{m} \ or\ \frac{2}{m}$（如果第一次默认为不跳转那么第一次循环会被预测错误）。但是在某种极端情况下，它的分支正确率为0%</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">int</span> i <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>; i <span style="color:#f92672">&lt;</span> n; i <span style="color:#f92672">++</span>) {
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">if</span> (a[i] <span style="color:#f92672">%</span> <span style="color:#ae81ff">2</span> <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span>) {  <span style="color:#75715e">// &lt;--- branch A
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">do</span> something;
+</span></span><span style="display:flex;"><span>  } <span style="color:#66d9ef">else</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">do</span> something <span style="color:#66d9ef">else</span>;
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>对于branch A 这个分支，若a数组中的元素为奇偶交替出现，且$a[0]$为奇数，则实际跳转为$TNTNTNTNTN&hellip; (T:taken, N: not taken)$；不幸的是，我们将用于该分支的预测的bit初始化为0，那么我们会预测为$NTNTNTNT&hellip;$ 其失败率将为100%！</p>
+<p>为了避免这种问题，人们发明了2-bit predictor——每个分支的历史信息用两个bit来维护。其状态图如下：
+<img loading="lazy" src="/img/branch-prediction/2bit-predictor.svg" alt=""  />
+
+其实<code>2-bit predictor</code>很类似于<code>LRU-k</code>的思想，对于<em>抖动</em>的程序有更好的效果：比如对于$TTTNTTT$的分支，<code>2-bit predictor</code>会<em>容忍</em>其中的Not Taken，只是将状态由<code>Strongly Taken</code>转变为<code>Weakly Taken</code>，但在$N$发生的下一次仍然会预测为$T$。所以它就可以有效地防止在$TNTNTNTNTN&hellip;$的情况下失败率为100%。
+另外，对于多重循环：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">int</span> i <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>; i <span style="color:#f92672">&lt;</span> n; i <span style="color:#f92672">++</span>) {
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">int</span> j <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>; j <span style="color:#f92672">&lt;</span> m; j <span style="color:#f92672">++</span>) {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">do</span> something;
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>2-bit predictor 对内层循环的准确率就是$\frac{1}{m}$的（除了第一次外层循环），这也优于用1-bit predictor的情况。</p>
+<p>我们在来考虑如何实现<code>2-bit predictor:</code>
+最直接的方法是我们对每条指令（即便他不是分支指令）都要有一个独立的predictor，那么在32位机器中这就要求存储空间 $2^{30} * 2 bit \approx  0.25 GB$，这么大的额外的硅芯面积显然是无法接受的。
+我们可以用下图所示来存储2-bit predictor的值：
+<img loading="lazy" src="/img/branch-prediction/2-bit-predictor-impl.png" alt=""  />
+
+图中的PHT(pattern history table)存放的就是所有PC值对应的2-bit predictor。我们只用了PC值当中的k位来对PHT进行寻址，因此PHT的大小就是$2^{k} \times 2bit$的。但使用这种方式来寻址PHT，必然就会导致那k-bit相同的PC映射到相同的PHT entry上，这种情况称为<code>aliasing</code>，aliasing会对分支预测的准确度产生影响。这就是设计者得做出的trade-off了，增大k能提高准确率但需要消耗更多硬件。我们还可以将PC的经过某种哈希后再取k位，这样能减少碰撞概率。</p>
+<p>我们按照从用1-bit来记录历史跳转情况到用2-bit记录的思路，是否可以用n-bit来记录，以使得我们的预测跳转部件对程序跳转抖动<strong>更加容忍</strong>呢？大量的测试表明，再往上加bit的数量已经无益于准确率的提高了。
+<code>2-bit predictor</code>是90年代比较主流的分支预测方法，4K-entry BHT, 2 bits/entry 已经基本能达到 <strong>80%~90%</strong> 左右的正确率了。</p>
+<h3 id="local-history-branch-prediction">Local History Branch Prediction</h3>
+<p>我们现在考虑一种带有“循环节”的分支跳转模式：$TTNNTTNNTTNN&hellip;$，我们的2-bit predictor没法“观察”到这种规律并加以利用。那该如何解决呢？我们可以对 <strong>每一条分支使用一个寄存器来记录该分支在过去的历史状态</strong>，只要这个历史状态很有规律，我们就能利用它，这样的寄存器称为分支历史寄存器（Branch History Register, BHR）。我们用一个n-bit的BHR记录一条指令过去n次的执行情况，对一个BHR，用多个2-bit predictor捕捉规律。</p>
+<p><img loading="lazy" src="/img/branch-prediction/Local-BHR.png" alt=""  />
+
+上图中，我们用一个4-bit的BHR分支记录历史，经过足够多次的预热，当我们的BHR从<code>1011</code>变成<code>0001</code>时，对应的2-bit predictor从<code>11</code>变成了<code>00</code>。这样就捕捉了图中<code>TTTTNTTTTN...</code>的循环规律。
+引入BHR增加了硬件的复杂性，对于BHR需要预热/训练的次数，取决于<strong>BHR的位数，位数越多需要训练次数越多，但也能预测更大的循环节的分支</strong>。为了减少硬件开销，我们也可以只用PC的k个bit来对应一个BHR，如下图所示：
+<img loading="lazy" src="/img/branch-prediction/BHR-impl.png" alt=""  />
+
+这也会带来不同PC的分支可能被映射到同意BHR的问题，我们可以通过将PC进行哈希、PC与BHR拼接或异或后映射到PHT等方法提升准确度。Again，这也会增加硬件的复杂性。</p>
+<h3 id="global-history-branch-prediction">Global History Branch Prediction</h3>
+<p>我们通过BHR的设计已经把对同一条分支指令的动态预测处理到极致了（对于没有循环节规律的分支，我们还有办法预测吗？这是不是很像经典的机器学习问题？事实上，早在2000年，就已经提出了<a href="https://www.cs.cmu.edu/afs/cs/academic/class/15740-f18/www/papers/hpca01-jiminez-perceptron.pdf">用感知机进行动态分支预测的方法</a>，效果也很不错）。</p>
+<p>于是人们又想，分支预测除了本分支历史结果有关，是否还和其他分支有关呢？借助这样的启发式规则，发明了基于全局历史的分支预测方法。对于某一条分支指令，全局指的就是其他分支指令。考虑下面一段代码：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">if</span>(a <span style="color:#f92672">==</span> <span style="color:#ae81ff">2</span>) a <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span>(b <span style="color:#f92672">==</span> <span style="color:#ae81ff">2</span>) b <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span>(a <span style="color:#f92672">!=</span> bb) { ... };
+</span></span></code></pre></div><p>分析这一段代码，容易发现当第一条、第二条分支指令不执行时（即操作a = 0、b = 0），第三条指令一定会执行。如何记录全局分支呢？与局部历史分支预测类似的，我们用一个寄存器来记录全局历史分支跳转情况，这个寄存器称为 <strong>Global History Register（GHR）</strong>。与BHR不同的是，我们不需要对所有PC都记录一个历史分支跳转的值，而只需要一个全局的GHR就可以。一个简单的基于全局历史的分支预测如下：
+<img loading="lazy" src="/img/branch-prediction/GHR-impl.png" alt=""  />
+</p>
+<p>事实上Global branch predictor对比2-bit predictor在small predictor sizes（我的理解是GHR的位数很少）的时候表现更差（见<a href="https://citeseerx.ist.psu.edu/document?repid=rep1&amp;type=pdf&amp;doi=3501e3787a267dd572fe06c3dc1c70a76dc9702b">McFarling93</a>）
+这主要是因为不同的分支经常有这相同的“全局历史”，特别是当GHR位数较少时，他们容易被映射到相同的2-bit predictor上。</p>
+<h3 id="tournament-predictors-adaptively-combining-local-and-global-predictors">Tournament Predictors: Adaptively Combining Local and Global Predictors</h3>
+<p>显然，我们可以想办法结合<code> Global History Branch Prediction</code>和 <code>Local History Branch Prediction</code>。Tournament Predictor就是一个经典的例子：
+<img loading="lazy" src="/img/branch-prediction/tournament-predictor.png" alt="tournament-predictor"  />
+</p>
+<p>我们用一个selector来选择使用Global predictor的结果还是用Loacal Predictor的结果。具体这个selector应该如何实现呢？其基本思想就是用一个<strong>类似于2-bit predictor的东西来训练选哪个predictor</strong>：
+<img loading="lazy" src="/img/branch-prediction/tournament-predictor-impl.png" alt=""  />
+
+根据以往的分支预测结果训练selector。</p>
+<h3 id="sota-tage">SOTA: TAGE</h3>
+<p>很多现代CPU都使用了基于 TAGE(TAgged GEometric History Length Branch Prediction) 的思想的分支预测器。这种方法早在2006年就已提出。此后TAGE及其变种连续蝉联<a href="https://jilp.org/cbp2016/">CBP(Championship Branch Prediction)</a>比赛的冠军（是的，竟然还有个专门做分支预测的比赛）。</p>
+<p><img loading="lazy" src="/img/branch-prediction/TAGE.png" alt="TAGE"  />
+
+如图所示，其基本思想是：由多个Global predictor组成，每个global predictor由PC和GHR的不同长度的值映射到BHT表中得到。在此基础上增加了tag和预测结果进行比较。给出的结果于具有最长分支历史且具有匹配标记的预测器。P(0)始终匹配，因为它不使用tag，在P(1)到P(n)中没有任何一个匹配时，使用P(0)。具体细节可以看<a href="https://www.irisa.fr/caps/people/seznec/JILP-COTTAGE.pdf">原论文</a>。</p>
+<h1 id="跳转地址">跳转地址</h1>
+<p>分支预测除了需要预测该次跳转是否发生，还有一个重要问题就是我们<strong>需要预测出target address</strong>。
+分支的跳转可以分为<code>直接跳转</code>和<code>间接跳转</code>。直接跳转的目标地址以立即数的形式存在指令中，那么我们就能在译码时得到预测的地址，但是由于现代处理器流水线更长，取指就可能被分成多段，所以我们需要在已得到PC时就预测跳转结果地址。对于间接跳转的分支，目标地址存在通用寄存器中，会更加难以预测。下文只简单介绍直接跳转时的 target address 预测，对于间接跳转的地址预测，可以参考《超标量处理器设计》4.3.2</p>
+<h2 id="直接跳转">直接跳转</h2>
+<p>分为两种情况：</p>
+<ol>
+<li>分支指令不发生跳转：
+$target\ addr = cur\ PC + sizeof(fetch\ group)$</li>
+<li>分支指令发生跳转：
+$target\ addr = cur\ PC + SignExd(offset)$</li>
+</ol>
+<p>第一种情况我们可以在上述 Taken/Not Taken 得到结果后，若是NT，则马上得到target addr.
+而对于第二种情况，我们取指完才能得到target addr，这是不可以接受的。所以我们要在刚知道PC时就进行结果预测。如何预测呢？其实就是用一个cache来记录。由于一个进程的分支指令的地址是不会改变的，即PC为分支的指令一直都是分支指令，那么我们只要将其记录结果下来，就可以在之后的预测中在取得PC时候就通过cache得到target addr 。这里cache被称作BTB(Branch Target Buffer)。
+<img loading="lazy" src="/img/branch-prediction/BTB.png" alt="BTB"  />
+
+实现也与普通的cache没有多大区别。</p>
+<h1 id="reference">reference</h1>
+<ul>
+<li><a href="https://book.douban.com/subject/26293546/">超标量处理器设计 姚永斌</a></li>
+<li>H&amp;P Computer Architecture: A Quantitative Approach</li>
+<li><a href="https://www.coursera.org/learn/comparch/home/info">coursera上Princeton的Computer Architecture</a> 高级体系结构课程，介绍了超标量乱序多发射结构cpu等</li>
+</ul>
+]]></content:encoded>
+    </item>
+    
+    <item>
+      <title>C&#43;&#43;内存模型 —— 现代Architecture的妥协</title>
+      <link>https://caaatch22.github.io/posts/c-%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B--%E7%8E%B0%E4%BB%A3architecture%E7%9A%84%E5%A6%A5%E5%8D%8F/</link>
+      <pubDate>Fri, 01 Sep 2023 15:51:19 +0000</pubDate>
+      
+      <guid>https://caaatch22.github.io/posts/c-%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B--%E7%8E%B0%E4%BB%A3architecture%E7%9A%84%E5%A6%A5%E5%8D%8F/</guid>
+      <description>介绍 什么是内存模型(Memory Model)呢？这里介绍的内存模型并非C++对象的内存排布模型，而是一个非编程语言层面的概念。我们知道在C++11中，标准引入了 std::atomic&amp;lt;&amp;gt;原子对象，同时还引入了
+memory_order_relaxed memory_order_consume memory_order_acquire memory_order_release memory_order_acq_rel memory_order_seq_cst 这六种 memory order。引入可以让我们进行无锁编程，而如果你想要更高性能的程序，你就必须深挖这六种内存模型的含义并正确应用。（当然，在不显式指明memory order的情况下，你能保证获得正确的代码，但存在性能损失）
+内存模型 在介绍C++ memory order之前，我们先回答另一个问题。你的计算机执行的程序就是你写的程序吗? —— 显然不是的。
+原因也很简单，为了更高效的执行指令，编译器、CPU结构、缓存及其他硬件系统都会对指令进行增删，修改，重排。但要回答具体进行了什么样的修改，又是一个极其复杂的问题。或者说，整个现代体系结构，就是在保证程序正确性的前提下利用各种手段对程序优化。我们可以粗略的将其分成几个部分：
+source code order: 程序员在源代码中指定的顺序 program code order: 基本上可以看成汇编/机器码的顺序，它可以由编译器优化后得到 execution code order: CPU执行指令顺序也不见得与汇编相同，不同CPU在执行相同机器码时任然存在优化空间。 perceived order/physical order: 最终的执行顺序。即便CPU按照某种确定指令执行，物理时间上的执行顺序仍然可能不同。例如，在超标量CPU中，一次可以fetch and decode多个指令，这些指令之间的物理执行顺序就是不确定的；由于不同层级缓存之间延时不同，以及缓存之间的通信需要等带来的不确定的执行顺序等 上图简要说明了你的源代码可能经历的优化步骤。
+这些优化的一个主要原因在于 掩盖memory access操作与CPU执行速度上的巨大鸿沟。如果没有cache，CPU每个访存指令都需要stall一两百个时钟周期，这是不可接受的。但是引入cache的同时又会带来 cache coherence等问题，这也是造成x初始为0，两个线程同时执行 x++，而x最终不一定为 2的元凶。而一个内存模型则对上述并发程序的同一块内存进行了一定的限制，它给出了在并发程序下，任意一组写操作时，可能读到的值。 不同体系结构(x86, arm, power&amp;hellip;)通过不同的内存模型来保证程序的正确性。
+bonus question: 不同等级的cache latency？
+answer: l1: 1ns, l2: 5ns, l3: 50~100ns, main memory: 200ns
+Sequential Consistency(SC) SC是最严格的内存模型，也被称作non-weak memory model。在该模型下，多线程程序执行的可做如下分析：对于每一步，随机选择一个线程，并执行该线程执行中的下一步（例如，按程序或编译的顺序）。重复这个过程，直到整个程序终止。这实际上等效于按照（程序或编译的）顺序执行所有线程的所有步骤，并以某种方式交错它们，从而产生所有步骤的单一总顺序。SC不允许重新排列线程的步骤。因此，每当访问对象时，都会检索该顺序中存储在对象中的最后一个值。（注意，内存模型中说的重新排列与编译器层面无关，编译器自然是可以讲没有data dependance的读写操作进行重排的，只要保证程序的正确性即可。内存模型中的重排指的是在硬件执行阶段，由于cache hierarchy等引发的一些问题导致指令物理执行顺序被改变）。</description>
+      <content:encoded><![CDATA[<!-- raw HTML omitted -->
+<!-- raw HTML omitted -->
+<h2 id="介绍">介绍</h2>
+<p>什么是内存模型(Memory Model)呢？这里介绍的内存模型并非<a href="https://citeseerx.ist.psu.edu/document?repid=rep1&amp;type=pdf&amp;doi=160489e8b12cd9a44cbff0cd85fb6aa05437d1ac">C++对象的内存排布模型</a>，而是一个非编程语言层面的概念。我们知道在C++11中，标准引入了 <code>std::atomic&lt;&gt;</code>原子对象，同时还引入了</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>memory_order_relaxed
+</span></span><span style="display:flex;"><span>memory_order_consume
+</span></span><span style="display:flex;"><span>memory_order_acquire
+</span></span><span style="display:flex;"><span>memory_order_release
+</span></span><span style="display:flex;"><span>memory_order_acq_rel
+</span></span><span style="display:flex;"><span>memory_order_seq_cst
+</span></span></code></pre></div><p>这六种 <code>memory order</code>。引入可以让我们进行<strong>无锁编程</strong>，而如果你想要更高性能的程序，你就必须深挖这六种内存模型的含义并正确应用。（当然，在不显式指明memory order的情况下，你能保证获得正确的代码，但存在性能损失）</p>
+<h2 id="内存模型">内存模型</h2>
+<p>在介绍C++ memory order之前，我们先回答另一个问题。<em>你的计算机执行的程序就是你写的程序吗? —— 显然不是的。</em></p>
+<p>原因也很简单，为了更高效的执行指令，编译器、CPU结构、缓存及其他硬件系统都会对指令进行增删，修改，重排。但要回答具体进行了什么样的修改，又是一个极其复杂的问题。或者说，整个现代体系结构，就是在保证程序正确性的前提下利用各种手段对程序优化。我们可以粗略的将其分成几个部分：</p>
+<ol>
+<li><strong>source code order:</strong> 程序员在源代码中指定的顺序</li>
+<li><strong>program code order:</strong> 基本上可以看成汇编/机器码的顺序，它可以由编译器优化后得到</li>
+<li><strong>execution code order:</strong> CPU执行指令顺序也不见得与汇编相同，不同CPU在执行相同机器码时任然存在优化空间。</li>
+<li><strong>perceived order/physical order:</strong> 最终的执行顺序。即便CPU按照某种确定指令执行，物理时间上的执行顺序仍然可能不同。例如，在超标量CPU中，一次可以fetch and decode多个指令，这些指令之间的物理执行顺序就是不确定的；由于不同层级缓存之间延时不同，以及缓存之间的通信需要等带来的不确定的执行顺序等</li>
+</ol>
+<p><img loading="lazy" src="/img/memory-model/optimization-by-different-parts-of-computer.png" alt="optimizations-by-compyter"  />
+</p>
+<p>上图简要说明了你的源代码可能经历的优化步骤。</p>
+<p>这些优化的一个主要原因在于 掩盖memory access操作与CPU执行速度上的巨大鸿沟。如果没有cache，CPU每个访存指令都需要stall一两百个时钟周期，这是不可接受的。但是引入cache的同时又会带来 <code>cache coherence</code>等问题，这也是造成x初始为0，两个线程同时执行 <code>x++</code>，而x最终不一定为 <code>2</code>的元凶。<strong>而一个内存模型则对上述并发程序的同一块内存进行了一定的限制，它给出了在并发程序下，任意一组写操作时，可能读到的值。</strong> 不同体系结构(x86, arm, power&hellip;)通过不同的内存模型来保证程序的正确性。</p>
+<blockquote>
+<p>bonus question: 不同等级的cache latency？</p>
+<p>answer: l1: 1ns, l2: 5ns, l3: 50~100ns, main memory: 200ns</p>
+</blockquote>
+<h3 id="sequential-consistencysc">Sequential Consistency(SC)</h3>
+<p>SC是最严格的内存模型，也被称作non-weak memory model。在该模型下，多线程程序执行的可做如下分析：对于每一步，随机选择一个线程，并执行该线程执行中的下一步（例如，按程序或编译的顺序）。重复这个过程，直到整个程序终止。这实际上等效于按照（程序或编译的）顺序执行所有线程的所有步骤，并以某种方式交错它们，从而产生所有步骤的单一总顺序。SC不允许重新排列线程的步骤。因此，每当访问对象时，都会检索该顺序中存储在对象中的最后一个值。（注意，内存模型中说的重新排列与编译器层面无关，编译器自然是可以讲没有data dependance的读写操作进行重排的，只要保证程序的正确性即可。内存模型中的重排指的是在硬件执行阶段，由于cache hierarchy等引发的一些问题导致指令物理执行顺序被改变）。</p>
+<p>也就是说，我们可以抽象出一个简单的内存结构：
+<img loading="lazy" src="/img/memory-model/SC-model.png" alt="SC-model"  />
+
+在这种结构中，我们隐藏了cache与store buffer的存在，或者说SC协议允许我们无视这两个硬件。
+那么，我们对于下面表格中的问题就有确定的答案：</p>
+<table>
+<thead>
+<tr>
+<th>Thread 1</th>
+<th>Thread 2</th>
+<th>main</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>x = 1</td>
+<td>y = 1</td>
+<td>x = 0, y = 0</td>
+</tr>
+<tr>
+<td>y&rsquo; = y</td>
+<td>x&rsquo; = x</td>
+<td>Spawn thread 1, 2; Wait for threads</td>
+</tr>
+</tbody>
+</table>
+<p>显然，在SC模型中最终的结果只可能是：</p>
+<ol>
+<li>x = 1, y = 1;</li>
+<li>x = 0, y = 1;</li>
+<li>x = 1, y = 0;</li>
+</ol>
+<p>而不会出现 x = 0; y = 0的情况。</p>
+<p>SC模型很美好，分析起来简单，心智负担小。但是为了保证顺序一致性，他付出了一定的性能代价。所以，并没有哪个成熟的体系结构真正使用SC模型。现代体系结构纷纷为了性能而做出了不同程度的妥协。</p>
+<h3 id="x86-tso">x86-TSO</h3>
+<p>x86-TSO(Total Store Order)，它比SC更<em>弱</em>，但仍是现代CPU约束最强的内存模型其中之一。tso的架构可以用以下抽象来代替：
+<img loading="lazy" src="/img/memory-model/TSO-model.png" alt="TSO-model"  />
+
+注意，这并非真实的x86的架构(毕竟连cache都没有)，只是x86-tso模型保证我们得到这样的抽象。这里的store buffer(或者叫write buffer)也不一定对应着硬件上的store buffer。它也可以是cache hierarchy的一部分，他们之间有一致性协议进行约束来保证上图中的效果。</p>
+<p>TSO模型最重要的几个特性：</p>
+<ul>
+<li>store buffer是FIFO的，读取线程必须读取其自身最近缓冲的写操作，如果有的话，读取的地址与该写操作一致。否则，读取操作将从共享内存中满足。</li>
+<li>mfence 指令会清空该hardware thread的store buffer</li>
+<li>要执行一个带锁的指令，线程必须首先获取全局锁。在指令结束时，它会清空自己的store buffer并释放锁。当一个线程持有锁时，其他线程无法读取。这基本上意味着带锁的指令强制实现了顺序一致性。</li>
+<li>线程的可以在任何时间传播到共享内存中，除非另一个线程持有锁。</li>
+</ul>
+<p>在TSO下，对于上述表格中的问题，则可能出现 <code>x = 0, y = 0</code>的结果：<code>x = 1</code>与 <code>y = 1</code>都被放到store buffer上而未被flush到shared memory中。</p>
+<p>也就是说：
+x86-TSO does not permit local reordering <strong>except of reads after writes to different addresses.</strong></p>
+<pre tabindex="0"><code class="language-assemble" data-lang="assemble">thread 1, thread 2    可能会     thread 1, thread 2
+write a,  write b     ----&gt;      read b,   read a
+read b,   read a                 write a,  write b
+</code></pre><p>要解决这个问题也很简单，在write后加上mfence指令即可，它会将store buffer中的存储刷到shared memory中。
+这也是TSO比SC理论性能更高的原因，它舍弃了一定的正确性，来减少每次写操作都flush store buffer的开销。</p>
+<blockquote>
+<p>Fun Fact: intel和amd从没承认过他们的x86一定符合x86-tso内存模型，但是他们进行过黑盒测试，结果证明了这一点。（就连设计者都难以reason出理论上的结果，而是通过测试证明的）</p>
+</blockquote>
+<h3 id="arm-and-power">ARM and POWER</h3>
+<p>Arm and power则有着更加宽松的内存模型。为了理解这样一台机器的行为，我们可以认为每个hardware thread都拥有自己的内存副本，如下图所示。所有内存副本和它们的interconnection（即除了线程以外的一切）的集合通常被称为<em>storage subsystem</em>。一个线程的写操作可能以<strong>任何顺序</strong>传播到其他线程，并且不同地址的写操作的传播可以任意交错，除非它们受到屏障或缓存一致性的限制。也可以将屏障视为从执行它们的硬件线程传播到每个其他线程的操作。
+<img loading="lazy" src="/img/memory-model/ARM-model.png" alt="Arm-Model"  />
+</p>
+<p>由于每个线程都有自己的子存储系统，它们之间的同步就需要fence进行保障。ARM和POWER提供了barrier(fence)指令(分别是 <code>dbm</code> 和 <code>sync</code>)来约束下面几种顺序：</p>
+<ol>
+<li>Read/Read之间fence:保证他们按照program
+order执行</li>
+<li>Read/Write屏障: 确保在写操作被提交（因此传播并对其他人可见）之前，读操作被满足并提交。</li>
+<li>Write/Write屏障：确保第一个写操作在第二个写操作被提交之前被提交并传播到所有其他线程。</li>
+<li>Write/Read屏障：确保在读操作被满足之前，写操作已被提交并传播到所有其他线程。
+POWER架构还提供了一个额外的“轻量级同步”指令，称为 <code>lwsync</code>，它比sync指令更弱，也因此可能更快。具体作用不在此处赘述。</li>
+</ol>
+<p>除了屏障之外，这些体系结构还提供以下依赖关系来强制顺序：</p>
+<ul>
+<li>Address dependency：当第一条指令读取的值用于计算第二条指令的地址时，从一个读操作到程序顺序后的读或写之间存在地址依赖。</li>
+<li>Control dependency：当第一条指令读取的值用于计算在第二条指令之前的程序顺序条件分支的条件时，从一个读操作到程序顺序后的读/写之间存在控制依赖。</li>
+<li>Data dependency：当第一条指令读取的值用于计算由第二条指令写入的值时，从一个读操作到程序顺序后的写之间存在数据依赖。</li>
+</ul>
+<p>在ARM和POWER处理器中，read-to-read的control dependency力度较小，因为它们可以在条件分支之前进行推测性执行，从而在第一次读取之前满足第二次读取。为了增加read-to-Read的控制依赖的影响力，可以在条件分支和第二次读取之间添加一个ISB（ARM）或isync（POWER）指令。
+相反，read-to-write的control dependency具有一定的影响力：在分支被提交之前，写操作不会被其他任何线程看到，因此也不会在第一次读取的值固定之前被看到。
+总结一下，从一个读取到另一个读取，如果存在address dependency 或带有 ISB/isync 的控制依赖，将阻止第二个读取在第一个读取之前被满足，而纯粹的control dependency则不会。从读取到写入，地址、控制或数据依赖都将阻止写入在读取的值固定之前对任何其他线程可见。</p>
+<h2 id="c-memory-order">C++ memory order</h2>
+<p>对于 <code>weak memory model</code>，特别是上面介绍的ARM的内存模型，想要精细的控制程序的允许重排的程度需要非常大的心智负担。（光是不同体系结构，不同等级的fence指令就令人望而却步）。因此C++11标准提供的六种memory order就是从语言层面来约束最终希望达到的对程序被优化程度的限制。现在我们再看这几种memory order就比较清晰了。（以下说法并不严谨，但是作为程序员的take away完全足够了。</p>
+<table>
+<thead>
+<tr>
+<th>Memory Order</th>
+<th>Explaination</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>memory_order_relaxed</td>
+<td>表示这个R/W操作除了原子性外没有任何其他限制，他可能会被重排到程序的任何位置（当然，编译器不会允许将他重排到同一个线程对同一个原子变量写操作的前面，这违背了正确性）</td>
+</tr>
+<tr>
+<td>memory_order_consume</td>
+<td>(只用于读) 后面依赖此原子变量的访存指令不允许重排至此条指令之前。 注意，当前标准中的memory_order_consume是<a href="https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0371r0.html%E6%89%80%E4%BB%A5%E4%B8%8D%E8%A6%81%E4%BD%BF%E7%94%A8">没有实际用处的</a>， 一般情况下不要使用</td>
+</tr>
+<tr>
+<td>memory_order_acuqire</td>
+<td>(只用于读) 后面访存指令不允许重排至此条指令之前</td>
+</tr>
+<tr>
+<td>memory_order_release</td>
+<td>(只用于写) 前面访存指令不允许重排至此条指令之后。当此条指令的结果对其他线程可见后，之前的所有指令都可见</td>
+</tr>
+<tr>
+<td>memory_order_acq_rel</td>
+<td>acquire + release语意</td>
+</tr>
+<tr>
+<td>memory_order_seq_cst</td>
+<td>满足sequential_consistency内存模型</td>
+</tr>
+</tbody>
+</table>
+<!-- raw HTML omitted -->
+<p>在默认情况下，<code>std::atomic&lt;&gt;</code>相关函数总是选用 <code>std::memory_order_seq_cst</code>，它能有效地帮我们避免错误。但是，我们既然都使用 <code>atomic</code>而不是 <code>mutex</code>了，自然是对性能有较高要求。
+<img loading="lazy" src="/img/memory-model/memory-barriers-performance.png" alt="memory barriers and performance"  />
+ 从上图中可以看出，<code>memory_order_relaxed</code>的写性能和 <code>non-atomic</code>几乎没有差别，而 <code>seq_cst</code>则要慢许多。</p>
+<p>另一方面，使用不同等级的 <code>memory order</code>也能更好的表达你的代码的意图：</p>
+<h3 id="relaxed-model">relaxed-model</h3>
+<p>最典型的例子就是一个线程安全的计数器。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>std<span style="color:#f92672">::</span>atomic<span style="color:#f92672">&lt;</span>size_t<span style="color:#f92672">&gt;</span> counter;
+</span></span><span style="display:flex;"><span>counter.fetch_add(<span style="color:#ae81ff">1</span>, std<span style="color:#f92672">::</span>memory_order_relaxed);
+</span></span></code></pre></div><p>你只是单纯的记录某件事情发生了几次。常用的还有智能指针中的引用计数的递增递减等</p>
+<h3 id="acuqire-release-model">acuqire-release model</h3>
+<p>如果代码改成：<code>counter.fetch_add(1, std::memory_order_release);</code>那么这个counter就极有可能是某个数组的下标：你对某一个数组append了一个数，然后你才将其<strong>release(发布)</strong>，告诉系统不允许将你对数组的append操作重排到counter增加之后；这样在其他线程中，其他线程就无法因为counter没更新而占有你已经append的位置。</p>
+<p>acuqire-release 经常成对出现，因为他们共同表示了这样的一个模型：
+<img loading="lazy" src="/img/memory-model/acquire-release-protocal.gif" alt="acuqire-release protocal"  />
+</p>
+<p>图中 <code>{a, b}</code>是我们需要在不同线程之间同步的值，那么线程1准备好 <code>{a, b}</code>后，<strong>release(发布) x</strong>，即 <code>x.store(1, memory_order_release)</code>，这时我们保证了 <code>{a, b}</code>值的更新一定是 <code>x = 1</code>的时候可见的（因为{a, b}的更新操作不会被重排到x.store之后）；那么在读线程，我们就可以根据 x 判断 <code>{a, b}</code>是否被更新:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">while</span>(x.load(memory_order_acquire) <span style="color:#f92672">!=</span> <span style="color:#ae81ff">1</span>)
+</span></span><span style="display:flex;"><span>  ;
+</span></span><span style="display:flex;"><span>  [a<span style="color:#960050;background-color:#1e0010">&#39;</span>, b<span style="color:#960050;background-color:#1e0010">&#39;</span>] <span style="color:#f92672">=</span> {a, b};  <span style="color:#75715e">// acuire语义保证了这句话不会被重排到x.load之前
+</span></span></span></code></pre></div><p>还有就是acq_sel_model了，这三种模型就是我们用std::atomic最常用的三种memory order.</p>
+<h2 id="其他">其他</h2>
+<ol>
+<li>你可能已经注意到了，X86-TSO内存模型非常严格，它已经为我们提供了
+<ul>
+<li>all load are acquire-loads, all stores are release-stores</li>
+<li>all read-modify-write operations are acquire-release</li>
+</ul>
+</li>
+</ol>
+<p><strong>也就是说x86平台下不存在真正的memory-order-relexed</strong></p>
+<ol start="2">
+<li>为什么<code>atomic&lt;&gt;</code>比<code>mutex</code>更高效？最终不都是依赖于硬件提供的 barrier 以及 CAS, test and set等low level primitive吗？</li>
+</ol>
+<ul>
+<li><strong>atomic 做的事情</strong>：原子指令修改内存，内存栅栏保障修改可见，<em>必要时锁总线</em>。</li>
+<li><strong>mutex 大致做的事情</strong>：短暂原子 CAS(compare and set) 自旋如果未成功上锁，futex(&amp;lock, FUTEX_WAIT&hellip; ) 退避进入阻塞等待直到 lock 值变化时唤醒。futex 在设计上期望做到如果无争用，则可以不进内核态，<strong>不进内核态的 fast path 的开销等价于 atomic 判断</strong>。内核里维护按地址维护一张 wait queue 的哈希表，发现锁变量值的变化（解锁）时，唤醒对应的 wait queue 中的一个 task。wait queue 这个哈希表的槽在更新时也会遭遇争用，这时继续通过 spin lock 保护。
+<img loading="lazy" src="/img/memory-model/futex.png" alt="futex"  />
+</li>
+</ul>
+<p>说白了就是mutex会陷入内核态（大部分情况下），而内核使用比较复杂的算法维护锁</p>
+<ol start="3">
+<li></li>
+</ol>
+<p><code>std::atomic&lt;&gt;</code>一定是无锁的吗？</p>
+<p><strong>wrong!</strong></p>
+<p>举个例子：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">long</span> x;
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">A</span> {<span style="color:#66d9ef">long</span> x;}
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">B</span> {<span style="color:#66d9ef">long</span> x; <span style="color:#66d9ef">long</span> y;}
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">C</span> {<span style="color:#66d9ef">long</span> x; <span style="color:#66d9ef">long</span> y; <span style="color:#66d9ef">long</span> z;}
+</span></span></code></pre></div><p>那么atomic<!-- raw HTML omitted -->， T取x, A, B, C的时候哪些是lock-free，哪些不是呢？</p>
+<p>我们可以用std::atomic<!-- raw HTML omitted -->::is_lock_free()找出答案。上述选项中，T = x, A的时候一定是lock_free的，T = C的时候一定不是lock_free的。</p>
+<blockquote>
+<p>C++17提供std::is_always_lock_free可以在编译器进行判断，如果为false不代表一定是 no lock_free的</p>
+</blockquote>
+<h2 id="reference">reference</h2>
+<ul>
+<li><a href="https://www.youtube.com/watch?v=ZQFzMfHIxng&amp;t=896s&amp;ab_channel=CppCon">介绍atomic的talk，比较全面</a></li>
+<li><a href="https://herbsutter.com/2013/02/11/atomic-weapons-the-c-memory-model-and-modern-hardware/">Sutter的talk, atomic weapons</a></li>
+<li><a href="https://arxiv.org/pdf/1803.04432.pdf">Memory Models for C/C++ Programmers</a></li>
+<li></li>
+</ul>
+]]></content:encoded>
+    </item>
+    
+    <item>
+      <title>Computer Architecture —— 高级缓存技术</title>
+      <link>https://caaatch22.github.io/posts/advanced-cache/</link>
+      <pubDate>Wed, 23 Aug 2023 23:38:14 +0000</pubDate>
+      
+      <guid>https://caaatch22.github.io/posts/advanced-cache/</guid>
+      <description>本文不会介绍cache的组织形式等基本内容，但也算不上什么&amp;quot;Advanced&amp;quot;。主要包含一些从硬件层面优化cache的手段。
+优化cache的几种方法 pipeline caches 上图为教科书上经常出现的cache形式(2-way associative为例)，它很精炼的解释了cache的实现。但也稍微引入了些“误导”：
+图中v、tag和data部分画在连续的一行上，仿佛硬件上他们就是同一块 SRAM 的不同bit 图中识别tag与data是并行完成的，这很好，某种意义上能降低时延；但我们经常遗忘一个事实，只有读cache的时候我们才能这么操作（或者说在写cache时，读取data block是没有意义的） 对于第一点，在实际的实现当中，tag和data部分都是分开放置的，tag一般是由一种叫CAM(Context-Addressable Memory)的材料构成。当然，这与pi不pipeline没什么关系；
+读cache主要就两个部分：比较tag，获取data；我们暂且不考虑以pipeline的方式优化，那么serial的先比较tag再读data一定不如parallel的方式进行吗？当我们并行的读取tag和data的时候，我们会发现，读出来的data有可能没用（没有匹配的tag）；并且，在n-way set associate cache中，我们会浪费的读出$n-1$个data项；这给我们什么启示呢？如果我们串行的读cache，那么我们可以在比较tag阶段就知道我们想要的数据在不在cache当中；更有意义的是，根据tag比较的结果，我们就知道哪一路的数据是需要被访问的（提前知道了在n-way中的哪一way），那么我们访问data block时，就无需多路选择器，直接访问指定的way，将其他way的data访问的使能信号置为无效，这种做法的优点在于有效减小功耗。
+serial的做法肯定比parallel的延时要大，若这时访问cache处于处理器的critical path(关键路径)上，我们可以再将其进行流水线化。 我们现在再来看看写cache时的情况：
+写cache时，只有通过tag比较，确认要写的地址在cache中后，才可以写data SRAM，在主频较高的处理器中，这些操作很难在一个周期内完成，这也要求我们将其流水线化。下图为对cache进行写操作使用的流水线示意图：
+在上图的实现方式中，store第一个周期读取Tag并进行比较，根据比较的结果，在第二个周期选择是否将数据写到Data SRAM中。还需要注意的是，当执行load指令时，它想要的数据可能正好在store指令的流水线寄存器中（RAW的情况；上图中的DelayedStoreData寄存器），而不是来自于Data SRAM。因此需要一种机制检测这种情况，这需要将load指令所携带的地址和store指令的流水线寄存器(即DelayedStoreAddr寄存器)进行比较，如果相等，那么就将store指令的数据作为load指令的结果。
+由此可以看出，对写D-Cache使用流水线之后，不仅增加了流水线本身的硬件，也带来了其他一些额外的硬件开销。其实。不仅在Cache中有这种现象，在处理器的其他部分增加流水线的级数，也会伴随着其他方面的硬件需求,因此过深的流水线带来的硬件复杂度是非常高的，就像Intel的Pentium 4处理器，并不会从过深的流水线中得到预想的好处。当然，cache的流水线化已经是一种广泛使用的用于降低latency的方法了。
+write buffers 我愿称之为buffer of buffer，本来cache就起buffer的作用了，但我们再加一个buffer，如下图所示： 这和多一级的cache有什么不同呢？这是一个专门为写操作设计的buffer（注意：load也可能造成写操作）。原因在于我们知道写通常比读更慢，特别对于write-through来说；其次，当上层cache满后，需要先将dirty cache line写回下层cache，再读取下层cache中的数据。若下层cache只有一个读写端口，那么这种串行的过程导致D-Cache发生缺失的处理时间变得很长，此时就可以采用write buffer来解决这个问题。脏状态的cache-line会首先放到写级存中，等到下级存储器有空闲的时候，才会将写缓存中的数据写到下级存储器中。
+对于write buffer，我们还可以对其进行 合并(merging) 操作。所谓merging，指的是将在同一个cache-line上的数据一并写入下层cache中，而非多次写入同一个cache-line。 上图中的右侧表示了一个采用了merging write buffer策略的写缓冲区。
+critial word first and early restart 先来看一下cache miss时的cpu： 图中展示了一个blocking cache在cache miss时，cpu stall，而后cache将需要取得的cache-line放入后，cpu resume的timeline。我们可以发现，若我们只需要cache-line中的第3个word，cpu完全可以提早resume。如下图所示： 这就是early restart，而critial word first指的是，是在此基础上，在取cache-block时，不按照0~7 word的顺序而是按照3,4,5,6,7,0,1,2的顺序获取，配合early restart以减小miss penalty。
+当然，这种优化手段一般在cache-block size越大的时候效果越好。
+non-blocking caches 本节主要参考了超标量处理器设计9.6.2</description>
+      <content:encoded><![CDATA[<blockquote>
+<p>本文不会介绍cache的组织形式等基本内容，但也算不上什么&quot;Advanced&quot;。主要包含一些从硬件层面优化cache的手段。</p>
+</blockquote>
+<h1 id="优化cache的几种方法">优化cache的几种方法</h1>
+<h2 id="pipeline-caches">pipeline caches</h2>
+<p><img loading="lazy" src="/img/advanced-cache/2way-set-associative.png" alt="2way-set-associative-cache"  />
+</p>
+<p>上图为教科书上经常出现的cache形式(2-way associative为例)，它很精炼的解释了cache的实现。但也稍微引入了些“误导”：</p>
+<ol>
+<li>图中<code>v</code>、<code>tag</code>和<code>data</code>部分画在连续的一行上，仿佛硬件上他们就是同一块 SRAM 的不同bit</li>
+<li>图中识别<code>tag</code>与<code>data</code>是并行完成的，这很好，某种意义上能降低时延；但我们经常遗忘一个事实，只有<em>读cache</em>的时候我们才能这么操作（或者说在写cache时，读取data block是没有意义的）</li>
+</ol>
+<p>对于第一点，在实际的实现当中，tag和data部分都是分开放置的，tag一般是由一种叫<a href="https://en.wikipedia.org/wiki/Content-addressable_memory">CAM(Context-Addressable Memory)</a>的材料构成。当然，这与pi不pipeline没什么关系；</p>
+<p>读cache主要就两个部分：比较tag，获取data；我们暂且不考虑以pipeline的方式优化，那么serial的先比较tag再读data一定不如parallel的方式进行吗？当我们并行的读取tag和data的时候，我们会发现，读出来的data有可能没用（没有匹配的tag）；并且，在n-way set associate cache中，我们会浪费的读出$n-1$个data项；这给我们什么启示呢？如果我们串行的读cache，那么我们可以在比较tag阶段就知道我们想要的数据在不在cache当中；更有意义的是，根据tag比较的结果，我们就知道哪一路的数据是需要被访问的（提前知道了在n-way中的哪一way），那么我们访问data block时，就无需多路选择器，直接访问指定的way，将其他way的data访问的使能信号置为无效，这种做法的优点在于<strong>有效减小功耗</strong>。</p>
+<p>serial的做法肯定比parallel的延时要大，若这时访问cache处于处理器的critical path(关键路径)上，我们可以再将其进行流水线化。
+<img loading="lazy" src="/img/advanced-cache/pipelined-cache.png" alt="pipeline cache"  />
+</p>
+<p>我们现在再来看看写cache时的情况：</p>
+<p>写cache时，只有通过tag比较，确认要写的地址在cache中后，才可以写data SRAM，在主频较高的处理器中，这些操作很难在一个周期内完成，这也要求我们将其流水线化。下图为对cache进行写操作使用的流水线示意图：</p>
+<p><img loading="lazy" src="/img/advanced-cache/pipelined-cache-write.png" alt="pipeline cache in write"  />
+</p>
+<p>在上图的实现方式中，store第一个周期读取Tag并进行比较，根据比较的结果，在第二个周期选择是否将数据写到Data SRAM中。还需要注意的是，当执行load指令时，它想要的数据可能正好在store指令的流水线寄存器中（RAW的情况；上图中的DelayedStoreData寄存器），而不是来自于Data SRAM。因此需要一种机制检测这种情况，这需要将load指令所携带的地址和store指令的流水线寄存器(即DelayedStoreAddr寄存器)进行比较，如果相等，那么就将store指令的数据作为load指令的结果。</p>
+<p>由此可以看出，对写D-Cache使用流水线之后，不仅增加了流水线本身的硬件，也带来了其他一些额外的硬件开销。其实。不仅在Cache中有这种现象，在处理器的其他部分增加流水线的级数，也会伴随着其他方面的硬件需求,因此过深的流水线带来的硬件复杂度是非常高的，就像Intel的Pentium 4处理器，并不会从过深的流水线中得到预想的好处。当然，cache的流水线化已经是一种广泛使用的用于降低latency的方法了。</p>
+<h2 id="write-buffers">write buffers</h2>
+<p>我愿称之为buffer of buffer，本来cache就起buffer的作用了，但我们再加一个buffer，如下图所示：
+<img loading="lazy" src="/img/advanced-cache/write-buffer.png" alt="write buffer"  />
+
+这和多一级的cache有什么不同呢？这是一个专门为写操作设计的buffer（注意：load也可能造成写操作）。原因在于我们知道写通常比读更慢，特别对于write-through来说；其次，当上层cache满后，需要先将dirty cache line写回下层cache，再读取下层cache中的数据。若下层cache只有一个读写端口，那么这种串行的过程导致D-Cache发生缺失的处理时间变得很长，此时就可以采用write buffer来解决这个问题。脏状态的cache-line会首先放到写级存中，等到下级存储器有空闲的时候，才会将写缓存中的数据写到下级存储器中。</p>
+<p>对于write buffer，我们还可以对其进行 <strong>合并(merging)</strong> 操作。所谓<code>merging</code>，指的是将在同一个cache-line上的数据一并写入下层cache中，而非多次写入同一个cache-line。
+<img loading="lazy" src="/img/advanced-cache/merging-write-buffer.png" alt="merging write buffer"  />
+</p>
+<p>上图中的右侧表示了一个采用了merging write buffer策略的写缓冲区。</p>
+<h2 id="critial-word-first-and-early-restart">critial word first and early restart</h2>
+<p>先来看一下cache miss时的cpu：
+<img loading="lazy" src="/img/advanced-cache/cpu-cache-miss.png" alt="timeline in cache miss"  />
+
+图中展示了一个blocking cache在cache miss时，cpu stall，而后cache将需要取得的cache-line放入后，cpu resume的timeline。我们可以发现，若我们只需要cache-line中的第3个word，cpu完全可以提早resume。如下图所示：
+<img loading="lazy" src="/img/advanced-cache/early-restart.png" alt="early restart"  />
+</p>
+<p>这就是<code>early restart</code>，而<code>critial word first</code>指的是，是在此基础上，在取cache-block时，不按照0~7 word的顺序而是按照<code>3,4,5,6,7,0,1,2</code>的顺序获取，配合early restart以减小miss penalty。</p>
+<p>当然，这种优化手段一般在cache-block size越大的时候效果越好。</p>
+<h2 id="non-blocking-caches">non-blocking caches</h2>
+<blockquote>
+<p>本节主要参考了超标量处理器设计9.6.2</p>
+</blockquote>
+<p><code>blocking cache</code>：在D-Cache发生缺失并且被解决之前将D-Cache与物理内存之间的数据通路被锁定，只处理当前这个缺失的数据，处理器不能够再执行其他的load/store指令。
+<img loading="lazy" src="/img/advanced-cache/blocking-cache.png" alt="blocking cache"  />
+</p>
+<p>这是最容易实现的一种方式，但是考虑到D-Cache缺失的处理时间相对是比较长的，这段时间容易阻塞其他load/store指令的执行，特别是在超标量处理器中，一个周期可能发射多个load/store指令，这样的阻塞就大大减少了程序执行时可以寻找的并行性。</p>
+<p>为了解决这个问题，Kroft提出了<a href="https://courses.cs.washington.edu/courses/cse548/11au/Kroft-Lockup-Free-Instruction-Fetch.pdf">non-blocking cache</a>，(aka lookup-free cache, aka out-of-order-memory system)，如下图所示：</p>
+<p><img loading="lazy" src="/img/advanced-cache/non-blocking-cache.png" alt="non-blocking cache"  />
+</p>
+<p>其实就是在cache miss之后，cpu继续发送load/store指令；那么我们可能会有hit after miss，也可能有miss after miss，甚至多次miss连续发生。</p>
+<p>我们来看看我们需要增加哪些结构以支持non-blocking cache。</p>
+<p>采用这种方法之后，load/store指令的D-Cache缺失被处理完的时间可能和原始的指令顺序不一样了。举例来说，两条顺序的指令load1和load2都发生了D-Cache缺失，但是load1指令可能需要到物理内存中才能够找到需要的数据，而load2指令在L2 Cache中就可以找到所需的数据，因此load2指令会更早地得到需要的数据。要处理这个问题，就需要保存那些已经发生缺失的load/store指令的信息，这样当这些缺失的load/store指令被处理完成，将得到的数据写回到D-Cache时，仍然可以知道哪条load/store 指令需要这个数据。</p>
+<p>这个保存原始load/store的结构一般称为<strong>MSHR(Miss Status/information Holding Register)</strong>，如下图所示：</p>
+<p><img loading="lazy" src="/img/advanced-cache/MSHR.png" alt="Miss Status/information Holding Register"  />
+</p>
+<p>上图中(a)称为MSHR的本体，它只用来保存所有产生<strong>首次缺失</strong>的load/store 指令的信息，它包括三项内容。</p>
+<blockquote>
+<ol>
+<li>首次缺失(Primary Miss): 对于一个给定的地址来说，访问D-Cache时第一次产生的缺失称为首次缺失。</li>
+<li>再次缺失(Secondary Miss): 在发生了首次缺失并且没有被解决完毕之前，后续的访问存储器的指令再次访问这个发生缺失的Cache line，这时就称为再次缺失。</li>
+</ol>
+</blockquote>
+<ol>
+<li>V: valid bit用来指示当前的entry是否被占用，当首次缺失发生时，MSHR本体中的一个表项会被占用，此时valid位会被标记为1。当所需要的Cache line从下级存储器中被取回来时，会释放MSHR本体中被占用的表项，因此valid位会被清零。</li>
+<li>Block Address: 指的是Cache line 中数据块(data block)的公共地址。每次当load/store 指令发生D-Cache缺失时，都会在MSHR的本体中在找它所需的数据块是否处于正在被取回的过程中，这需要和Block Address这一项进行比较才可以知道,通过这种方式，所有访向同一个数据块的指令只需要处理一次就可以了，这样可以避免存储器带宽的浪费。</li>
+<li>Issued: 表示发生首次缺失的load/store指令是否已经开始处理。由于存储器的带宽有限，占用MSHR本体的首次缺失不一定马上就会被处理。</li>
+</ol>
+<p>上图(b)称为LOAD/STORE Table，保存<strong>不论是发生首次缺失还是再次缺失的load/store指令</strong>，它包括五项内容。</p>
+<ol>
+<li>V: valid位，表示一个entry是否被占用。</li>
+<li>MSHR entry: 表示一条发生缺失的load/store指令属于MSHR本体中的哪个表项，由于产生D-Cache缺失的许多load/store指令都可能对应着同一个Cache line，为了避免重复地占用下级存储器的带宽，这些指令只会占据MSHR本体中的一个表项，但是它们需要占用LOAD/STORE Table中不同的表项，这样才能够保证每条指令的信息都不会丢失。同时也会记录下这些指令在MSHR本体中占据了哪个表项，这样当一个Cache line被从下级存储器取回来时，通过和MSHR本体中的block address进行比较，就可以知道它在MSHR本体中的位置。然后就可以在LOAD/STORE table中找到哪些load/store指令属于这个Cache line。</li>
+<li>Dest.register: 对于load指令来说，这部分记录目的寄存器的编号(如果采用了寄存器重命名，就需要记录物理寄存器的编号)，就可以将对应的数据送到这部分所记录的寄存器中；而对于store指令来说，这部分用来记录store指令在Store Buffer中的编号。（这与超标量的处理有关，暂时不展开）</li>
+<li>Type: 记录访问存储器指令的类型，这部分取决于具体指令集的实现，对于MIPS来说，访向存储器的指令类型包括LW(Load Word)、LH(Load Half word)、LB(Load Byte) 、SW(Store Word)、SH(Store Half word)和SB(Store Byte)，通过记录指令的类型，才能够使D-Cache缺失被解决之后，能够继续正确地执行指令。</li>
+<li>Offset: 访向存储器的指令所需要的数据在数据块中的位置，例如对于大小是64字节的数据块来说，这部分的位宽需要6位。</li>
+</ol>
+<p>通过MSHR本体和LOAD/STORE Table的配合，可以支持非阻塞的操作方式，当一条访向存储器的指令发生D-Cache缺失时，首先会在找MSHR的本体，这个查找过程是将发生D-Cache缺失的地址和MSHR中所有的block adress进行比较，根据比较的结果，处理如下：</p>
+<ol>
+<li>如果发现有相等的表项存在，则表示这个缺失的数据块正在被处理，这是<em>再次缺失</em>,此时只需要将这条访问存储器的指令写到LOAD/STORE Table中就可以了。</li>
+<li>如果没有发现相等的项，则表示缺失的数据块是第一次被处理，也就是<em>首次缺失</em>。此时需要将这条访向存储器的指令写到MSHR本体和LOAD/STORETable两个地方。</li>
+</ol>
+<p>如果MSHR本体或者LOAD/STORE Table 中的任意一个已经满了，则表示不能够再处理新的访问存储器指令，此时应该暂停流水线继续选择新的load/store指令送到FU中执行，等待之前的某个D-Cache缺失被解决完毕此时MSHR或者LOAD/STORE Table中就会有空闲的空间了，允许流水线继续执行。在现实世界中的处理器一般出于硅片面积和功耗的考虑，MSHR本体的容量不会很大，<strong>多为4~8个</strong>，也就是 <strong>处理器支持4~8个D-Cache缺失同时进行处理</strong> 。</p>
+<h2 id="multibank-caches">multibank caches</h2>
+<p>一般cache上的读写端口都只有一个，这样限制了我们的并行性。那么我们增加cache上的读写端口如何呢？以双端口Cache为例，在这种设计中，所有在cache中的控制通路和数据通路都需要进行复制：两套地址解码器，两个多路选择器，比较器的数量多出一倍，两个Aligner(完成字节或半字读取)，更重要的是<strong>Tag SRAM和Data SRAM的每个cell都需要同时支持两个并行的读取操作</strong>。这种方法增大了芯片面积，且功耗随之上升，一般不会在实际的处理器上使用。</p>
+<p>那么我们如何既要一次性读取多个数据又要稍微小的硬件代价呢？<code>multibank cache</code>可以实现这样的功能：
+<img loading="lazy" src="/img/advanced-cache/multibank-cache.png" alt="multibank cache"  />
+</p>
+<p>我们把cache分成多个不重合的bank，每个bank还是采用单端口的设计。若在一个周期中，我们所要操作的数据“均匀的”分布在不同的bank当中，我们就可以一次性对多块数据进行操作。这时候，我们只需要增加一些控制通路，但是不用让每个cell都支持并行读取，有效地减小了硬件复杂度。</p>
+<p>影响这种multibank cache性能的关键因素是bank-conflict：它指的是 <strong>若我们某一周期内对cache的操作数据集中在一个bank上，我们就必须串行的完成访问</strong>，相当于丧失了bank的作用。 如何降低bank-conflict呢？一种启发式的切分bank的方法是<strong>interleaving</strong>得把连续的cache-line分到不同的bank中，如下图：
+<img loading="lazy" src="/img/advanced-cache/interleaving-bank.png" alt=""  />
+</p>
+<p>主要的思想就是我们经常同时对相连得cache-line进行访问，那么把它们放在不同的bank里就能避免bank conflict。</p>
+<p>值得一提的是，multibank也是一种提高main memory bandwidth的技巧。</p>
+<h2 id="summary">summary</h2>
+<p>还有一些软件硬件技巧，如prefetch，分块，way-predicting caches等就不一一展开了。</p>
+<p><img loading="lazy" src="/img/advanced-cache/summary.png" alt="cache techniques summary"  />
+</p>
+<h1 id="working-with-tlb-viptvirtual-indexed-physical-tagged">working with TLB: VIPT(Virtual Indexed physical Tagged)</h1>
+<p>在学习TLB相关知识后，我们常认为cpu关于地址翻译的过程是如下图所示的（忽略ASID）：将virtual address经由TLB/page table翻译为物理地址，在利用该物理地址在cache hierarchy中获取数据。</p>
+<p><img loading="lazy" src="/img/advanced-cache/PIPT.png" alt="physical indexed, physical tagged"  />
+</p>
+<p>这种设计在理论上是完全没有问题的，但在真实的处理器中却很少被采用。因为他完全串行了TLB和Cache的访问。事实上我们在上图中可以看出，VA到PA的转化时，低位的offset是完全没有变化的。<strong>若物理地址中寻址Cache的部分使用offset就足够的话，那么就不需要等到TLB得到物理地址后再去寻址Cache，而是直接使用虚拟地址的offet部分</strong>。 如下图所示：</p>
+<p><img loading="lazy" src="/img/advanced-cache/VIPT.png" alt="virtual indexed, physical tagged"  />
+
+相当于用VA做Index，用PA做Tag。这就是VIPT(virtual indexed physical tagged)，当然，这只是VIPT的一种情况。</p>
+<p>假设每个Cache line中包含$2^b$个字节数据，Cache Line的数量是$2^L$，$k$为页大小。那么我们会有几种情况：</p>
+<p><img loading="lazy" src="/img/advanced-cache/VIPT-3.png" alt=""  />
+
+先看前两种情况，实现比较简单，他们的virtual index部分实际上与physical index是一样的（应为在block-offset内，不参与地址翻译）。</p>
+<p>但前两种情况也有缺点，就是这种结构限制了cache的大小，cache的byte数不能超过$2^k（一般为4KB）$。我们现在随便一个l1i-cache就有64~128KiB。要想使用更大的Cache，在不考虑图中(c)结构时，可以采用增加way的个数，这不会引起寻址Cache需要位数的增加。但我们粗略的估算一下，若cache为128KiB，页大小为4KiB，那么我们需要32way的L1i-Cache。根据经验我们不会使用way数这么大的cache，因为这会使得比对tag的时延大大上升。</p>
+<p>那么，如何才能摆脱cache容量受限制这一问题呢？解决方案就是让$L+b&gt;k$，也就是图中(c)的设计，这种设计就是真正的virtual-indexed。但这会遇到 <strong>重名(aliasing)</strong> 问题：<strong>不同的虚拟地址会对应同一个物理地址</strong>。例如在页大小为4KB的系统中，有两个不同虚报地址 VA1和VA2，映射到同一个物理地址PA。有一个直接映射结构的Cache，容量为8KB，需要13位的index才可以对其进行寻址，如下图：
+<img loading="lazy" src="/img/advanced-cache/VIPT-aliasing.png" alt="VIPT aliasing"  />
+
+此时va1与va2的cache index不同，也就造成了Cache中的不同位置存放着物理存储器中的同一位置中的数据。这造成了Cache的浪费，且还会有一致性上的问题。
+如何解决呢？可以用bank的方式或者利用下层cache做标记的方式。这里就不仔细展开了</p>
+<h1 id="reference">reference</h1>
+<ul>
+<li><a href="https://www.youtube.com/watch?v=heZcaz7zjwg&amp;list=PLeWkeA7esB-PN8dBeEjWveHwnpQk7od0m&amp;ab_channel=Prof.Dr.BenH.Juurlink">youtube上一个讲memory hierachy design的系列</a></li>
+<li><a href="https://book.douban.com/subject/26293546/">超标量处理器设计 姚永斌</a></li>
+<li>H&amp;P Computer Architecture: A Quantitative Approach</li>
+<li><a href="https://www.coursera.org/learn/comparch/home/info">coursera上Princeton的Computer Architecture</a> 高级体系结构课程，介绍了超标量乱序多发射结构cpu等</li>
+</ul>
+]]></content:encoded>
+    </item>
+    
+  </channel>
+</rss>

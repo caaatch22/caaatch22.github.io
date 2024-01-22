@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>xcpc template | Mingjie&#39;s Home</title>
+<meta name="keywords" content="icpc">
+<meta name="description" content="icpc模板 Previous Next &nbsp; &nbsp; / [pdf] View the PDF file here. algorithm-template Competitive Programming template
+basic algorithm 双指针 离散化，去重 前缀和与差分 二分 单调栈 单调队列 尺取法 归并排序，快速排序，第k小 树的中心 拓扑排序 math 素数，筛素数，素性测试， 反素数 质因数分解，预处理质因数 欧拉函数 组合数 拓展欧几里得，线性同余方程 中国剩余定理 容斥原理 高斯消元，高斯异或 矩阵乘法 博弈论，Nim游戏 莫比乌斯反演 BSGS FFT 生成函数 线性基 date strcture 并查集 Sparse table Trie, 01Trie 树状数组 线段树，扫描线 树链剖分 可持久化线段树，kth number, 主席树 splay 分块 莫队 点分治 kdtree Graph Floyd bellman-ford, spfa，判负环 dijkstra， 拆点 分层图最短路 差分约束 最小生成树 prim, kruskal 瓶颈生成树 kruskal重构树 lca 二分图匹配 欧拉回路欧拉路径 强连通分量 2-sat 网络流相关 string 字符串hash KMP， 前缀函数 Z-algorithm ac自动机 SA SAM dp 01pack, 完全背包，多重背包及优化，分组背包 线性dp, LCS, LIS, 编辑距离 区间dp 字符串压缩 数位dp 状压dp 树形dp 基环树dp 单调队列优化dp 斜率优化dp Geometry 常用模板 二维凸包 github地址 https://github.">
+<meta name="author" content="">
+<link rel="canonical" href="https://caaatch22.github.io/posts/xcpc-template/">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.678b5c47efa744d2e0dd0d61101075e6aecdc9a0631e7ad8538f4ec0cca79273.css" integrity="sha256-Z4tcR&#43;&#43;nRNLg3Q1hEBB15q7NyaBjHnrYU49OwMynknM=" rel="preload stylesheet" as="style">
+<script defer crossorigin="anonymous" src="/assets/js/highlight.f413e19d0714851f6474e7ee9632408e58ac146fbdbe62747134bea2fa3415e0.js" integrity="sha256-9BPhnQcUhR9kdOfuljJAjlisFG&#43;9vmJ0cTS&#43;ovo0FeA="
+    onload="hljs.initHighlightingOnLoad();"></script>
+<link rel="icon" href="https://caaatch22.github.io/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://caaatch22.github.io/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://caaatch22.github.io/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://caaatch22.github.io/apple-touch-icon.png">
+<link rel="mask-icon" href="https://caaatch22.github.io/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --hljs-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-WEG841BBW9"></script>
+<script>
+var doNotTrack = false;
+if (!doNotTrack) {
+	window.dataLayer = window.dataLayer || [];
+	function gtag(){dataLayer.push(arguments);}
+	gtag('js', new Date());
+	gtag('config', 'G-WEG841BBW9', { 'anonymize_ip': false });
+}
+</script>
+<meta property="og:title" content="xcpc template" />
+<meta property="og:description" content="icpc模板 Previous Next &nbsp; &nbsp; / [pdf] View the PDF file here. algorithm-template Competitive Programming template
+basic algorithm 双指针 离散化，去重 前缀和与差分 二分 单调栈 单调队列 尺取法 归并排序，快速排序，第k小 树的中心 拓扑排序 math 素数，筛素数，素性测试， 反素数 质因数分解，预处理质因数 欧拉函数 组合数 拓展欧几里得，线性同余方程 中国剩余定理 容斥原理 高斯消元，高斯异或 矩阵乘法 博弈论，Nim游戏 莫比乌斯反演 BSGS FFT 生成函数 线性基 date strcture 并查集 Sparse table Trie, 01Trie 树状数组 线段树，扫描线 树链剖分 可持久化线段树，kth number, 主席树 splay 分块 莫队 点分治 kdtree Graph Floyd bellman-ford, spfa，判负环 dijkstra， 拆点 分层图最短路 差分约束 最小生成树 prim, kruskal 瓶颈生成树 kruskal重构树 lca 二分图匹配 欧拉回路欧拉路径 强连通分量 2-sat 网络流相关 string 字符串hash KMP， 前缀函数 Z-algorithm ac自动机 SA SAM dp 01pack, 完全背包，多重背包及优化，分组背包 线性dp, LCS, LIS, 编辑距离 区间dp 字符串压缩 数位dp 状压dp 树形dp 基环树dp 单调队列优化dp 斜率优化dp Geometry 常用模板 二维凸包 github地址 https://github." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://caaatch22.github.io/posts/xcpc-template/" />
+<meta property="og:image" content="https://caaatch22.github.io/img/icpc-algorithm-template/icpc-template.png" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2022-03-17T23:38:14+00:00" />
+<meta property="article:modified_time" content="2022-03-17T23:38:14+00:00" />
+
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:image" content="https://caaatch22.github.io/img/icpc-algorithm-template/icpc-template.png" />
+<meta name="twitter:title" content="xcpc template"/>
+<meta name="twitter:description" content="icpc模板 Previous Next &nbsp; &nbsp; / [pdf] View the PDF file here. algorithm-template Competitive Programming template
+basic algorithm 双指针 离散化，去重 前缀和与差分 二分 单调栈 单调队列 尺取法 归并排序，快速排序，第k小 树的中心 拓扑排序 math 素数，筛素数，素性测试， 反素数 质因数分解，预处理质因数 欧拉函数 组合数 拓展欧几里得，线性同余方程 中国剩余定理 容斥原理 高斯消元，高斯异或 矩阵乘法 博弈论，Nim游戏 莫比乌斯反演 BSGS FFT 生成函数 线性基 date strcture 并查集 Sparse table Trie, 01Trie 树状数组 线段树，扫描线 树链剖分 可持久化线段树，kth number, 主席树 splay 分块 莫队 点分治 kdtree Graph Floyd bellman-ford, spfa，判负环 dijkstra， 拆点 分层图最短路 差分约束 最小生成树 prim, kruskal 瓶颈生成树 kruskal重构树 lca 二分图匹配 欧拉回路欧拉路径 强连通分量 2-sat 网络流相关 string 字符串hash KMP， 前缀函数 Z-algorithm ac自动机 SA SAM dp 01pack, 完全背包，多重背包及优化，分组背包 线性dp, LCS, LIS, 编辑距离 区间dp 字符串压缩 数位dp 状压dp 树形dp 基环树dp 单调队列优化dp 斜率优化dp Geometry 常用模板 二维凸包 github地址 https://github."/>
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "Posts",
+      "item": "https://caaatch22.github.io/posts/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  3 ,
+      "name": "xcpc template",
+      "item": "https://caaatch22.github.io/posts/xcpc-template/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "xcpc template",
+  "name": "xcpc template",
+  "description": "icpc模板 Previous Next \u0026nbsp; \u0026nbsp; / [pdf] View the PDF file here. algorithm-template Competitive Programming template\nbasic algorithm 双指针 离散化，去重 前缀和与差分 二分 单调栈 单调队列 尺取法 归并排序，快速排序，第k小 树的中心 拓扑排序 math 素数，筛素数，素性测试， 反素数 质因数分解，预处理质因数 欧拉函数 组合数 拓展欧几里得，线性同余方程 中国剩余定理 容斥原理 高斯消元，高斯异或 矩阵乘法 博弈论，Nim游戏 莫比乌斯反演 BSGS FFT 生成函数 线性基 date strcture 并查集 Sparse table Trie, 01Trie 树状数组 线段树，扫描线 树链剖分 可持久化线段树，kth number, 主席树 splay 分块 莫队 点分治 kdtree Graph Floyd bellman-ford, spfa，判负环 dijkstra， 拆点 分层图最短路 差分约束 最小生成树 prim, kruskal 瓶颈生成树 kruskal重构树 lca 二分图匹配 欧拉回路欧拉路径 强连通分量 2-sat 网络流相关 string 字符串hash KMP， 前缀函数 Z-algorithm ac自动机 SA SAM dp 01pack, 完全背包，多重背包及优化，分组背包 线性dp, LCS, LIS, 编辑距离 区间dp 字符串压缩 数位dp 状压dp 树形dp 基环树dp 单调队列优化dp 斜率优化dp Geometry 常用模板 二维凸包 github地址 https://github.",
+  "keywords": [
+    "icpc"
+  ],
+  "articleBody": "icpc模板 Previous Next / [pdf] View the PDF file here. algorithm-template Competitive Programming template\nbasic algorithm 双指针 离散化，去重 前缀和与差分 二分 单调栈 单调队列 尺取法 归并排序，快速排序，第k小 树的中心 拓扑排序 math 素数，筛素数，素性测试， 反素数 质因数分解，预处理质因数 欧拉函数 组合数 拓展欧几里得，线性同余方程 中国剩余定理 容斥原理 高斯消元，高斯异或 矩阵乘法 博弈论，Nim游戏 莫比乌斯反演 BSGS FFT 生成函数 线性基 date strcture 并查集 Sparse table Trie, 01Trie 树状数组 线段树，扫描线 树链剖分 可持久化线段树，kth number, 主席树 splay 分块 莫队 点分治 kdtree Graph Floyd bellman-ford, spfa，判负环 dijkstra， 拆点 分层图最短路 差分约束 最小生成树 prim, kruskal 瓶颈生成树 kruskal重构树 lca 二分图匹配 欧拉回路欧拉路径 强连通分量 2-sat 网络流相关 string 字符串hash KMP， 前缀函数 Z-algorithm ac自动机 SA SAM dp 01pack, 完全背包，多重背包及优化，分组背包 线性dp, LCS, LIS, 编辑距离 区间dp 字符串压缩 数位dp 状压dp 树形dp 基环树dp 单调队列优化dp 斜率优化dp Geometry 常用模板 二维凸包 github地址 https://github.com/caaatch22/algorithm-template\n",
+  "wordCount" : "110",
+  "inLanguage": "en",
+  "image":"https://caaatch22.github.io/img/icpc-algorithm-template/icpc-template.png","datePublished": "2022-03-17T23:38:14Z",
+  "dateModified": "2022-03-17T23:38:14Z",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://caaatch22.github.io/posts/xcpc-template/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Mingjie's Home",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://caaatch22.github.io/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+
+<body class="" id="top">
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    } else if (localStorage.getItem("pref-theme") === "light") {
+        document.body.classList.remove('dark')
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+    }
+
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://caaatch22.github.io" accesskey="h" title="Mingjie&#39;s Home (Alt + H)">Mingjie&#39;s Home</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://caaatch22.github.io/about/" title="About">
+                    <span>About</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://caaatch22.github.io/cv/" title="CV">
+                    <span>CV</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://caaatch22.github.io/archives/" title="Archives">
+                    <span>Archives</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://caaatch22.github.io/search/" title="Search (Alt &#43; /)" accesskey=/>
+                    <span>Search</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    <div class="breadcrumbs"><a href="https://caaatch22.github.io">Home</a>&nbsp;»&nbsp;<a href="https://caaatch22.github.io/posts/">Posts</a></div>
+    <h1 class="post-title">
+      xcpc template
+    </h1>
+    <div class="post-meta"><span title='2022-03-17 23:38:14 +0000 UTC'>March 17, 2022</span>&nbsp;·&nbsp;1 min
+
+</div>
+  </header> <aside id="toc-container" class="toc-container wide">
+    <div class="toc">
+        <details  open>
+            <summary accesskey="c" title="(Alt + C)">
+                <span class="details">Table of Contents</span>
+            </summary>
+
+            <div class="inner"><ul><ul>
+                    <li>
+                        <a href="#icpc%e6%a8%a1%e6%9d%bf" aria-label="icpc模板">icpc模板</a></li></ul>
+                        
+                    <li>
+                        <a href="#algorithm-template" aria-label="algorithm-template">algorithm-template</a><ul>
+                            
+                    <li>
+                        <a href="#basic-algorithm" aria-label="basic algorithm">basic algorithm</a></li>
+                    <li>
+                        <a href="#math" aria-label="math">math</a></li>
+                    <li>
+                        <a href="#date-strcture" aria-label="date strcture">date strcture</a></li>
+                    <li>
+                        <a href="#graph" aria-label="Graph">Graph</a></li>
+                    <li>
+                        <a href="#string" aria-label="string">string</a></li>
+                    <li>
+                        <a href="#dp" aria-label="dp">dp</a></li>
+                    <li>
+                        <a href="#geometry" aria-label="Geometry">Geometry</a>
+                    </li>
+                </ul>
+                </li>
+                </ul>
+            </div>
+        </details>
+    </div>
+</aside>
+<script>
+    let activeElement;
+    let elements;
+    window.addEventListener('DOMContentLoaded', function (event) {
+        checkTocPosition();
+
+        elements = document.querySelectorAll('h1[id],h2[id],h3[id],h4[id],h5[id],h6[id]');
+         
+         activeElement = elements[0];
+         const id = encodeURI(activeElement.getAttribute('id')).toLowerCase();
+         document.querySelector(`.inner ul li a[href="#${id}"]`).classList.add('active');
+     }, false);
+
+    window.addEventListener('resize', function(event) {
+        checkTocPosition();
+    }, false);
+
+    window.addEventListener('scroll', () => {
+        
+        activeElement = Array.from(elements).find((element) => {
+            if ((getOffsetTop(element) - window.pageYOffset) > 0 && 
+                (getOffsetTop(element) - window.pageYOffset) < window.innerHeight/2) {
+                return element;
+            }
+        }) || activeElement
+
+        elements.forEach(element => {
+             const id = encodeURI(element.getAttribute('id')).toLowerCase();
+             if (element === activeElement){
+                 document.querySelector(`.inner ul li a[href="#${id}"]`).classList.add('active');
+             } else {
+                 document.querySelector(`.inner ul li a[href="#${id}"]`).classList.remove('active');
+             }
+         })
+     }, false);
+
+    const main = parseInt(getComputedStyle(document.body).getPropertyValue('--article-width'), 10);
+    const toc = parseInt(getComputedStyle(document.body).getPropertyValue('--toc-width'), 10);
+    const gap = parseInt(getComputedStyle(document.body).getPropertyValue('--gap'), 10);
+
+    function checkTocPosition() {
+        const width = document.body.scrollWidth;
+
+        if (width - main - (toc * 2) - (gap * 4) > 0) {
+            document.getElementById("toc-container").classList.add("wide");
+        } else {
+            document.getElementById("toc-container").classList.remove("wide");
+        }
+    }
+
+    function getOffsetTop(element) {
+        if (!element.getClientRects().length) {
+            return 0;
+        }
+        let rect = element.getBoundingClientRect();
+        let win = element.ownerDocument.defaultView;
+        return rect.top + win.pageYOffset;   
+    }
+</script>
+
+  <div class="post-content"><h2 id="icpc模板">icpc模板<a hidden class="anchor" aria-hidden="true" href="#icpc模板">#</a></h2>
+<script src= '/js/pdf-js/build/pdf.js'></script>
+
+<style>
+  #embed-pdf-container {
+    position: relative;
+    width: 100%;
+    height: auto;
+    min-height: 20vh;
+     
+  }
+  
+  .pdf-canvas {
+    border: 1px solid black;
+    direction: ltr;
+    width: 100%;
+    height: auto;
+    display: none;
+  }
+  
+  #the-canvas {
+    border: 1px solid black;
+    direction: ltr;
+    width: 100%;
+    height: auto;
+    display: none;
+  }
+  
+  
+  .pdf-loadingWrapper {
+    display: none;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 350px;
+  }
+  
+  .pdf-loading {
+    display: inline-block;
+    width: 50px;
+    height: 50px;
+    border: 3px solid #d2d0d0;;
+    border-radius: 50%;
+    border-top-color: #383838;
+    animation: spin 1s ease-in-out infinite;
+    -webkit-animation: spin 1s ease-in-out infinite;
+  }
+  
+  
+  
+  
+  
+  #overlayText {
+    word-wrap: break-word;
+    display: grid;
+    justify-content: end;
+  }
+  
+  #overlayText a {
+    position: relative;
+    top: 10px;
+    right: 4px;
+    color: #000;
+    margin: auto;
+    background-color: #eeeeee;
+    padding: 0.3em 1em;
+    border: solid 2px;
+    border-radius: 12px;
+    border-color: #00000030;
+    text-decoration: none;
+  }
+  
+  #overlayText svg {
+    height: clamp(1em, 2vw, 1.4em);
+    width:  clamp(1em, 2vw, 1.4em);
+  }
+  
+  
+  
+  @keyframes spin {
+    to { -webkit-transform: rotate(360deg); }
+  }
+  @-webkit-keyframes spin {
+    to { -webkit-transform: rotate(360deg); }
+  }
+  </style><div class="embed-pdf-container" id="embed-pdf-container-e21a8caf">
+    <div class="pdf-loadingWrapper" id="pdf-loadingWrapper-e21a8caf">
+        <div class="pdf-loading" id="pdf-loading-e21a8caf"></div>
+    </div>
+    <div id="overlayText">
+      <a href="/catch22-algorithm-template.pdf" aria-label="Download" download>
+        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18">
+            <path d="M9 13c.3 0 .5-.1.7-.3L15.4 7 14 5.6l-4 4V1H8v8.6l-4-4L2.6 7l5.7 5.7c.2.2.4.3.7.3zm-7 2h14v2H2z" />
+        </svg>
+      </a>
+    </div>
+    <canvas class="pdf-canvas" id="pdf-canvas-e21a8caf"></canvas>
+</div>
+
+<div class="pdf-paginator" id="pdf-paginator-e21a8caf">
+    <button id="pdf-prev-e21a8caf">Previous</button>
+    <button id="pdf-next-e21a8caf">Next</button> &nbsp; &nbsp;
+    <span>
+      <span class="pdf-pagenum" id="pdf-pagenum-e21a8caf"></span> / <span class="pdf-pagecount" id="pdf-pagecount-e21a8caf"></span>
+    </span>
+    <a class="pdf-source" id="pdf-source-e21a8caf" href="/catch22-algorithm-template.pdf">[pdf]</a>
+</div>
+
+<noscript>
+View the PDF file <a class="pdf-source" id="pdf-source-noscript-e21a8caf" href="/catch22-algorithm-template.pdf">here</a>.
+</noscript>
+
+<script type="text/javascript">
+    (function(){
+    var url = '\/catch22-algorithm-template.pdf';
+
+    var hidePaginator = "" === "true";
+    var hideLoader = "" === "true";
+    var selectedPageNum = parseInt("") || 1;
+
+    
+    var pdfjsLib = window['pdfjs-dist/build/pdf'];
+
+    
+    if (pdfjsLib.GlobalWorkerOptions.workerSrc == '')
+      pdfjsLib.GlobalWorkerOptions.workerSrc = "https:\/\/caaatch22.github.io" + 'js/pdf-js/build/pdf.worker.js';
+
+    
+    var pdfDoc = null,
+        pageNum = selectedPageNum,
+        pageRendering = false,
+        pageNumPending = null,
+        scale = 3,
+        canvas = document.getElementById('pdf-canvas-e21a8caf'),
+        ctx = canvas.getContext('2d'),
+        paginator = document.getElementById("pdf-paginator-e21a8caf"),
+        loadingWrapper = document.getElementById('pdf-loadingWrapper-e21a8caf');
+
+
+    
+    showPaginator();
+    showLoader();
+
+    
+
+    function renderPage(num) {
+      pageRendering = true;
+      
+      pdfDoc.getPage(num).then(function(page) {
+        var viewport = page.getViewport({scale: scale});
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+
+        
+        var renderContext = {
+          canvasContext: ctx,
+          viewport: viewport
+        };
+        var renderTask = page.render(renderContext);
+
+        
+        renderTask.promise.then(function() {
+          pageRendering = false;
+          showContent();
+
+          if (pageNumPending !== null) {
+            
+            renderPage(pageNumPending);
+            pageNumPending = null;
+          }
+        });
+      });
+
+      
+      document.getElementById('pdf-pagenum-e21a8caf').textContent = num;
+    }
+
+    
+
+    function showContent() {
+      loadingWrapper.style.display = 'none';
+      canvas.style.display = 'block';
+    }
+
+    
+
+    function showLoader() {
+      if(hideLoader) return
+      loadingWrapper.style.display = 'flex';
+      canvas.style.display = 'none';
+    }
+
+    
+
+    function showPaginator() {
+      if(hidePaginator) return
+      paginator.style.display = 'block';
+    }
+
+    
+
+    function queueRenderPage(num) {
+      if (pageRendering) {
+        pageNumPending = num;
+      } else {
+        renderPage(num);
+      }
+    }
+
+    
+
+    function onPrevPage() {
+      if (pageNum <= 1) {
+        return;
+      }
+      pageNum--;
+      queueRenderPage(pageNum);
+    }
+    document.getElementById('pdf-prev-e21a8caf').addEventListener('click', onPrevPage);
+
+    
+
+    function onNextPage() {
+      if (pageNum >= pdfDoc.numPages) {
+        return;
+      }
+      pageNum++;
+      queueRenderPage(pageNum);
+    }
+    document.getElementById('pdf-next-e21a8caf').addEventListener('click', onNextPage);
+
+    
+
+    pdfjsLib.getDocument(url).promise.then(function(pdfDoc_) {
+      pdfDoc = pdfDoc_;
+      var numPages = pdfDoc.numPages;
+      document.getElementById('pdf-pagecount-e21a8caf').textContent = numPages;
+
+      
+      if(pageNum > numPages) {
+        pageNum = numPages
+      }
+
+      
+      renderPage(pageNum);
+    });
+    })();
+</script>
+
+<h1 id="algorithm-template">algorithm-template<a hidden class="anchor" aria-hidden="true" href="#algorithm-template">#</a></h1>
+<blockquote>
+<p>Competitive Programming template</p>
+</blockquote>
+<h2 id="basic-algorithm">basic algorithm<a hidden class="anchor" aria-hidden="true" href="#basic-algorithm">#</a></h2>
+<ul>
+<li><input checked="" disabled="" type="checkbox"> 双指针</li>
+<li><input checked="" disabled="" type="checkbox"> 离散化，去重</li>
+<li><input checked="" disabled="" type="checkbox"> 前缀和与差分</li>
+<li><input checked="" disabled="" type="checkbox"> 二分</li>
+<li><input checked="" disabled="" type="checkbox"> 单调栈</li>
+<li><input checked="" disabled="" type="checkbox"> 单调队列</li>
+<li><input checked="" disabled="" type="checkbox"> 尺取法</li>
+<li><input disabled="" type="checkbox"> 归并排序，快速排序，第k小</li>
+<li><input checked="" disabled="" type="checkbox"> 树的中心</li>
+<li><input checked="" disabled="" type="checkbox"> 拓扑排序</li>
+</ul>
+<h2 id="math">math<a hidden class="anchor" aria-hidden="true" href="#math">#</a></h2>
+<ul>
+<li><input checked="" disabled="" type="checkbox"> 素数，筛素数，素性测试， 反素数</li>
+<li><input checked="" disabled="" type="checkbox"> 质因数分解，预处理质因数</li>
+<li><input checked="" disabled="" type="checkbox"> 欧拉函数</li>
+<li><input checked="" disabled="" type="checkbox"> 组合数</li>
+<li><input checked="" disabled="" type="checkbox"> 拓展欧几里得，线性同余方程</li>
+<li><input disabled="" type="checkbox"> 中国剩余定理</li>
+<li><input checked="" disabled="" type="checkbox"> 容斥原理</li>
+<li><input checked="" disabled="" type="checkbox"> 高斯消元，高斯异或</li>
+<li><input checked="" disabled="" type="checkbox"> 矩阵乘法</li>
+<li><input disabled="" type="checkbox"> 博弈论，Nim游戏</li>
+<li><input checked="" disabled="" type="checkbox"> 莫比乌斯反演</li>
+<li><input checked="" disabled="" type="checkbox"> BSGS</li>
+<li><input checked="" disabled="" type="checkbox"> FFT</li>
+<li><input disabled="" type="checkbox"> 生成函数</li>
+<li><input disabled="" type="checkbox"> 线性基</li>
+</ul>
+<h2 id="date-strcture">date strcture<a hidden class="anchor" aria-hidden="true" href="#date-strcture">#</a></h2>
+<ul>
+<li><input checked="" disabled="" type="checkbox"> 并查集</li>
+<li><input checked="" disabled="" type="checkbox"> Sparse table</li>
+<li><input checked="" disabled="" type="checkbox"> Trie, 01Trie</li>
+<li><input checked="" disabled="" type="checkbox"> 树状数组</li>
+<li><input checked="" disabled="" type="checkbox"> 线段树，扫描线</li>
+<li><input checked="" disabled="" type="checkbox"> 树链剖分</li>
+<li><input checked="" disabled="" type="checkbox"> 可持久化线段树，kth number, 主席树</li>
+<li><input disabled="" type="checkbox"> splay</li>
+<li><input disabled="" type="checkbox"> 分块</li>
+<li><input checked="" disabled="" type="checkbox"> 莫队</li>
+<li><input disabled="" type="checkbox"> 点分治</li>
+<li><input disabled="" type="checkbox"> kdtree</li>
+</ul>
+<h2 id="graph">Graph<a hidden class="anchor" aria-hidden="true" href="#graph">#</a></h2>
+<ul>
+<li><input checked="" disabled="" type="checkbox"> Floyd</li>
+<li><input checked="" disabled="" type="checkbox"> bellman-ford, spfa，判负环</li>
+<li><input checked="" disabled="" type="checkbox"> dijkstra， 拆点</li>
+<li><input checked="" disabled="" type="checkbox"> 分层图最短路</li>
+<li><input checked="" disabled="" type="checkbox"> 差分约束</li>
+<li><input checked="" disabled="" type="checkbox"> 最小生成树 prim, kruskal</li>
+<li><input checked="" disabled="" type="checkbox"> 瓶颈生成树</li>
+<li><input checked="" disabled="" type="checkbox"> kruskal重构树</li>
+<li><input checked="" disabled="" type="checkbox"> lca</li>
+<li><input checked="" disabled="" type="checkbox"> 二分图匹配</li>
+<li><input disabled="" type="checkbox"> 欧拉回路欧拉路径</li>
+<li><input checked="" disabled="" type="checkbox"> 强连通分量</li>
+<li><input checked="" disabled="" type="checkbox"> 2-sat</li>
+<li><input disabled="" type="checkbox"> 网络流相关</li>
+</ul>
+<h2 id="string">string<a hidden class="anchor" aria-hidden="true" href="#string">#</a></h2>
+<ul>
+<li><input checked="" disabled="" type="checkbox"> 字符串hash</li>
+<li><input checked="" disabled="" type="checkbox"> KMP， 前缀函数</li>
+<li><input checked="" disabled="" type="checkbox"> Z-algorithm</li>
+<li><input checked="" disabled="" type="checkbox"> ac自动机</li>
+<li><input checked="" disabled="" type="checkbox"> SA</li>
+<li><input checked="" disabled="" type="checkbox"> SAM</li>
+</ul>
+<h2 id="dp">dp<a hidden class="anchor" aria-hidden="true" href="#dp">#</a></h2>
+<ul>
+<li><input checked="" disabled="" type="checkbox"> 01pack, 完全背包，多重背包及优化，分组背包</li>
+<li><input checked="" disabled="" type="checkbox"> 线性dp, LCS, LIS, 编辑距离</li>
+<li><input checked="" disabled="" type="checkbox"> 区间dp 字符串压缩</li>
+<li><input checked="" disabled="" type="checkbox"> 数位dp</li>
+<li><input disabled="" type="checkbox"> 状压dp</li>
+<li><input checked="" disabled="" type="checkbox"> 树形dp</li>
+<li><input checked="" disabled="" type="checkbox"> 基环树dp</li>
+<li><input checked="" disabled="" type="checkbox"> 单调队列优化dp</li>
+<li><input disabled="" type="checkbox"> 斜率优化dp</li>
+</ul>
+<h2 id="geometry">Geometry<a hidden class="anchor" aria-hidden="true" href="#geometry">#</a></h2>
+<ul>
+<li><input disabled="" type="checkbox"> 常用模板</li>
+<li><input disabled="" type="checkbox"> 二维凸包</li>
+</ul>
+<blockquote>
+<p>github地址 <a href="https://github.com/caaatch22/algorithm-template">https://github.com/caaatch22/algorithm-template</a></p>
+</blockquote>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="https://caaatch22.github.io/tags/icpc/">icpc</a></li>
+    </ul>
+<nav class="paginav">
+  <a class="prev" href="https://caaatch22.github.io/posts/cs144-note1/">
+    <span class="title">« Prev</span>
+    <br>
+    <span>cs144-note1</span>
+  </a>
+</nav>
+
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+    <span>&copy; 2024 <a href="https://caaatch22.github.io">Mingjie&#39;s Home</a></span>
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>

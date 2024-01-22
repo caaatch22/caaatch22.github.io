@@ -1,0 +1,2220 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>Posts on Mingjie&#39;s Home</title>
+    <link>https://caaatch22.github.io/posts/</link>
+    <description>Recent content in Posts on Mingjie&#39;s Home</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh-cn</language>
+    <lastBuildDate>Tue, 17 Oct 2023 23:38:14 +0000</lastBuildDate><atom:link href="https://caaatch22.github.io/posts/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Computer Architecture —— 分支预测</title>
+      <link>https://caaatch22.github.io/posts/branch-prediction/</link>
+      <pubDate>Tue, 17 Oct 2023 23:38:14 +0000</pubDate>
+      
+      <guid>https://caaatch22.github.io/posts/branch-prediction/</guid>
+      <description>H&amp;amp;P那本关于分支预测的部分比较简短且表述有点晦涩，（顺便吐槽一下第五版的中文翻译，建议看英文原版）本文主要参考超标量处理器设计，国人写的，用语符合习惯，强烈推荐！
+Motivation 在处理器中，除了cache之外，另一个重要的内容就是分支预测，它和cache一起左右处理器的性能。以SPECint95作为benchmark，完美的cache和BP(branch-predictor)能使IPC提高两倍左右： 图片来自论文SSMT。当然，这是21世纪之前的结果了。现代处理器分支预测普遍能达到97%~98%以上的精度，在多数浮点benchmark中基本都是99%的准确率。
+为什么需要这么高的精度呢？ 一般情况下，分支指令的占比通常在 15% 到 30% 之间。对于经典五级流水线无分支预测cpu，一个branch会造成一次stall；而对于现代的superscalar且流水线级数远高于5的（一般是二十级以上）cpu，其misprediction penalty是 $M * N$ 的（M = fetch group内指令数, N = branch resolution latency，就是决定分支最终是否跳转需要多少周期）。如下图所示： 我们再做一个定量实验： 假设我们有一个
+$ N = 20 (20\ pipe stages), W = 5 (5\ wide fetch) $ 1 out of 5 instructions is a branch Each 5 instruction-block ends with a branch 的CPU，那么我们取出500条指令需要多少个周期呢？
+100% 预测正确率 100 个时钟周期 (all instructions fetched on the correct path) 无额外工作 99% 预测正确率 100 (correct path) + 20 (wrong path) = 120 个时钟周期 20% 额外指令被取出 98% 预测正确率 100 (correct path) + 20 * 2 (wrong path) = 140 个时钟周期 40% 额外指令被取出 95% 预测正确率 100 (correct path) + 20 * 5 (wrong path) = 200 个时钟周期 100% 额外指令被取出 可以看出，分支预测失败在现代的超标量多流水线cpu中的penalty被极大的放大了。所以分支预测的正确性就显得额外重要。</description>
+      <content:encoded><![CDATA[<blockquote>
+<p>H&amp;P那本关于分支预测的部分比较简短且表述有点晦涩，（顺便吐槽一下第五版的中文翻译，建议看英文原版）本文主要参考<a href="https://book.douban.com/subject/26293546/">超标量处理器设计</a>，国人写的，用语符合习惯，强烈推荐！</p>
+</blockquote>
+<h1 id="motivation">Motivation</h1>
+<p>在处理器中，除了cache之外，另一个重要的内容就是分支预测，它和cache一起左右处理器的性能。以SPECint95作为benchmark，完美的cache和BP(branch-predictor)能使IPC提高两倍左右：
+<img loading="lazy" src="/img/branch-prediction/IPC-enhance-with-perfect-BP-Cache.png" alt=""  />
+</p>
+<p>图片来自论文<a href="https://course.ece.cmu.edu/~ece742/f12/lib/exe/fetch.php?media=chappell_ssmt99.pdf">SSMT</a>。当然，这是21世纪之前的结果了。现代处理器分支预测普遍能达到97%~98%以上的精度，在多数浮点benchmark中基本都是99%的准确率。</p>
+<p><strong>为什么需要这么高的精度呢？</strong> 一般情况下，分支指令的占比通常在 <strong>15% 到 30%</strong> 之间。对于经典五级流水线无分支预测cpu，一个branch会造成一次stall；而对于现代的superscalar且流水线级数远高于5的（一般是二十级以上）cpu，其misprediction penalty是 $M * N$ 的（M = fetch group内指令数, N = branch resolution latency，就是决定分支最终是否跳转需要多少周期）。如下图所示：
+<img loading="lazy" src="/img/branch-prediction/mispredict-penalty.png" alt=""  />
+
+我们再做一个定量实验：
+假设我们有一个</p>
+<ul>
+<li>$ N = 20 (20\ pipe stages), W = 5 (5\ wide fetch) $</li>
+<li>1 out of 5 instructions is a branch</li>
+<li>Each 5 instruction-block ends with a branch</li>
+</ul>
+<p>的CPU，那么我们取出500条指令需要多少个周期呢？</p>
+<ul>
+<li>100% 预测正确率
+<ul>
+<li>100 个时钟周期 (all instructions fetched on the correct path)</li>
+<li>无额外工作</li>
+</ul>
+</li>
+<li>99% 预测正确率
+<ul>
+<li>100 (correct path) + 20 (wrong path) = 120 个时钟周期</li>
+<li>20% 额外指令被取出</li>
+</ul>
+</li>
+<li>98% 预测正确率
+<ul>
+<li>100 (correct path) + 20 * 2 (wrong path) = 140 个时钟周期</li>
+<li>40% 额外指令被取出</li>
+</ul>
+</li>
+<li>95% 预测正确率
+<ul>
+<li>100 (correct path) + 20 * 5 (wrong path) = 200 个时钟周期</li>
+<li>100% 额外指令被取出</li>
+</ul>
+</li>
+</ul>
+<p>可以看出，分支预测失败在现代的超标量多流水线cpu中的penalty被极大的放大了。所以分支预测的正确性就显得额外重要。</p>
+<h1 id="takennot-taken">Taken/Not Taken</h1>
+<h2 id="静态分支预测">静态分支预测</h2>
+<h3 id="branch-delay-slots">branch delay slots</h3>
+<p>这是一种软硬件结合的静态分支预测方法，准确的说这不算是一种<em>预测</em>的方法。它要求编译器找出和分支是否发生无关的指令（例如，分支前的指令且没有data dependance）重排到分支指令之后，这样无论分支是否发生，后面的指令都需要执行，以此解决stall的问题。早期的MIPS cpu会采用这种设计。不幸的是，随着cpu的流水线层数越来越多，编译器必须找到N条与该分支指令无关的指令（N为决定分支最终是否跳转需要多少周期）才能喂满delay slots达到没有stall的效果。且随着superscalar架构的流行，这种设计在硬件上也有许多难以解决的冲突，因此最终离开了历史舞台。</p>
+<h3 id="always-taken-or-always-not-taken">always Taken or always Not Taken</h3>
+<p>预测分支总是发生/不发生是最简单的分支预测方法。此外，我们还有这样的规律可以利用：
+<img loading="lazy" src="/img/branch-prediction/static-BP.png" alt=""  />
+
+这是因为在循环中，分支backward跳转发生的几率是很大的。那我们或许可以在此事实上建立一个<em>Backward Branch Taken, Forward Branch Not Taken</em>的预测方法。</p>
+<ol>
+<li>Always Predict Not-Taken
+<ul>
+<li>Basically o nothing, simple to implement</li>
+<li>Know fall-through PC in Fetch</li>
+<li>Poor Accuracy, especially on backward branches</li>
+</ul>
+</li>
+<li>Always Predict Taken
+<ul>
+<li>Difficult to implement because don’t know target until Decode</li>
+<li>Poor accuracy on if-then-else</li>
+</ul>
+</li>
+<li>Backward Branch Taken, Forward Branch Not Taken
+<ul>
+<li>Better Accuracy</li>
+<li>Difficult to implement because don’t know target until Decode</li>
+</ul>
+</li>
+</ol>
+<p>这些方法都能显著提高分支预测的成功率，但是远远还达不到95%以上的准确率。</p>
+<h2 id="动态分支预测">动态分支预测</h2>
+<p>动态分支预测中的<em>动态</em>，按我的理解，指的是根据<strong>历史分支跳转情况</strong>调整接下来的分支预测方向。</p>
+<h3 id="2-bit-predictor">2-bit predictor</h3>
+<p>一个最intuitive的方式就是我们用上一次分支是否跳转来预测当前分支是否跳转。注意，这里的上一次指的是 上次执行<strong>该分支指令</strong>时是否跳转，而并<strong>不是依据上一条分支来预测本分支</strong>。
+实现方式也比较简单：我们将所有分支指令（的地址）都对应一个bit，来表示上次跳转的结果。具体细节可以看后面2-bit predictor</p>
+<p>这种预测方式至少在循环中能有不错的结果——若循环m次，则missprediction为$\frac{1}{m} \ or\ \frac{2}{m}$（如果第一次默认为不跳转那么第一次循环会被预测错误）。但是在某种极端情况下，它的分支正确率为0%</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">int</span> i <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>; i <span style="color:#f92672">&lt;</span> n; i <span style="color:#f92672">++</span>) {
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">if</span> (a[i] <span style="color:#f92672">%</span> <span style="color:#ae81ff">2</span> <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span>) {  <span style="color:#75715e">// &lt;--- branch A
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">do</span> something;
+</span></span><span style="display:flex;"><span>  } <span style="color:#66d9ef">else</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">do</span> something <span style="color:#66d9ef">else</span>;
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>对于branch A 这个分支，若a数组中的元素为奇偶交替出现，且$a[0]$为奇数，则实际跳转为$TNTNTNTNTN&hellip; (T:taken, N: not taken)$；不幸的是，我们将用于该分支的预测的bit初始化为0，那么我们会预测为$NTNTNTNT&hellip;$ 其失败率将为100%！</p>
+<p>为了避免这种问题，人们发明了2-bit predictor——每个分支的历史信息用两个bit来维护。其状态图如下：
+<img loading="lazy" src="/img/branch-prediction/2bit-predictor.svg" alt=""  />
+
+其实<code>2-bit predictor</code>很类似于<code>LRU-k</code>的思想，对于<em>抖动</em>的程序有更好的效果：比如对于$TTTNTTT$的分支，<code>2-bit predictor</code>会<em>容忍</em>其中的Not Taken，只是将状态由<code>Strongly Taken</code>转变为<code>Weakly Taken</code>，但在$N$发生的下一次仍然会预测为$T$。所以它就可以有效地防止在$TNTNTNTNTN&hellip;$的情况下失败率为100%。
+另外，对于多重循环：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">int</span> i <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>; i <span style="color:#f92672">&lt;</span> n; i <span style="color:#f92672">++</span>) {
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">int</span> j <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>; j <span style="color:#f92672">&lt;</span> m; j <span style="color:#f92672">++</span>) {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">do</span> something;
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>2-bit predictor 对内层循环的准确率就是$\frac{1}{m}$的（除了第一次外层循环），这也优于用1-bit predictor的情况。</p>
+<p>我们在来考虑如何实现<code>2-bit predictor:</code>
+最直接的方法是我们对每条指令（即便他不是分支指令）都要有一个独立的predictor，那么在32位机器中这就要求存储空间 $2^{30} * 2 bit \approx  0.25 GB$，这么大的额外的硅芯面积显然是无法接受的。
+我们可以用下图所示来存储2-bit predictor的值：
+<img loading="lazy" src="/img/branch-prediction/2-bit-predictor-impl.png" alt=""  />
+
+图中的PHT(pattern history table)存放的就是所有PC值对应的2-bit predictor。我们只用了PC值当中的k位来对PHT进行寻址，因此PHT的大小就是$2^{k} \times 2bit$的。但使用这种方式来寻址PHT，必然就会导致那k-bit相同的PC映射到相同的PHT entry上，这种情况称为<code>aliasing</code>，aliasing会对分支预测的准确度产生影响。这就是设计者得做出的trade-off了，增大k能提高准确率但需要消耗更多硬件。我们还可以将PC的经过某种哈希后再取k位，这样能减少碰撞概率。</p>
+<p>我们按照从用1-bit来记录历史跳转情况到用2-bit记录的思路，是否可以用n-bit来记录，以使得我们的预测跳转部件对程序跳转抖动<strong>更加容忍</strong>呢？大量的测试表明，再往上加bit的数量已经无益于准确率的提高了。
+<code>2-bit predictor</code>是90年代比较主流的分支预测方法，4K-entry BHT, 2 bits/entry 已经基本能达到 <strong>80%~90%</strong> 左右的正确率了。</p>
+<h3 id="local-history-branch-prediction">Local History Branch Prediction</h3>
+<p>我们现在考虑一种带有“循环节”的分支跳转模式：$TTNNTTNNTTNN&hellip;$，我们的2-bit predictor没法“观察”到这种规律并加以利用。那该如何解决呢？我们可以对 <strong>每一条分支使用一个寄存器来记录该分支在过去的历史状态</strong>，只要这个历史状态很有规律，我们就能利用它，这样的寄存器称为分支历史寄存器（Branch History Register, BHR）。我们用一个n-bit的BHR记录一条指令过去n次的执行情况，对一个BHR，用多个2-bit predictor捕捉规律。</p>
+<p><img loading="lazy" src="/img/branch-prediction/Local-BHR.png" alt=""  />
+
+上图中，我们用一个4-bit的BHR分支记录历史，经过足够多次的预热，当我们的BHR从<code>1011</code>变成<code>0001</code>时，对应的2-bit predictor从<code>11</code>变成了<code>00</code>。这样就捕捉了图中<code>TTTTNTTTTN...</code>的循环规律。
+引入BHR增加了硬件的复杂性，对于BHR需要预热/训练的次数，取决于<strong>BHR的位数，位数越多需要训练次数越多，但也能预测更大的循环节的分支</strong>。为了减少硬件开销，我们也可以只用PC的k个bit来对应一个BHR，如下图所示：
+<img loading="lazy" src="/img/branch-prediction/BHR-impl.png" alt=""  />
+
+这也会带来不同PC的分支可能被映射到同意BHR的问题，我们可以通过将PC进行哈希、PC与BHR拼接或异或后映射到PHT等方法提升准确度。Again，这也会增加硬件的复杂性。</p>
+<h3 id="global-history-branch-prediction">Global History Branch Prediction</h3>
+<p>我们通过BHR的设计已经把对同一条分支指令的动态预测处理到极致了（对于没有循环节规律的分支，我们还有办法预测吗？这是不是很像经典的机器学习问题？事实上，早在2000年，就已经提出了<a href="https://www.cs.cmu.edu/afs/cs/academic/class/15740-f18/www/papers/hpca01-jiminez-perceptron.pdf">用感知机进行动态分支预测的方法</a>，效果也很不错）。</p>
+<p>于是人们又想，分支预测除了本分支历史结果有关，是否还和其他分支有关呢？借助这样的启发式规则，发明了基于全局历史的分支预测方法。对于某一条分支指令，全局指的就是其他分支指令。考虑下面一段代码：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">if</span>(a <span style="color:#f92672">==</span> <span style="color:#ae81ff">2</span>) a <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span>(b <span style="color:#f92672">==</span> <span style="color:#ae81ff">2</span>) b <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span>(a <span style="color:#f92672">!=</span> bb) { ... };
+</span></span></code></pre></div><p>分析这一段代码，容易发现当第一条、第二条分支指令不执行时（即操作a = 0、b = 0），第三条指令一定会执行。如何记录全局分支呢？与局部历史分支预测类似的，我们用一个寄存器来记录全局历史分支跳转情况，这个寄存器称为 <strong>Global History Register（GHR）</strong>。与BHR不同的是，我们不需要对所有PC都记录一个历史分支跳转的值，而只需要一个全局的GHR就可以。一个简单的基于全局历史的分支预测如下：
+<img loading="lazy" src="/img/branch-prediction/GHR-impl.png" alt=""  />
+</p>
+<p>事实上Global branch predictor对比2-bit predictor在small predictor sizes（我的理解是GHR的位数很少）的时候表现更差（见<a href="https://citeseerx.ist.psu.edu/document?repid=rep1&amp;type=pdf&amp;doi=3501e3787a267dd572fe06c3dc1c70a76dc9702b">McFarling93</a>）
+这主要是因为不同的分支经常有这相同的“全局历史”，特别是当GHR位数较少时，他们容易被映射到相同的2-bit predictor上。</p>
+<h3 id="tournament-predictors-adaptively-combining-local-and-global-predictors">Tournament Predictors: Adaptively Combining Local and Global Predictors</h3>
+<p>显然，我们可以想办法结合<code> Global History Branch Prediction</code>和 <code>Local History Branch Prediction</code>。Tournament Predictor就是一个经典的例子：
+<img loading="lazy" src="/img/branch-prediction/tournament-predictor.png" alt="tournament-predictor"  />
+</p>
+<p>我们用一个selector来选择使用Global predictor的结果还是用Loacal Predictor的结果。具体这个selector应该如何实现呢？其基本思想就是用一个<strong>类似于2-bit predictor的东西来训练选哪个predictor</strong>：
+<img loading="lazy" src="/img/branch-prediction/tournament-predictor-impl.png" alt=""  />
+
+根据以往的分支预测结果训练selector。</p>
+<h3 id="sota-tage">SOTA: TAGE</h3>
+<p>很多现代CPU都使用了基于 TAGE(TAgged GEometric History Length Branch Prediction) 的思想的分支预测器。这种方法早在2006年就已提出。此后TAGE及其变种连续蝉联<a href="https://jilp.org/cbp2016/">CBP(Championship Branch Prediction)</a>比赛的冠军（是的，竟然还有个专门做分支预测的比赛）。</p>
+<p><img loading="lazy" src="/img/branch-prediction/TAGE.png" alt="TAGE"  />
+
+如图所示，其基本思想是：由多个Global predictor组成，每个global predictor由PC和GHR的不同长度的值映射到BHT表中得到。在此基础上增加了tag和预测结果进行比较。给出的结果于具有最长分支历史且具有匹配标记的预测器。P(0)始终匹配，因为它不使用tag，在P(1)到P(n)中没有任何一个匹配时，使用P(0)。具体细节可以看<a href="https://www.irisa.fr/caps/people/seznec/JILP-COTTAGE.pdf">原论文</a>。</p>
+<h1 id="跳转地址">跳转地址</h1>
+<p>分支预测除了需要预测该次跳转是否发生，还有一个重要问题就是我们<strong>需要预测出target address</strong>。
+分支的跳转可以分为<code>直接跳转</code>和<code>间接跳转</code>。直接跳转的目标地址以立即数的形式存在指令中，那么我们就能在译码时得到预测的地址，但是由于现代处理器流水线更长，取指就可能被分成多段，所以我们需要在已得到PC时就预测跳转结果地址。对于间接跳转的分支，目标地址存在通用寄存器中，会更加难以预测。下文只简单介绍直接跳转时的 target address 预测，对于间接跳转的地址预测，可以参考《超标量处理器设计》4.3.2</p>
+<h2 id="直接跳转">直接跳转</h2>
+<p>分为两种情况：</p>
+<ol>
+<li>分支指令不发生跳转：
+$target\ addr = cur\ PC + sizeof(fetch\ group)$</li>
+<li>分支指令发生跳转：
+$target\ addr = cur\ PC + SignExd(offset)$</li>
+</ol>
+<p>第一种情况我们可以在上述 Taken/Not Taken 得到结果后，若是NT，则马上得到target addr.
+而对于第二种情况，我们取指完才能得到target addr，这是不可以接受的。所以我们要在刚知道PC时就进行结果预测。如何预测呢？其实就是用一个cache来记录。由于一个进程的分支指令的地址是不会改变的，即PC为分支的指令一直都是分支指令，那么我们只要将其记录结果下来，就可以在之后的预测中在取得PC时候就通过cache得到target addr 。这里cache被称作BTB(Branch Target Buffer)。
+<img loading="lazy" src="/img/branch-prediction/BTB.png" alt="BTB"  />
+
+实现也与普通的cache没有多大区别。</p>
+<h1 id="reference">reference</h1>
+<ul>
+<li><a href="https://book.douban.com/subject/26293546/">超标量处理器设计 姚永斌</a></li>
+<li>H&amp;P Computer Architecture: A Quantitative Approach</li>
+<li><a href="https://www.coursera.org/learn/comparch/home/info">coursera上Princeton的Computer Architecture</a> 高级体系结构课程，介绍了超标量乱序多发射结构cpu等</li>
+</ul>
+]]></content:encoded>
+    </item>
+    
+    <item>
+      <title>C&#43;&#43;内存模型 —— 现代Architecture的妥协</title>
+      <link>https://caaatch22.github.io/posts/c-%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B--%E7%8E%B0%E4%BB%A3architecture%E7%9A%84%E5%A6%A5%E5%8D%8F/</link>
+      <pubDate>Fri, 01 Sep 2023 15:51:19 +0000</pubDate>
+      
+      <guid>https://caaatch22.github.io/posts/c-%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B--%E7%8E%B0%E4%BB%A3architecture%E7%9A%84%E5%A6%A5%E5%8D%8F/</guid>
+      <description>介绍 什么是内存模型(Memory Model)呢？这里介绍的内存模型并非C++对象的内存排布模型，而是一个非编程语言层面的概念。我们知道在C++11中，标准引入了 std::atomic&amp;lt;&amp;gt;原子对象，同时还引入了
+memory_order_relaxed memory_order_consume memory_order_acquire memory_order_release memory_order_acq_rel memory_order_seq_cst 这六种 memory order。引入可以让我们进行无锁编程，而如果你想要更高性能的程序，你就必须深挖这六种内存模型的含义并正确应用。（当然，在不显式指明memory order的情况下，你能保证获得正确的代码，但存在性能损失）
+内存模型 在介绍C++ memory order之前，我们先回答另一个问题。你的计算机执行的程序就是你写的程序吗? —— 显然不是的。
+原因也很简单，为了更高效的执行指令，编译器、CPU结构、缓存及其他硬件系统都会对指令进行增删，修改，重排。但要回答具体进行了什么样的修改，又是一个极其复杂的问题。或者说，整个现代体系结构，就是在保证程序正确性的前提下利用各种手段对程序优化。我们可以粗略的将其分成几个部分：
+source code order: 程序员在源代码中指定的顺序 program code order: 基本上可以看成汇编/机器码的顺序，它可以由编译器优化后得到 execution code order: CPU执行指令顺序也不见得与汇编相同，不同CPU在执行相同机器码时任然存在优化空间。 perceived order/physical order: 最终的执行顺序。即便CPU按照某种确定指令执行，物理时间上的执行顺序仍然可能不同。例如，在超标量CPU中，一次可以fetch and decode多个指令，这些指令之间的物理执行顺序就是不确定的；由于不同层级缓存之间延时不同，以及缓存之间的通信需要等带来的不确定的执行顺序等 上图简要说明了你的源代码可能经历的优化步骤。
+这些优化的一个主要原因在于 掩盖memory access操作与CPU执行速度上的巨大鸿沟。如果没有cache，CPU每个访存指令都需要stall一两百个时钟周期，这是不可接受的。但是引入cache的同时又会带来 cache coherence等问题，这也是造成x初始为0，两个线程同时执行 x++，而x最终不一定为 2的元凶。而一个内存模型则对上述并发程序的同一块内存进行了一定的限制，它给出了在并发程序下，任意一组写操作时，可能读到的值。 不同体系结构(x86, arm, power&amp;hellip;)通过不同的内存模型来保证程序的正确性。
+bonus question: 不同等级的cache latency？
+answer: l1: 1ns, l2: 5ns, l3: 50~100ns, main memory: 200ns
+Sequential Consistency(SC) SC是最严格的内存模型，也被称作non-weak memory model。在该模型下，多线程程序执行的可做如下分析：对于每一步，随机选择一个线程，并执行该线程执行中的下一步（例如，按程序或编译的顺序）。重复这个过程，直到整个程序终止。这实际上等效于按照（程序或编译的）顺序执行所有线程的所有步骤，并以某种方式交错它们，从而产生所有步骤的单一总顺序。SC不允许重新排列线程的步骤。因此，每当访问对象时，都会检索该顺序中存储在对象中的最后一个值。（注意，内存模型中说的重新排列与编译器层面无关，编译器自然是可以讲没有data dependance的读写操作进行重排的，只要保证程序的正确性即可。内存模型中的重排指的是在硬件执行阶段，由于cache hierarchy等引发的一些问题导致指令物理执行顺序被改变）。</description>
+      <content:encoded><![CDATA[<!-- raw HTML omitted -->
+<!-- raw HTML omitted -->
+<h2 id="介绍">介绍</h2>
+<p>什么是内存模型(Memory Model)呢？这里介绍的内存模型并非<a href="https://citeseerx.ist.psu.edu/document?repid=rep1&amp;type=pdf&amp;doi=160489e8b12cd9a44cbff0cd85fb6aa05437d1ac">C++对象的内存排布模型</a>，而是一个非编程语言层面的概念。我们知道在C++11中，标准引入了 <code>std::atomic&lt;&gt;</code>原子对象，同时还引入了</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>memory_order_relaxed
+</span></span><span style="display:flex;"><span>memory_order_consume
+</span></span><span style="display:flex;"><span>memory_order_acquire
+</span></span><span style="display:flex;"><span>memory_order_release
+</span></span><span style="display:flex;"><span>memory_order_acq_rel
+</span></span><span style="display:flex;"><span>memory_order_seq_cst
+</span></span></code></pre></div><p>这六种 <code>memory order</code>。引入可以让我们进行<strong>无锁编程</strong>，而如果你想要更高性能的程序，你就必须深挖这六种内存模型的含义并正确应用。（当然，在不显式指明memory order的情况下，你能保证获得正确的代码，但存在性能损失）</p>
+<h2 id="内存模型">内存模型</h2>
+<p>在介绍C++ memory order之前，我们先回答另一个问题。<em>你的计算机执行的程序就是你写的程序吗? —— 显然不是的。</em></p>
+<p>原因也很简单，为了更高效的执行指令，编译器、CPU结构、缓存及其他硬件系统都会对指令进行增删，修改，重排。但要回答具体进行了什么样的修改，又是一个极其复杂的问题。或者说，整个现代体系结构，就是在保证程序正确性的前提下利用各种手段对程序优化。我们可以粗略的将其分成几个部分：</p>
+<ol>
+<li><strong>source code order:</strong> 程序员在源代码中指定的顺序</li>
+<li><strong>program code order:</strong> 基本上可以看成汇编/机器码的顺序，它可以由编译器优化后得到</li>
+<li><strong>execution code order:</strong> CPU执行指令顺序也不见得与汇编相同，不同CPU在执行相同机器码时任然存在优化空间。</li>
+<li><strong>perceived order/physical order:</strong> 最终的执行顺序。即便CPU按照某种确定指令执行，物理时间上的执行顺序仍然可能不同。例如，在超标量CPU中，一次可以fetch and decode多个指令，这些指令之间的物理执行顺序就是不确定的；由于不同层级缓存之间延时不同，以及缓存之间的通信需要等带来的不确定的执行顺序等</li>
+</ol>
+<p><img loading="lazy" src="/img/memory-model/optimization-by-different-parts-of-computer.png" alt="optimizations-by-compyter"  />
+</p>
+<p>上图简要说明了你的源代码可能经历的优化步骤。</p>
+<p>这些优化的一个主要原因在于 掩盖memory access操作与CPU执行速度上的巨大鸿沟。如果没有cache，CPU每个访存指令都需要stall一两百个时钟周期，这是不可接受的。但是引入cache的同时又会带来 <code>cache coherence</code>等问题，这也是造成x初始为0，两个线程同时执行 <code>x++</code>，而x最终不一定为 <code>2</code>的元凶。<strong>而一个内存模型则对上述并发程序的同一块内存进行了一定的限制，它给出了在并发程序下，任意一组写操作时，可能读到的值。</strong> 不同体系结构(x86, arm, power&hellip;)通过不同的内存模型来保证程序的正确性。</p>
+<blockquote>
+<p>bonus question: 不同等级的cache latency？</p>
+<p>answer: l1: 1ns, l2: 5ns, l3: 50~100ns, main memory: 200ns</p>
+</blockquote>
+<h3 id="sequential-consistencysc">Sequential Consistency(SC)</h3>
+<p>SC是最严格的内存模型，也被称作non-weak memory model。在该模型下，多线程程序执行的可做如下分析：对于每一步，随机选择一个线程，并执行该线程执行中的下一步（例如，按程序或编译的顺序）。重复这个过程，直到整个程序终止。这实际上等效于按照（程序或编译的）顺序执行所有线程的所有步骤，并以某种方式交错它们，从而产生所有步骤的单一总顺序。SC不允许重新排列线程的步骤。因此，每当访问对象时，都会检索该顺序中存储在对象中的最后一个值。（注意，内存模型中说的重新排列与编译器层面无关，编译器自然是可以讲没有data dependance的读写操作进行重排的，只要保证程序的正确性即可。内存模型中的重排指的是在硬件执行阶段，由于cache hierarchy等引发的一些问题导致指令物理执行顺序被改变）。</p>
+<p>也就是说，我们可以抽象出一个简单的内存结构：
+<img loading="lazy" src="/img/memory-model/SC-model.png" alt="SC-model"  />
+
+在这种结构中，我们隐藏了cache与store buffer的存在，或者说SC协议允许我们无视这两个硬件。
+那么，我们对于下面表格中的问题就有确定的答案：</p>
+<table>
+<thead>
+<tr>
+<th>Thread 1</th>
+<th>Thread 2</th>
+<th>main</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>x = 1</td>
+<td>y = 1</td>
+<td>x = 0, y = 0</td>
+</tr>
+<tr>
+<td>y&rsquo; = y</td>
+<td>x&rsquo; = x</td>
+<td>Spawn thread 1, 2; Wait for threads</td>
+</tr>
+</tbody>
+</table>
+<p>显然，在SC模型中最终的结果只可能是：</p>
+<ol>
+<li>x = 1, y = 1;</li>
+<li>x = 0, y = 1;</li>
+<li>x = 1, y = 0;</li>
+</ol>
+<p>而不会出现 x = 0; y = 0的情况。</p>
+<p>SC模型很美好，分析起来简单，心智负担小。但是为了保证顺序一致性，他付出了一定的性能代价。所以，并没有哪个成熟的体系结构真正使用SC模型。现代体系结构纷纷为了性能而做出了不同程度的妥协。</p>
+<h3 id="x86-tso">x86-TSO</h3>
+<p>x86-TSO(Total Store Order)，它比SC更<em>弱</em>，但仍是现代CPU约束最强的内存模型其中之一。tso的架构可以用以下抽象来代替：
+<img loading="lazy" src="/img/memory-model/TSO-model.png" alt="TSO-model"  />
+
+注意，这并非真实的x86的架构(毕竟连cache都没有)，只是x86-tso模型保证我们得到这样的抽象。这里的store buffer(或者叫write buffer)也不一定对应着硬件上的store buffer。它也可以是cache hierarchy的一部分，他们之间有一致性协议进行约束来保证上图中的效果。</p>
+<p>TSO模型最重要的几个特性：</p>
+<ul>
+<li>store buffer是FIFO的，读取线程必须读取其自身最近缓冲的写操作，如果有的话，读取的地址与该写操作一致。否则，读取操作将从共享内存中满足。</li>
+<li>mfence 指令会清空该hardware thread的store buffer</li>
+<li>要执行一个带锁的指令，线程必须首先获取全局锁。在指令结束时，它会清空自己的store buffer并释放锁。当一个线程持有锁时，其他线程无法读取。这基本上意味着带锁的指令强制实现了顺序一致性。</li>
+<li>线程的可以在任何时间传播到共享内存中，除非另一个线程持有锁。</li>
+</ul>
+<p>在TSO下，对于上述表格中的问题，则可能出现 <code>x = 0, y = 0</code>的结果：<code>x = 1</code>与 <code>y = 1</code>都被放到store buffer上而未被flush到shared memory中。</p>
+<p>也就是说：
+x86-TSO does not permit local reordering <strong>except of reads after writes to different addresses.</strong></p>
+<pre tabindex="0"><code class="language-assemble" data-lang="assemble">thread 1, thread 2    可能会     thread 1, thread 2
+write a,  write b     ----&gt;      read b,   read a
+read b,   read a                 write a,  write b
+</code></pre><p>要解决这个问题也很简单，在write后加上mfence指令即可，它会将store buffer中的存储刷到shared memory中。
+这也是TSO比SC理论性能更高的原因，它舍弃了一定的正确性，来减少每次写操作都flush store buffer的开销。</p>
+<blockquote>
+<p>Fun Fact: intel和amd从没承认过他们的x86一定符合x86-tso内存模型，但是他们进行过黑盒测试，结果证明了这一点。（就连设计者都难以reason出理论上的结果，而是通过测试证明的）</p>
+</blockquote>
+<h3 id="arm-and-power">ARM and POWER</h3>
+<p>Arm and power则有着更加宽松的内存模型。为了理解这样一台机器的行为，我们可以认为每个hardware thread都拥有自己的内存副本，如下图所示。所有内存副本和它们的interconnection（即除了线程以外的一切）的集合通常被称为<em>storage subsystem</em>。一个线程的写操作可能以<strong>任何顺序</strong>传播到其他线程，并且不同地址的写操作的传播可以任意交错，除非它们受到屏障或缓存一致性的限制。也可以将屏障视为从执行它们的硬件线程传播到每个其他线程的操作。
+<img loading="lazy" src="/img/memory-model/ARM-model.png" alt="Arm-Model"  />
+</p>
+<p>由于每个线程都有自己的子存储系统，它们之间的同步就需要fence进行保障。ARM和POWER提供了barrier(fence)指令(分别是 <code>dbm</code> 和 <code>sync</code>)来约束下面几种顺序：</p>
+<ol>
+<li>Read/Read之间fence:保证他们按照program
+order执行</li>
+<li>Read/Write屏障: 确保在写操作被提交（因此传播并对其他人可见）之前，读操作被满足并提交。</li>
+<li>Write/Write屏障：确保第一个写操作在第二个写操作被提交之前被提交并传播到所有其他线程。</li>
+<li>Write/Read屏障：确保在读操作被满足之前，写操作已被提交并传播到所有其他线程。
+POWER架构还提供了一个额外的“轻量级同步”指令，称为 <code>lwsync</code>，它比sync指令更弱，也因此可能更快。具体作用不在此处赘述。</li>
+</ol>
+<p>除了屏障之外，这些体系结构还提供以下依赖关系来强制顺序：</p>
+<ul>
+<li>Address dependency：当第一条指令读取的值用于计算第二条指令的地址时，从一个读操作到程序顺序后的读或写之间存在地址依赖。</li>
+<li>Control dependency：当第一条指令读取的值用于计算在第二条指令之前的程序顺序条件分支的条件时，从一个读操作到程序顺序后的读/写之间存在控制依赖。</li>
+<li>Data dependency：当第一条指令读取的值用于计算由第二条指令写入的值时，从一个读操作到程序顺序后的写之间存在数据依赖。</li>
+</ul>
+<p>在ARM和POWER处理器中，read-to-read的control dependency力度较小，因为它们可以在条件分支之前进行推测性执行，从而在第一次读取之前满足第二次读取。为了增加read-to-Read的控制依赖的影响力，可以在条件分支和第二次读取之间添加一个ISB（ARM）或isync（POWER）指令。
+相反，read-to-write的control dependency具有一定的影响力：在分支被提交之前，写操作不会被其他任何线程看到，因此也不会在第一次读取的值固定之前被看到。
+总结一下，从一个读取到另一个读取，如果存在address dependency 或带有 ISB/isync 的控制依赖，将阻止第二个读取在第一个读取之前被满足，而纯粹的control dependency则不会。从读取到写入，地址、控制或数据依赖都将阻止写入在读取的值固定之前对任何其他线程可见。</p>
+<h2 id="c-memory-order">C++ memory order</h2>
+<p>对于 <code>weak memory model</code>，特别是上面介绍的ARM的内存模型，想要精细的控制程序的允许重排的程度需要非常大的心智负担。（光是不同体系结构，不同等级的fence指令就令人望而却步）。因此C++11标准提供的六种memory order就是从语言层面来约束最终希望达到的对程序被优化程度的限制。现在我们再看这几种memory order就比较清晰了。（以下说法并不严谨，但是作为程序员的take away完全足够了。</p>
+<table>
+<thead>
+<tr>
+<th>Memory Order</th>
+<th>Explaination</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>memory_order_relaxed</td>
+<td>表示这个R/W操作除了原子性外没有任何其他限制，他可能会被重排到程序的任何位置（当然，编译器不会允许将他重排到同一个线程对同一个原子变量写操作的前面，这违背了正确性）</td>
+</tr>
+<tr>
+<td>memory_order_consume</td>
+<td>(只用于读) 后面依赖此原子变量的访存指令不允许重排至此条指令之前。 注意，当前标准中的memory_order_consume是<a href="https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0371r0.html%E6%89%80%E4%BB%A5%E4%B8%8D%E8%A6%81%E4%BD%BF%E7%94%A8">没有实际用处的</a>， 一般情况下不要使用</td>
+</tr>
+<tr>
+<td>memory_order_acuqire</td>
+<td>(只用于读) 后面访存指令不允许重排至此条指令之前</td>
+</tr>
+<tr>
+<td>memory_order_release</td>
+<td>(只用于写) 前面访存指令不允许重排至此条指令之后。当此条指令的结果对其他线程可见后，之前的所有指令都可见</td>
+</tr>
+<tr>
+<td>memory_order_acq_rel</td>
+<td>acquire + release语意</td>
+</tr>
+<tr>
+<td>memory_order_seq_cst</td>
+<td>满足sequential_consistency内存模型</td>
+</tr>
+</tbody>
+</table>
+<!-- raw HTML omitted -->
+<p>在默认情况下，<code>std::atomic&lt;&gt;</code>相关函数总是选用 <code>std::memory_order_seq_cst</code>，它能有效地帮我们避免错误。但是，我们既然都使用 <code>atomic</code>而不是 <code>mutex</code>了，自然是对性能有较高要求。
+<img loading="lazy" src="/img/memory-model/memory-barriers-performance.png" alt="memory barriers and performance"  />
+ 从上图中可以看出，<code>memory_order_relaxed</code>的写性能和 <code>non-atomic</code>几乎没有差别，而 <code>seq_cst</code>则要慢许多。</p>
+<p>另一方面，使用不同等级的 <code>memory order</code>也能更好的表达你的代码的意图：</p>
+<h3 id="relaxed-model">relaxed-model</h3>
+<p>最典型的例子就是一个线程安全的计数器。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>std<span style="color:#f92672">::</span>atomic<span style="color:#f92672">&lt;</span>size_t<span style="color:#f92672">&gt;</span> counter;
+</span></span><span style="display:flex;"><span>counter.fetch_add(<span style="color:#ae81ff">1</span>, std<span style="color:#f92672">::</span>memory_order_relaxed);
+</span></span></code></pre></div><p>你只是单纯的记录某件事情发生了几次。常用的还有智能指针中的引用计数的递增递减等</p>
+<h3 id="acuqire-release-model">acuqire-release model</h3>
+<p>如果代码改成：<code>counter.fetch_add(1, std::memory_order_release);</code>那么这个counter就极有可能是某个数组的下标：你对某一个数组append了一个数，然后你才将其<strong>release(发布)</strong>，告诉系统不允许将你对数组的append操作重排到counter增加之后；这样在其他线程中，其他线程就无法因为counter没更新而占有你已经append的位置。</p>
+<p>acuqire-release 经常成对出现，因为他们共同表示了这样的一个模型：
+<img loading="lazy" src="/img/memory-model/acquire-release-protocal.gif" alt="acuqire-release protocal"  />
+</p>
+<p>图中 <code>{a, b}</code>是我们需要在不同线程之间同步的值，那么线程1准备好 <code>{a, b}</code>后，<strong>release(发布) x</strong>，即 <code>x.store(1, memory_order_release)</code>，这时我们保证了 <code>{a, b}</code>值的更新一定是 <code>x = 1</code>的时候可见的（因为{a, b}的更新操作不会被重排到x.store之后）；那么在读线程，我们就可以根据 x 判断 <code>{a, b}</code>是否被更新:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">while</span>(x.load(memory_order_acquire) <span style="color:#f92672">!=</span> <span style="color:#ae81ff">1</span>)
+</span></span><span style="display:flex;"><span>  ;
+</span></span><span style="display:flex;"><span>  [a<span style="color:#960050;background-color:#1e0010">&#39;</span>, b<span style="color:#960050;background-color:#1e0010">&#39;</span>] <span style="color:#f92672">=</span> {a, b};  <span style="color:#75715e">// acuire语义保证了这句话不会被重排到x.load之前
+</span></span></span></code></pre></div><p>还有就是acq_sel_model了，这三种模型就是我们用std::atomic最常用的三种memory order.</p>
+<h2 id="其他">其他</h2>
+<ol>
+<li>你可能已经注意到了，X86-TSO内存模型非常严格，它已经为我们提供了
+<ul>
+<li>all load are acquire-loads, all stores are release-stores</li>
+<li>all read-modify-write operations are acquire-release</li>
+</ul>
+</li>
+</ol>
+<p><strong>也就是说x86平台下不存在真正的memory-order-relexed</strong></p>
+<ol start="2">
+<li>为什么<code>atomic&lt;&gt;</code>比<code>mutex</code>更高效？最终不都是依赖于硬件提供的 barrier 以及 CAS, test and set等low level primitive吗？</li>
+</ol>
+<ul>
+<li><strong>atomic 做的事情</strong>：原子指令修改内存，内存栅栏保障修改可见，<em>必要时锁总线</em>。</li>
+<li><strong>mutex 大致做的事情</strong>：短暂原子 CAS(compare and set) 自旋如果未成功上锁，futex(&amp;lock, FUTEX_WAIT&hellip; ) 退避进入阻塞等待直到 lock 值变化时唤醒。futex 在设计上期望做到如果无争用，则可以不进内核态，<strong>不进内核态的 fast path 的开销等价于 atomic 判断</strong>。内核里维护按地址维护一张 wait queue 的哈希表，发现锁变量值的变化（解锁）时，唤醒对应的 wait queue 中的一个 task。wait queue 这个哈希表的槽在更新时也会遭遇争用，这时继续通过 spin lock 保护。
+<img loading="lazy" src="/img/memory-model/futex.png" alt="futex"  />
+</li>
+</ul>
+<p>说白了就是mutex会陷入内核态（大部分情况下），而内核使用比较复杂的算法维护锁</p>
+<ol start="3">
+<li></li>
+</ol>
+<p><code>std::atomic&lt;&gt;</code>一定是无锁的吗？</p>
+<p><strong>wrong!</strong></p>
+<p>举个例子：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">long</span> x;
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">A</span> {<span style="color:#66d9ef">long</span> x;}
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">B</span> {<span style="color:#66d9ef">long</span> x; <span style="color:#66d9ef">long</span> y;}
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">C</span> {<span style="color:#66d9ef">long</span> x; <span style="color:#66d9ef">long</span> y; <span style="color:#66d9ef">long</span> z;}
+</span></span></code></pre></div><p>那么atomic<!-- raw HTML omitted -->， T取x, A, B, C的时候哪些是lock-free，哪些不是呢？</p>
+<p>我们可以用std::atomic<!-- raw HTML omitted -->::is_lock_free()找出答案。上述选项中，T = x, A的时候一定是lock_free的，T = C的时候一定不是lock_free的。</p>
+<blockquote>
+<p>C++17提供std::is_always_lock_free可以在编译器进行判断，如果为false不代表一定是 no lock_free的</p>
+</blockquote>
+<h2 id="reference">reference</h2>
+<ul>
+<li><a href="https://www.youtube.com/watch?v=ZQFzMfHIxng&amp;t=896s&amp;ab_channel=CppCon">介绍atomic的talk，比较全面</a></li>
+<li><a href="https://herbsutter.com/2013/02/11/atomic-weapons-the-c-memory-model-and-modern-hardware/">Sutter的talk, atomic weapons</a></li>
+<li><a href="https://arxiv.org/pdf/1803.04432.pdf">Memory Models for C/C++ Programmers</a></li>
+<li></li>
+</ul>
+]]></content:encoded>
+    </item>
+    
+    <item>
+      <title>Computer Architecture —— 高级缓存技术</title>
+      <link>https://caaatch22.github.io/posts/advanced-cache/</link>
+      <pubDate>Wed, 23 Aug 2023 23:38:14 +0000</pubDate>
+      
+      <guid>https://caaatch22.github.io/posts/advanced-cache/</guid>
+      <description>本文不会介绍cache的组织形式等基本内容，但也算不上什么&amp;quot;Advanced&amp;quot;。主要包含一些从硬件层面优化cache的手段。
+优化cache的几种方法 pipeline caches 上图为教科书上经常出现的cache形式(2-way associative为例)，它很精炼的解释了cache的实现。但也稍微引入了些“误导”：
+图中v、tag和data部分画在连续的一行上，仿佛硬件上他们就是同一块 SRAM 的不同bit 图中识别tag与data是并行完成的，这很好，某种意义上能降低时延；但我们经常遗忘一个事实，只有读cache的时候我们才能这么操作（或者说在写cache时，读取data block是没有意义的） 对于第一点，在实际的实现当中，tag和data部分都是分开放置的，tag一般是由一种叫CAM(Context-Addressable Memory)的材料构成。当然，这与pi不pipeline没什么关系；
+读cache主要就两个部分：比较tag，获取data；我们暂且不考虑以pipeline的方式优化，那么serial的先比较tag再读data一定不如parallel的方式进行吗？当我们并行的读取tag和data的时候，我们会发现，读出来的data有可能没用（没有匹配的tag）；并且，在n-way set associate cache中，我们会浪费的读出$n-1$个data项；这给我们什么启示呢？如果我们串行的读cache，那么我们可以在比较tag阶段就知道我们想要的数据在不在cache当中；更有意义的是，根据tag比较的结果，我们就知道哪一路的数据是需要被访问的（提前知道了在n-way中的哪一way），那么我们访问data block时，就无需多路选择器，直接访问指定的way，将其他way的data访问的使能信号置为无效，这种做法的优点在于有效减小功耗。
+serial的做法肯定比parallel的延时要大，若这时访问cache处于处理器的critical path(关键路径)上，我们可以再将其进行流水线化。 我们现在再来看看写cache时的情况：
+写cache时，只有通过tag比较，确认要写的地址在cache中后，才可以写data SRAM，在主频较高的处理器中，这些操作很难在一个周期内完成，这也要求我们将其流水线化。下图为对cache进行写操作使用的流水线示意图：
+在上图的实现方式中，store第一个周期读取Tag并进行比较，根据比较的结果，在第二个周期选择是否将数据写到Data SRAM中。还需要注意的是，当执行load指令时，它想要的数据可能正好在store指令的流水线寄存器中（RAW的情况；上图中的DelayedStoreData寄存器），而不是来自于Data SRAM。因此需要一种机制检测这种情况，这需要将load指令所携带的地址和store指令的流水线寄存器(即DelayedStoreAddr寄存器)进行比较，如果相等，那么就将store指令的数据作为load指令的结果。
+由此可以看出，对写D-Cache使用流水线之后，不仅增加了流水线本身的硬件，也带来了其他一些额外的硬件开销。其实。不仅在Cache中有这种现象，在处理器的其他部分增加流水线的级数，也会伴随着其他方面的硬件需求,因此过深的流水线带来的硬件复杂度是非常高的，就像Intel的Pentium 4处理器，并不会从过深的流水线中得到预想的好处。当然，cache的流水线化已经是一种广泛使用的用于降低latency的方法了。
+write buffers 我愿称之为buffer of buffer，本来cache就起buffer的作用了，但我们再加一个buffer，如下图所示： 这和多一级的cache有什么不同呢？这是一个专门为写操作设计的buffer（注意：load也可能造成写操作）。原因在于我们知道写通常比读更慢，特别对于write-through来说；其次，当上层cache满后，需要先将dirty cache line写回下层cache，再读取下层cache中的数据。若下层cache只有一个读写端口，那么这种串行的过程导致D-Cache发生缺失的处理时间变得很长，此时就可以采用write buffer来解决这个问题。脏状态的cache-line会首先放到写级存中，等到下级存储器有空闲的时候，才会将写缓存中的数据写到下级存储器中。
+对于write buffer，我们还可以对其进行 合并(merging) 操作。所谓merging，指的是将在同一个cache-line上的数据一并写入下层cache中，而非多次写入同一个cache-line。 上图中的右侧表示了一个采用了merging write buffer策略的写缓冲区。
+critial word first and early restart 先来看一下cache miss时的cpu： 图中展示了一个blocking cache在cache miss时，cpu stall，而后cache将需要取得的cache-line放入后，cpu resume的timeline。我们可以发现，若我们只需要cache-line中的第3个word，cpu完全可以提早resume。如下图所示： 这就是early restart，而critial word first指的是，是在此基础上，在取cache-block时，不按照0~7 word的顺序而是按照3,4,5,6,7,0,1,2的顺序获取，配合early restart以减小miss penalty。
+当然，这种优化手段一般在cache-block size越大的时候效果越好。
+non-blocking caches 本节主要参考了超标量处理器设计9.6.2</description>
+      <content:encoded><![CDATA[<blockquote>
+<p>本文不会介绍cache的组织形式等基本内容，但也算不上什么&quot;Advanced&quot;。主要包含一些从硬件层面优化cache的手段。</p>
+</blockquote>
+<h1 id="优化cache的几种方法">优化cache的几种方法</h1>
+<h2 id="pipeline-caches">pipeline caches</h2>
+<p><img loading="lazy" src="/img/advanced-cache/2way-set-associative.png" alt="2way-set-associative-cache"  />
+</p>
+<p>上图为教科书上经常出现的cache形式(2-way associative为例)，它很精炼的解释了cache的实现。但也稍微引入了些“误导”：</p>
+<ol>
+<li>图中<code>v</code>、<code>tag</code>和<code>data</code>部分画在连续的一行上，仿佛硬件上他们就是同一块 SRAM 的不同bit</li>
+<li>图中识别<code>tag</code>与<code>data</code>是并行完成的，这很好，某种意义上能降低时延；但我们经常遗忘一个事实，只有<em>读cache</em>的时候我们才能这么操作（或者说在写cache时，读取data block是没有意义的）</li>
+</ol>
+<p>对于第一点，在实际的实现当中，tag和data部分都是分开放置的，tag一般是由一种叫<a href="https://en.wikipedia.org/wiki/Content-addressable_memory">CAM(Context-Addressable Memory)</a>的材料构成。当然，这与pi不pipeline没什么关系；</p>
+<p>读cache主要就两个部分：比较tag，获取data；我们暂且不考虑以pipeline的方式优化，那么serial的先比较tag再读data一定不如parallel的方式进行吗？当我们并行的读取tag和data的时候，我们会发现，读出来的data有可能没用（没有匹配的tag）；并且，在n-way set associate cache中，我们会浪费的读出$n-1$个data项；这给我们什么启示呢？如果我们串行的读cache，那么我们可以在比较tag阶段就知道我们想要的数据在不在cache当中；更有意义的是，根据tag比较的结果，我们就知道哪一路的数据是需要被访问的（提前知道了在n-way中的哪一way），那么我们访问data block时，就无需多路选择器，直接访问指定的way，将其他way的data访问的使能信号置为无效，这种做法的优点在于<strong>有效减小功耗</strong>。</p>
+<p>serial的做法肯定比parallel的延时要大，若这时访问cache处于处理器的critical path(关键路径)上，我们可以再将其进行流水线化。
+<img loading="lazy" src="/img/advanced-cache/pipelined-cache.png" alt="pipeline cache"  />
+</p>
+<p>我们现在再来看看写cache时的情况：</p>
+<p>写cache时，只有通过tag比较，确认要写的地址在cache中后，才可以写data SRAM，在主频较高的处理器中，这些操作很难在一个周期内完成，这也要求我们将其流水线化。下图为对cache进行写操作使用的流水线示意图：</p>
+<p><img loading="lazy" src="/img/advanced-cache/pipelined-cache-write.png" alt="pipeline cache in write"  />
+</p>
+<p>在上图的实现方式中，store第一个周期读取Tag并进行比较，根据比较的结果，在第二个周期选择是否将数据写到Data SRAM中。还需要注意的是，当执行load指令时，它想要的数据可能正好在store指令的流水线寄存器中（RAW的情况；上图中的DelayedStoreData寄存器），而不是来自于Data SRAM。因此需要一种机制检测这种情况，这需要将load指令所携带的地址和store指令的流水线寄存器(即DelayedStoreAddr寄存器)进行比较，如果相等，那么就将store指令的数据作为load指令的结果。</p>
+<p>由此可以看出，对写D-Cache使用流水线之后，不仅增加了流水线本身的硬件，也带来了其他一些额外的硬件开销。其实。不仅在Cache中有这种现象，在处理器的其他部分增加流水线的级数，也会伴随着其他方面的硬件需求,因此过深的流水线带来的硬件复杂度是非常高的，就像Intel的Pentium 4处理器，并不会从过深的流水线中得到预想的好处。当然，cache的流水线化已经是一种广泛使用的用于降低latency的方法了。</p>
+<h2 id="write-buffers">write buffers</h2>
+<p>我愿称之为buffer of buffer，本来cache就起buffer的作用了，但我们再加一个buffer，如下图所示：
+<img loading="lazy" src="/img/advanced-cache/write-buffer.png" alt="write buffer"  />
+
+这和多一级的cache有什么不同呢？这是一个专门为写操作设计的buffer（注意：load也可能造成写操作）。原因在于我们知道写通常比读更慢，特别对于write-through来说；其次，当上层cache满后，需要先将dirty cache line写回下层cache，再读取下层cache中的数据。若下层cache只有一个读写端口，那么这种串行的过程导致D-Cache发生缺失的处理时间变得很长，此时就可以采用write buffer来解决这个问题。脏状态的cache-line会首先放到写级存中，等到下级存储器有空闲的时候，才会将写缓存中的数据写到下级存储器中。</p>
+<p>对于write buffer，我们还可以对其进行 <strong>合并(merging)</strong> 操作。所谓<code>merging</code>，指的是将在同一个cache-line上的数据一并写入下层cache中，而非多次写入同一个cache-line。
+<img loading="lazy" src="/img/advanced-cache/merging-write-buffer.png" alt="merging write buffer"  />
+</p>
+<p>上图中的右侧表示了一个采用了merging write buffer策略的写缓冲区。</p>
+<h2 id="critial-word-first-and-early-restart">critial word first and early restart</h2>
+<p>先来看一下cache miss时的cpu：
+<img loading="lazy" src="/img/advanced-cache/cpu-cache-miss.png" alt="timeline in cache miss"  />
+
+图中展示了一个blocking cache在cache miss时，cpu stall，而后cache将需要取得的cache-line放入后，cpu resume的timeline。我们可以发现，若我们只需要cache-line中的第3个word，cpu完全可以提早resume。如下图所示：
+<img loading="lazy" src="/img/advanced-cache/early-restart.png" alt="early restart"  />
+</p>
+<p>这就是<code>early restart</code>，而<code>critial word first</code>指的是，是在此基础上，在取cache-block时，不按照0~7 word的顺序而是按照<code>3,4,5,6,7,0,1,2</code>的顺序获取，配合early restart以减小miss penalty。</p>
+<p>当然，这种优化手段一般在cache-block size越大的时候效果越好。</p>
+<h2 id="non-blocking-caches">non-blocking caches</h2>
+<blockquote>
+<p>本节主要参考了超标量处理器设计9.6.2</p>
+</blockquote>
+<p><code>blocking cache</code>：在D-Cache发生缺失并且被解决之前将D-Cache与物理内存之间的数据通路被锁定，只处理当前这个缺失的数据，处理器不能够再执行其他的load/store指令。
+<img loading="lazy" src="/img/advanced-cache/blocking-cache.png" alt="blocking cache"  />
+</p>
+<p>这是最容易实现的一种方式，但是考虑到D-Cache缺失的处理时间相对是比较长的，这段时间容易阻塞其他load/store指令的执行，特别是在超标量处理器中，一个周期可能发射多个load/store指令，这样的阻塞就大大减少了程序执行时可以寻找的并行性。</p>
+<p>为了解决这个问题，Kroft提出了<a href="https://courses.cs.washington.edu/courses/cse548/11au/Kroft-Lockup-Free-Instruction-Fetch.pdf">non-blocking cache</a>，(aka lookup-free cache, aka out-of-order-memory system)，如下图所示：</p>
+<p><img loading="lazy" src="/img/advanced-cache/non-blocking-cache.png" alt="non-blocking cache"  />
+</p>
+<p>其实就是在cache miss之后，cpu继续发送load/store指令；那么我们可能会有hit after miss，也可能有miss after miss，甚至多次miss连续发生。</p>
+<p>我们来看看我们需要增加哪些结构以支持non-blocking cache。</p>
+<p>采用这种方法之后，load/store指令的D-Cache缺失被处理完的时间可能和原始的指令顺序不一样了。举例来说，两条顺序的指令load1和load2都发生了D-Cache缺失，但是load1指令可能需要到物理内存中才能够找到需要的数据，而load2指令在L2 Cache中就可以找到所需的数据，因此load2指令会更早地得到需要的数据。要处理这个问题，就需要保存那些已经发生缺失的load/store指令的信息，这样当这些缺失的load/store指令被处理完成，将得到的数据写回到D-Cache时，仍然可以知道哪条load/store 指令需要这个数据。</p>
+<p>这个保存原始load/store的结构一般称为<strong>MSHR(Miss Status/information Holding Register)</strong>，如下图所示：</p>
+<p><img loading="lazy" src="/img/advanced-cache/MSHR.png" alt="Miss Status/information Holding Register"  />
+</p>
+<p>上图中(a)称为MSHR的本体，它只用来保存所有产生<strong>首次缺失</strong>的load/store 指令的信息，它包括三项内容。</p>
+<blockquote>
+<ol>
+<li>首次缺失(Primary Miss): 对于一个给定的地址来说，访问D-Cache时第一次产生的缺失称为首次缺失。</li>
+<li>再次缺失(Secondary Miss): 在发生了首次缺失并且没有被解决完毕之前，后续的访问存储器的指令再次访问这个发生缺失的Cache line，这时就称为再次缺失。</li>
+</ol>
+</blockquote>
+<ol>
+<li>V: valid bit用来指示当前的entry是否被占用，当首次缺失发生时，MSHR本体中的一个表项会被占用，此时valid位会被标记为1。当所需要的Cache line从下级存储器中被取回来时，会释放MSHR本体中被占用的表项，因此valid位会被清零。</li>
+<li>Block Address: 指的是Cache line 中数据块(data block)的公共地址。每次当load/store 指令发生D-Cache缺失时，都会在MSHR的本体中在找它所需的数据块是否处于正在被取回的过程中，这需要和Block Address这一项进行比较才可以知道,通过这种方式，所有访向同一个数据块的指令只需要处理一次就可以了，这样可以避免存储器带宽的浪费。</li>
+<li>Issued: 表示发生首次缺失的load/store指令是否已经开始处理。由于存储器的带宽有限，占用MSHR本体的首次缺失不一定马上就会被处理。</li>
+</ol>
+<p>上图(b)称为LOAD/STORE Table，保存<strong>不论是发生首次缺失还是再次缺失的load/store指令</strong>，它包括五项内容。</p>
+<ol>
+<li>V: valid位，表示一个entry是否被占用。</li>
+<li>MSHR entry: 表示一条发生缺失的load/store指令属于MSHR本体中的哪个表项，由于产生D-Cache缺失的许多load/store指令都可能对应着同一个Cache line，为了避免重复地占用下级存储器的带宽，这些指令只会占据MSHR本体中的一个表项，但是它们需要占用LOAD/STORE Table中不同的表项，这样才能够保证每条指令的信息都不会丢失。同时也会记录下这些指令在MSHR本体中占据了哪个表项，这样当一个Cache line被从下级存储器取回来时，通过和MSHR本体中的block address进行比较，就可以知道它在MSHR本体中的位置。然后就可以在LOAD/STORE table中找到哪些load/store指令属于这个Cache line。</li>
+<li>Dest.register: 对于load指令来说，这部分记录目的寄存器的编号(如果采用了寄存器重命名，就需要记录物理寄存器的编号)，就可以将对应的数据送到这部分所记录的寄存器中；而对于store指令来说，这部分用来记录store指令在Store Buffer中的编号。（这与超标量的处理有关，暂时不展开）</li>
+<li>Type: 记录访问存储器指令的类型，这部分取决于具体指令集的实现，对于MIPS来说，访向存储器的指令类型包括LW(Load Word)、LH(Load Half word)、LB(Load Byte) 、SW(Store Word)、SH(Store Half word)和SB(Store Byte)，通过记录指令的类型，才能够使D-Cache缺失被解决之后，能够继续正确地执行指令。</li>
+<li>Offset: 访向存储器的指令所需要的数据在数据块中的位置，例如对于大小是64字节的数据块来说，这部分的位宽需要6位。</li>
+</ol>
+<p>通过MSHR本体和LOAD/STORE Table的配合，可以支持非阻塞的操作方式，当一条访向存储器的指令发生D-Cache缺失时，首先会在找MSHR的本体，这个查找过程是将发生D-Cache缺失的地址和MSHR中所有的block adress进行比较，根据比较的结果，处理如下：</p>
+<ol>
+<li>如果发现有相等的表项存在，则表示这个缺失的数据块正在被处理，这是<em>再次缺失</em>,此时只需要将这条访问存储器的指令写到LOAD/STORE Table中就可以了。</li>
+<li>如果没有发现相等的项，则表示缺失的数据块是第一次被处理，也就是<em>首次缺失</em>。此时需要将这条访向存储器的指令写到MSHR本体和LOAD/STORETable两个地方。</li>
+</ol>
+<p>如果MSHR本体或者LOAD/STORE Table 中的任意一个已经满了，则表示不能够再处理新的访问存储器指令，此时应该暂停流水线继续选择新的load/store指令送到FU中执行，等待之前的某个D-Cache缺失被解决完毕此时MSHR或者LOAD/STORE Table中就会有空闲的空间了，允许流水线继续执行。在现实世界中的处理器一般出于硅片面积和功耗的考虑，MSHR本体的容量不会很大，<strong>多为4~8个</strong>，也就是 <strong>处理器支持4~8个D-Cache缺失同时进行处理</strong> 。</p>
+<h2 id="multibank-caches">multibank caches</h2>
+<p>一般cache上的读写端口都只有一个，这样限制了我们的并行性。那么我们增加cache上的读写端口如何呢？以双端口Cache为例，在这种设计中，所有在cache中的控制通路和数据通路都需要进行复制：两套地址解码器，两个多路选择器，比较器的数量多出一倍，两个Aligner(完成字节或半字读取)，更重要的是<strong>Tag SRAM和Data SRAM的每个cell都需要同时支持两个并行的读取操作</strong>。这种方法增大了芯片面积，且功耗随之上升，一般不会在实际的处理器上使用。</p>
+<p>那么我们如何既要一次性读取多个数据又要稍微小的硬件代价呢？<code>multibank cache</code>可以实现这样的功能：
+<img loading="lazy" src="/img/advanced-cache/multibank-cache.png" alt="multibank cache"  />
+</p>
+<p>我们把cache分成多个不重合的bank，每个bank还是采用单端口的设计。若在一个周期中，我们所要操作的数据“均匀的”分布在不同的bank当中，我们就可以一次性对多块数据进行操作。这时候，我们只需要增加一些控制通路，但是不用让每个cell都支持并行读取，有效地减小了硬件复杂度。</p>
+<p>影响这种multibank cache性能的关键因素是bank-conflict：它指的是 <strong>若我们某一周期内对cache的操作数据集中在一个bank上，我们就必须串行的完成访问</strong>，相当于丧失了bank的作用。 如何降低bank-conflict呢？一种启发式的切分bank的方法是<strong>interleaving</strong>得把连续的cache-line分到不同的bank中，如下图：
+<img loading="lazy" src="/img/advanced-cache/interleaving-bank.png" alt=""  />
+</p>
+<p>主要的思想就是我们经常同时对相连得cache-line进行访问，那么把它们放在不同的bank里就能避免bank conflict。</p>
+<p>值得一提的是，multibank也是一种提高main memory bandwidth的技巧。</p>
+<h2 id="summary">summary</h2>
+<p>还有一些软件硬件技巧，如prefetch，分块，way-predicting caches等就不一一展开了。</p>
+<p><img loading="lazy" src="/img/advanced-cache/summary.png" alt="cache techniques summary"  />
+</p>
+<h1 id="working-with-tlb-viptvirtual-indexed-physical-tagged">working with TLB: VIPT(Virtual Indexed physical Tagged)</h1>
+<p>在学习TLB相关知识后，我们常认为cpu关于地址翻译的过程是如下图所示的（忽略ASID）：将virtual address经由TLB/page table翻译为物理地址，在利用该物理地址在cache hierarchy中获取数据。</p>
+<p><img loading="lazy" src="/img/advanced-cache/PIPT.png" alt="physical indexed, physical tagged"  />
+</p>
+<p>这种设计在理论上是完全没有问题的，但在真实的处理器中却很少被采用。因为他完全串行了TLB和Cache的访问。事实上我们在上图中可以看出，VA到PA的转化时，低位的offset是完全没有变化的。<strong>若物理地址中寻址Cache的部分使用offset就足够的话，那么就不需要等到TLB得到物理地址后再去寻址Cache，而是直接使用虚拟地址的offet部分</strong>。 如下图所示：</p>
+<p><img loading="lazy" src="/img/advanced-cache/VIPT.png" alt="virtual indexed, physical tagged"  />
+
+相当于用VA做Index，用PA做Tag。这就是VIPT(virtual indexed physical tagged)，当然，这只是VIPT的一种情况。</p>
+<p>假设每个Cache line中包含$2^b$个字节数据，Cache Line的数量是$2^L$，$k$为页大小。那么我们会有几种情况：</p>
+<p><img loading="lazy" src="/img/advanced-cache/VIPT-3.png" alt=""  />
+
+先看前两种情况，实现比较简单，他们的virtual index部分实际上与physical index是一样的（应为在block-offset内，不参与地址翻译）。</p>
+<p>但前两种情况也有缺点，就是这种结构限制了cache的大小，cache的byte数不能超过$2^k（一般为4KB）$。我们现在随便一个l1i-cache就有64~128KiB。要想使用更大的Cache，在不考虑图中(c)结构时，可以采用增加way的个数，这不会引起寻址Cache需要位数的增加。但我们粗略的估算一下，若cache为128KiB，页大小为4KiB，那么我们需要32way的L1i-Cache。根据经验我们不会使用way数这么大的cache，因为这会使得比对tag的时延大大上升。</p>
+<p>那么，如何才能摆脱cache容量受限制这一问题呢？解决方案就是让$L+b&gt;k$，也就是图中(c)的设计，这种设计就是真正的virtual-indexed。但这会遇到 <strong>重名(aliasing)</strong> 问题：<strong>不同的虚拟地址会对应同一个物理地址</strong>。例如在页大小为4KB的系统中，有两个不同虚报地址 VA1和VA2，映射到同一个物理地址PA。有一个直接映射结构的Cache，容量为8KB，需要13位的index才可以对其进行寻址，如下图：
+<img loading="lazy" src="/img/advanced-cache/VIPT-aliasing.png" alt="VIPT aliasing"  />
+
+此时va1与va2的cache index不同，也就造成了Cache中的不同位置存放着物理存储器中的同一位置中的数据。这造成了Cache的浪费，且还会有一致性上的问题。
+如何解决呢？可以用bank的方式或者利用下层cache做标记的方式。这里就不仔细展开了</p>
+<h1 id="reference">reference</h1>
+<ul>
+<li><a href="https://www.youtube.com/watch?v=heZcaz7zjwg&amp;list=PLeWkeA7esB-PN8dBeEjWveHwnpQk7od0m&amp;ab_channel=Prof.Dr.BenH.Juurlink">youtube上一个讲memory hierachy design的系列</a></li>
+<li><a href="https://book.douban.com/subject/26293546/">超标量处理器设计 姚永斌</a></li>
+<li>H&amp;P Computer Architecture: A Quantitative Approach</li>
+<li><a href="https://www.coursera.org/learn/comparch/home/info">coursera上Princeton的Computer Architecture</a> 高级体系结构课程，介绍了超标量乱序多发射结构cpu等</li>
+</ul>
+]]></content:encoded>
+    </item>
+    
+    <item>
+      <title>parallel-hashmap</title>
+      <link>https://caaatch22.github.io/posts/parallel-hashmap/</link>
+      <pubDate>Sun, 23 Jul 2023 21:23:15 +0000</pubDate>
+      
+      <guid>https://caaatch22.github.io/posts/parallel-hashmap/</guid>
+      <description>众所周知，C++标准库的 unordered_map向来不是一个好的选择。开源市场上有非常多的高性能哈希表可供选择，phmap继承自 absl-hashmap，有着非常好的插入、查找性能。在著名的Comprehensive C++ Hashmap Benchmarks 2022榜单中名列前茅。事实上，我比对了 phmap::flat_hash_map与榜单中综合性能第一的 ankerl::unordered_dense::map，我的benchmark中只有遍历哈希表时，flat_hash_map的性能低于 unordered_dense::map，其余无论是插入还是随即查找，大部分情况下 flat_hash_map的性能都更优。本文简单介绍了 flat_hash_map相关情况，以及一些使用上的建议与坑点。
+flat_hash_map 和 node_hash_map区别 phmap中有提供了两类哈希表，其内部布局示意图如下：
+由上图（忽略了bucket的细节）可以看出，flat_hash_map的最大的优点在于
+node之间的内存是连续的(虽然可能中间存在空node)，遍历的时候对cache更加友好 并且相比于 node_hash_map版少一次寻址过程（std::unordered_map的设计与 node_hash_map）相同。 而 flat_*系列的缺点就是在 rehash的时候:
+会引发原来的value失效（这里的失效指的是原来的那个对象所对应的内存失效，而不是value所包含的内容失效，例如，value是一个指针，那它的值——所指向的对象，不会受到影响）。举个例子： flat_hash_map&amp;lt;int, Data&amp;gt; mp; node_hash_map&amp;lt;int, Data&amp;gt; nodemp; mp[0] = Data(); nodemp[0] = Data(); auto&amp;amp; mp0 = mp[0]; auto&amp;amp; nodemp0 = nodemp[0]; // tigger rehash for (int i = 1; i &amp;lt;= 10; i ++) { mp[i] = Data(); nodemp[i] = Data(); } assert(std::addressof(mp[0]) != std::addressof(mp0)); assert(std::addressof(nodemp[0]) == std::addressof(nodemp0)); 原因就是 flat_hash_map的内存布局导致的。而 node_hash_map或者 std::unordered_map就保证不会出现这种情况，因为当他们rehash的时候，只需要将bucket内的指针重新分配，指针的值还是指向原来的 node&amp;lt;key, value&amp;gt;.</description>
+      <content:encoded><![CDATA[<blockquote>
+<p>众所周知，C++标准库的 <code>unordered_map</code>向来不是一个好的选择。开源市场上有非常多的高性能哈希表可供选择，<a href="https://github.com/greg7mdp/parallel-hashmap">phmap</a>继承自 <code>absl-hashmap</code>，有着非常好的插入、查找性能。在著名的<a href="https://martin.ankerl.com/2022/08/27/hashmap-bench-01/#benchmark-results-table">Comprehensive C++ Hashmap Benchmarks 2022</a>榜单中名列前茅。事实上，我比对了 <code>phmap::flat_hash_map</code>与榜单中综合性能第一的 <code>ankerl::unordered_dense::map</code>，我的benchmark中只有遍历哈希表时，<code>flat_hash_map</code>的性能低于 <code>unordered_dense::map</code>，其余无论是插入还是随即查找，大部分情况下 <code>flat_hash_map</code>的性能都更优。本文简单介绍了 <code>flat_hash_map</code>相关情况，以及一些使用上的建议与坑点。</p>
+</blockquote>
+<h3 id="flat_hash_map-和-node_hash_map区别">flat_hash_map 和 node_hash_map区别</h3>
+<p>phmap中有提供了两类哈希表，其内部布局示意图如下：</p>
+<p><img loading="lazy" src="/img/phmap/flat_hash_map-vs-node_hash_map.png" alt=""  />
+</p>
+<p>由上图（忽略了bucket的细节）可以看出，<code>flat_hash_map</code>的最大的优点在于</p>
+<ol>
+<li>node之间的内存是连续的(虽然可能中间存在空node)，遍历的时候对cache更加友好</li>
+<li>并且相比于 <code>node_hash_map</code>版少一次寻址过程（<code>std::unordered_map</code>的设计与 <code>node_hash_map</code>）相同。</li>
+</ol>
+<p>而 <code>flat_*</code>系列的缺点就是在 <code>rehash</code>的时候:</p>
+<ol>
+<li>会引发原来的value<strong>失效</strong>（这里的失效指的是原来的那个对象所对应的内存失效，而不是value所包含的内容失效，例如，value是一个指针，那它的值——所指向的对象，不会受到影响）。举个例子：</li>
+</ol>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>flat_hash_map<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">int</span>, Data<span style="color:#f92672">&gt;</span> mp;
+</span></span><span style="display:flex;"><span>node_hash_map<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">int</span>, Data<span style="color:#f92672">&gt;</span> nodemp;
+</span></span><span style="display:flex;"><span>mp[<span style="color:#ae81ff">0</span>] <span style="color:#f92672">=</span> Data();
+</span></span><span style="display:flex;"><span>nodemp[<span style="color:#ae81ff">0</span>] <span style="color:#f92672">=</span> Data();
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">auto</span><span style="color:#f92672">&amp;</span> mp0 <span style="color:#f92672">=</span> mp[<span style="color:#ae81ff">0</span>];
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">auto</span><span style="color:#f92672">&amp;</span> nodemp0 <span style="color:#f92672">=</span> nodemp[<span style="color:#ae81ff">0</span>];
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// tigger rehash
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span><span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">int</span> i <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span>; i <span style="color:#f92672">&lt;=</span> <span style="color:#ae81ff">10</span>; i <span style="color:#f92672">++</span>) {
+</span></span><span style="display:flex;"><span>	mp[i] <span style="color:#f92672">=</span> Data();
+</span></span><span style="display:flex;"><span>	nodemp[i] <span style="color:#f92672">=</span> Data(); 
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>assert(std<span style="color:#f92672">::</span>addressof(mp[<span style="color:#ae81ff">0</span>]) <span style="color:#f92672">!=</span> std<span style="color:#f92672">::</span>addressof(mp0));
+</span></span><span style="display:flex;"><span>assert(std<span style="color:#f92672">::</span>addressof(nodemp[<span style="color:#ae81ff">0</span>]) <span style="color:#f92672">==</span> std<span style="color:#f92672">::</span>addressof(nodemp0));
+</span></span></code></pre></div><p>原因就是 <code>flat_hash_map</code>的内存布局导致的。而 <code>node_hash_map</code>或者 <code>std::unordered_map</code>就保证不会出现这种情况，因为当他们rehash的时候，只需要将bucket内的指针重新分配，指针的值还是指向原来的 <code>node&lt;key, value&gt;</code>.</p>
+<ol start="2">
+<li>由上述原因引发的性能问题： 当 <code>node&lt;pair, value&gt;</code>很大的时候，<code>flat_hash_map</code>每次 rehash 需要重新构造的开销大，而 <code>node_hash_map</code>只需要重新构造相同数量的指针。并且遍历时也因为两个node之间相隔较大使得 cache locality 下降。</li>
+</ol>
+<h3 id="使用建议单线程">使用建议(单线程)</h3>
+<p>绝大多数情况下直接用 <code>flat_hash_map</code>:</p>
+<ol>
+<li><code>int -&gt; int</code></li>
+<li><code>int -&gt; string</code></li>
+<li><code>string-&gt;int</code></li>
+<li><code>string(sso) -&gt; string(sso)</code></li>
+<li><code>string(none-sso)-&gt;string(none-sso)</code></li>
+</ol>
+<p>少数情况用 <code>node_hash_map</code>:</p>
+<ol>
+<li><code>key -&gt; Large Data</code></li>
+</ol>
+<p>这种情况强烈建议用 <code>flat_hash_map&lt;key, ptr&lt;Large Data&gt;&gt;</code>代替</p>
+<p>有意思的一点是为什么经过实测 <code>string(none-sso) -&gt; string(none-sso)</code>这种情况下仍然是 <code>flat_hash_map</code>更快一点，难道string(none-sso)不是Large Data吗？</p>
+<p>事实上，<code>string</code> 虽然可能很大，但是其 <code>raw data</code>存在另外分配的一个空间（超过短字符串优化限定大小时），所以当rehash的时候，新生成的string只需要move由来的string就可以了。下图展示了其内存布局：</p>
+<p><img loading="lazy" src="/img/phmap/flat_map_string_nonesso.png" alt=""  />
+</p>
+<p><strong>另外，如果提前知道需要插入的pair的数量（或者大致数量），特别是只作为一个look-up table使用时（一次性插入，只查询或更改已存在的key），那么使用提前 <code>reverse</code>是个明智的选择，这能有效提高哈希表的性能。一般需要reserve成需要插入数量的 <em>两倍</em> 而不是一倍 ，因为与vector这样的容器不同的是，为了防止过于频繁的碰撞，会在每个bucket还没满的时候就进行扩容</strong></p>
+<h3 id="parallel_flat_hash_map">parallel_flat_hash_map</h3>
+<p><code>phmap</code>库除了包含继承自 <code>abseil</code>的 <code>{flat/node}_hash_{set/map}</code>外，还有支持并发操作下的 <code>parallel_*</code>系列。以 <code>parallel_flat_hash_map</code>为例，其实现如下图：</p>
+<p><img loading="lazy" src="/img/phmap/parallel_hash_map.png" alt=""  />
+</p>
+<p>一个 <code>parallel_flat_hash_map</code>有（默认 2^4 = ）16 个 <code>子flat_hash_map</code>组成。这样做可以</p>
+<ol>
+<li>更加细粒度的使用锁，从而减少锁之间的等待</li>
+<li>一次rehash一个 <code>submap</code>，减小修改操作的开销</li>
+</ol>
+<p>基本的使用方法也很简单，需要在模板参数上指定一个锁，一般使用（std::mutex或者std::shared_mutex，官方文档说shared_mutex性能更优，我个人的测试下mutex性能更优，但是相差不大）。其余的使用上与非parallel版本基本一致，以下是简单的例子：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// 前两个模板参数是key, value，最后两个模板参数是 N (2^N表示子map的数量， N默认为4)， 和指定的锁
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>phmap<span style="color:#f92672">::</span>parallel_flat_hash_map<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">int</span>, <span style="color:#66d9ef">int</span>,
+</span></span><span style="display:flex;"><span>phmap<span style="color:#f92672">::</span>priv<span style="color:#f92672">::</span>hash_default_hash<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">int</span><span style="color:#f92672">&gt;</span>,
+</span></span><span style="display:flex;"><span>phmap<span style="color:#f92672">::</span>priv<span style="color:#f92672">::</span>hash_default_eq<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">int</span><span style="color:#f92672">&gt;</span>,
+</span></span><span style="display:flex;"><span>phmap<span style="color:#f92672">::</span>priv<span style="color:#f92672">::</span>Allocator<span style="color:#f92672">&lt;</span>std<span style="color:#f92672">::</span>pair<span style="color:#f92672">&lt;</span>constint, <span style="color:#66d9ef">int</span><span style="color:#f92672">&gt;&gt;</span>, <span style="color:#ae81ff">4</span>, std<span style="color:#f92672">::</span>mutex<span style="color:#f92672">&gt;</span>
+</span></span><span style="display:flex;"><span>para_mp;
+</span></span><span style="display:flex;"><span>para_mp[<span style="color:#ae81ff">0</span>] <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>para_mp.subcnt(); <span style="color:#75715e">// return sub map count
+</span></span></span></code></pre></div><p>经过测试，在插入和修改操作混合的情况下（随机插入1000000个数，非重复数字在600000以上），<code>parallel_mp</code>耗时 <code>80ms </code>左右，而手动给 <code>flat_hash_map </code>加锁耗时 <code>250ms</code>左右。</p>
+<p><strong>另外</strong>，既然 <code>parallel_*</code>是由多个子map形成，那个在特定条件下，我们甚至可以无需锁就能保证线程安全。</p>
+<p>具体操作如下：</p>
+<ol>
+<li>已知所有的需要插入的key</li>
+<li>每个线程需要有一个线程idx标识，线程数量少于 <code>子map</code>数量</li>
+<li>对于特定的key，得到hashval后将这个key的所有相关操作绑定到某个特定线程上进行。</li>
+</ol>
+<p>这样就可以实现无锁并发</p>
+<p>我们可以通过下面这个例子具体观察：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">template</span> <span style="color:#f92672">&lt;</span><span style="color:#66d9ef">typename</span> K, <span style="color:#66d9ef">typename</span> V<span style="color:#f92672">&gt;</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">using</span> para_mp <span style="color:#f92672">=</span> parallel_flat_hash_map<span style="color:#f92672">&lt;</span>K, V<span style="color:#f92672">&gt;</span>;
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">const</span> <span style="color:#66d9ef">int</span> n <span style="color:#f92672">=</span> <span style="color:#ae81ff">1e6</span>;
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">auto</span> <span style="color:#66d9ef">const</span> keys <span style="color:#f92672">=</span> random_vector<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">int</span><span style="color:#f92672">&gt;</span>(<span style="color:#ae81ff">1</span>, n);
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">constexpr</span> <span style="color:#66d9ef">int64_t</span> num_threads <span style="color:#f92672">=</span> <span style="color:#ae81ff">8</span>;
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">auto</span> thread_fn <span style="color:#f92672">=</span> [<span style="color:#f92672">&amp;</span>num_threads](para_mp<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">int</span>, <span style="color:#66d9ef">int</span><span style="color:#f92672">&gt;&amp;</span> mp, vector<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">int</span><span style="color:#f92672">&gt;</span> <span style="color:#66d9ef">const</span><span style="color:#f92672">&amp;</span> keys,
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">int</span> thread_idx) {
+</span></span><span style="display:flex;"><span>	size_t modulo <span style="color:#f92672">=</span> mp.subcnt() <span style="color:#f92672">/</span> num_threads;
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">int64_t</span> i <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>; i <span style="color:#f92672">&lt;</span>keys.size(); <span style="color:#f92672">++</span>i) {
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">int</span> key <span style="color:#f92672">=</span> keys[i];
+</span></span><span style="display:flex;"><span>		size_t hashval <span style="color:#f92672">=</span> mp.hash(key);
+</span></span><span style="display:flex;"><span>		size_t idx <span style="color:#f92672">=</span> mp.subidx(hashval);
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">if</span> (idx <span style="color:#f92672">/</span> modulo <span style="color:#f92672">==</span>
+</span></span><span style="display:flex;"><span>				thread_idx)  <span style="color:#75715e">// if the submap is suitable for this thread
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>		{
+</span></span><span style="display:flex;"><span>			mp[key] <span style="color:#f92672">=</span> rng();  <span style="color:#75715e">// insert random value
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>};
+</span></span><span style="display:flex;"><span>std<span style="color:#f92672">::</span>unique_ptr<span style="color:#f92672">&lt;</span>std<span style="color:#f92672">::</span><span style="color:#66d9ef">thread</span><span style="color:#f92672">&gt;</span> threads[num_threads];
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">int</span> i <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>; i <span style="color:#f92672">&lt;</span> num_threads; i<span style="color:#f92672">++</span>) {
+</span></span><span style="display:flex;"><span>	threads[i].reset(
+</span></span><span style="display:flex;"><span>			<span style="color:#66d9ef">new</span> std<span style="color:#f92672">::</span><span style="color:#66d9ef">thread</span>(thread_fn, std<span style="color:#f92672">::</span>ref(mp), std<span style="color:#f92672">::</span>cref(keys), i));
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>timer.reset();
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">int64_t</span> i <span style="color:#f92672">=</span><span style="color:#ae81ff">0</span>; i <span style="color:#f92672">&lt;</span> num_threads; <span style="color:#f92672">++</span>i)
+</span></span><span style="display:flex;"><span>threads[i]<span style="color:#f92672">-&gt;</span>join();
+</span></span></code></pre></div><p>上面的代码基本展示了无锁使用 <code>parallel_*</code>的过程，我们会将hashval按照 submap 进行区分，如果 <code>idx = mp.subidx(hashval)</code> 表示这个key对应的 submap。在上述代码中，一个线程对应两个 submap可以进行插入。</p>
+<p>这种用法的局限性也很明显：线程数量需要是 submap 数量的倍数；一个线程一定要对应一个下标传入需要处理的函数；总之不是很好用&hellip;</p>
+<p>（在多线程下只用map更加有效的方法或许是对于不同的key直接用不同的线程进行处理，且提前reserve防止rehash的时候迭代器失效）</p>
+<h3 id="benchmarks">benchmarks</h3>
+<p>以下操作的个数都为 <code>1'000'000</code>次，最后一列string-&gt;string 插入次数为 <code>100'000</code>次</p>
+<p><em>vector作为baseline插入pair&lt;K,V&gt;进行比较</em></p>
+<table>
+<thead>
+<tr>
+<th>benchmarks(insert)</th>
+<th>insert ints</th>
+<th>insert ints(reserve first)</th>
+<th>insert string(sso)-&gt;ptr</th>
+<th>insert int-&gt;LargeData</th>
+<th>insert string(8)-&gt;string(4096)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>std::vector</td>
+<td>17ms</td>
+<td>7ms</td>
+<td>33ms</td>
+<td>102ms</td>
+<td>153ms</td>
+</tr>
+<tr>
+<td>std::unordered_map</td>
+<td>170ms</td>
+<td>72ms</td>
+<td>343ms</td>
+<td>249ms</td>
+<td>213ms</td>
+</tr>
+<tr>
+<td>flat_hash_map</td>
+<td>47ms</td>
+<td>34ms</td>
+<td>90ms</td>
+<td>462ms</td>
+<td>182ms</td>
+</tr>
+<tr>
+<td>node_hash_map</td>
+<td>152ms</td>
+<td>68ms</td>
+<td>182ms</td>
+<td>236ms</td>
+<td>183ms</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>benchmarks(read)</th>
+<th>iterate ints</th>
+<th>find int</th>
+<th>iterate string</th>
+<th>find string</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>std::vector</td>
+<td>0ms</td>
+<td>*</td>
+<td>3ms</td>
+<td>*</td>
+</tr>
+<tr>
+<td>std::unordered_map</td>
+<td>20ms</td>
+<td>52ms</td>
+<td>55ms</td>
+<td>152ms</td>
+</tr>
+<tr>
+<td>flat_hash_map</td>
+<td>3ms</td>
+<td>23ms</td>
+<td>8ms</td>
+<td>71ms</td>
+</tr>
+<tr>
+<td>node_hash_map</td>
+<td>14ms</td>
+<td>38ms</td>
+<td>14ms</td>
+<td>108ms</td>
+</tr>
+</tbody>
+</table>
+<p><em>About parallel_flat_hash_map</em></p>
+<table>
+<thead>
+<tr>
+<th>inserting 1000000 ints</th>
+<th>1-thread</th>
+<th>8-threads</th>
+<th>8-threads</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>flat_hash_map</td>
+<td>31ms</td>
+<td>23ms(no lock)</td>
+<td>214ms(mutex manually)</td>
+</tr>
+<tr>
+<td>parallel_flat_hash_map</td>
+<td>35ms</td>
+<td>*</td>
+<td>70ms(mutex/shared_mutex)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="一个小问题">一个小问题</h3>
+<p>在测试的时候发现，无论是 <code>flat_hash_map</code>还是 <code>node_hash_map</code>都没法插入 <code>None-moveable</code>的数据，但是 <code>std::unordered_map</code>可以。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>structNonCopy {
+</span></span><span style="display:flex;"><span>	NonCopy() <span style="color:#f92672">=</span> <span style="color:#66d9ef">default</span>;
+</span></span><span style="display:flex;"><span>	NonCopy(NonCopyconst<span style="color:#f92672">&amp;</span>) <span style="color:#f92672">=</span> <span style="color:#66d9ef">delete</span>;
+</span></span><span style="display:flex;"><span>	NonCopy<span style="color:#f92672">&amp;</span><span style="color:#66d9ef">operator</span><span style="color:#f92672">=</span>(NonCopyconst<span style="color:#f92672">&amp;</span>) <span style="color:#f92672">=</span> <span style="color:#66d9ef">delete</span>;
+</span></span><span style="display:flex;"><span>	NonCopy<span style="color:#f92672">&amp;</span><span style="color:#66d9ef">operator</span><span style="color:#f92672">=</span>(NonCopy<span style="color:#f92672">&amp;&amp;</span> rhs) <span style="color:#f92672">=</span> <span style="color:#66d9ef">default</span>;
+</span></span><span style="display:flex;"><span>	NonCopy(NonCopy<span style="color:#f92672">&amp;&amp;</span> rhs) <span style="color:#f92672">=</span> <span style="color:#66d9ef">default</span>;
+</span></span><span style="display:flex;"><span>};
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>structNonMove {
+</span></span><span style="display:flex;"><span>	NonMove() <span style="color:#f92672">=</span> <span style="color:#66d9ef">default</span>;
+</span></span><span style="display:flex;"><span>	NonMove(NonMoveconst<span style="color:#f92672">&amp;</span>) <span style="color:#f92672">=</span> <span style="color:#66d9ef">default</span>;
+</span></span><span style="display:flex;"><span>	NonMove<span style="color:#f92672">&amp;</span><span style="color:#66d9ef">operator</span><span style="color:#f92672">=</span>(NonMoveconst<span style="color:#f92672">&amp;</span>) <span style="color:#f92672">=</span> <span style="color:#66d9ef">default</span>;
+</span></span><span style="display:flex;"><span>	NonMove(NonMove<span style="color:#f92672">&amp;&amp;</span>) <span style="color:#f92672">=</span> <span style="color:#66d9ef">delete</span>;
+</span></span><span style="display:flex;"><span>	NonMove<span style="color:#f92672">&amp;</span><span style="color:#66d9ef">operator</span><span style="color:#f92672">=</span>(NonMove<span style="color:#f92672">&amp;&amp;</span>) <span style="color:#f92672">=</span> <span style="color:#66d9ef">delete</span>;
+</span></span><span style="display:flex;"><span>};
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">template</span> <span style="color:#f92672">&lt;</span>K, V<span style="color:#f92672">&gt;</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">using</span> fmp <span style="color:#f92672">=</span> flat_hash_map<span style="color:#f92672">&lt;</span>K, V<span style="color:#f92672">&gt;</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">template</span> <span style="color:#f92672">&lt;</span>K, V<span style="color:#f92672">&gt;</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">using</span> nodemp <span style="color:#f92672">=</span> node_hash_map<span style="color:#f92672">&lt;</span>K, V<span style="color:#f92672">&gt;</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>TEST_CASE(<span style="color:#e6db74">&#34;hash_map&#34;</span>) {
+</span></span><span style="display:flex;"><span>	fmp<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">int</span>, NonCopy<span style="color:#f92672">&gt;</span> mp_nocp;
+</span></span><span style="display:flex;"><span>	std<span style="color:#f92672">::</span>unordered_map<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">int</span>, NonCopy<span style="color:#f92672">&gt;</span> stdmp_nocp;
+</span></span><span style="display:flex;"><span>	nodemp<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">int</span>, NonCopy<span style="color:#f92672">&gt;</span> nodemp_nocp;
+</span></span><span style="display:flex;"><span>	fmp<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">int</span>, tbs<span style="color:#f92672">::</span>NonMove<span style="color:#f92672">&gt;</span> mp_nomv;
+</span></span><span style="display:flex;"><span>	std<span style="color:#f92672">::</span>unordered_map<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">int</span>, NonMove<span style="color:#f92672">&gt;</span> stdmp_nomv;
+</span></span><span style="display:flex;"><span>	nodemp<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">int</span>, NonMove<span style="color:#f92672">&gt;</span> nodemp_nomv;
+</span></span><span style="display:flex;"><span>	constint n <span style="color:#f92672">=</span> <span style="color:#ae81ff">1e6</span>;
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">int</span> i <span style="color:#f92672">=</span><span style="color:#ae81ff">0</span>; i <span style="color:#f92672">&lt;</span> n; i<span style="color:#f92672">++</span>) {
+</span></span><span style="display:flex;"><span>		stdmp_nocp[i] <span style="color:#f92672">=</span> std<span style="color:#f92672">::</span>move(NonCopy());
+</span></span><span style="display:flex;"><span>    mp_nocp[i] <span style="color:#f92672">=</span> std<span style="color:#f92672">::</span>move(NonCopy());
+</span></span><span style="display:flex;"><span>    node_nocp[i] <span style="color:#f92672">=</span> std<span style="color:#f92672">::</span>move(NonCopy());
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">int</span> i <span style="color:#f92672">=</span><span style="color:#ae81ff">0</span>; i <span style="color:#f92672">&lt;</span> n; i<span style="color:#f92672">++</span>) {
+</span></span><span style="display:flex;"><span>    stdmp_nomv.emplace(i, NonMove());
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e">// the following code can&#39;t pass complile
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#75715e">// for (int i = 0; i &lt; n; i++) {
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#75715e">//   nodemp_nomv.emplace(i, NonMove());
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#75715e">// }
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#75715e">// for (int i = 0; i &lt; n; i++) {
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#75715e">//   mp_nomv.emplace(i, NonMove());
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#75715e">// }
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>}
+</span></span></code></pre></div><p>如果说 <code>flat_hash_map</code>在 rehash的时候需要move所以禁止使用NoneMoveable还可以理解，但是 <code>node_hash_map</code>的行为应该和 <code>unordered_map</code>是一致，还是有这个问题。</p>
+]]></content:encoded>
+    </item>
+    
+    <item>
+      <title>ICPC西安游记</title>
+      <link>https://caaatch22.github.io/posts/icpc%E8%A5%BF%E5%AE%89%E6%B8%B8%E8%AE%B0/</link>
+      <pubDate>Mon, 29 May 2023 13:35:22 +0000</pubDate>
+      
+      <guid>https://caaatch22.github.io/posts/icpc%E8%A5%BF%E5%AE%89%E6%B8%B8%E8%AE%B0/</guid>
+      <description>没写记录，学弟写了，直接用
+ICPC西安邀请赛</description>
+      <content:encoded><![CDATA[<p><del>没写记录，学弟写了，直接用</del></p>
+<p><a href="https://tthac09.github.io/2023/05/24/icpc2023-xian-invitational-notes/">ICPC西安邀请赛</a></p>
+]]></content:encoded>
+    </item>
+    
+    <item>
+      <title>C&#43;&#43; CRTP</title>
+      <link>https://caaatch22.github.io/posts/c-crtp/</link>
+      <pubDate>Sat, 20 May 2023 17:33:40 +0000</pubDate>
+      
+      <guid>https://caaatch22.github.io/posts/c-crtp/</guid>
+      <description>原先只是了解这个名词，想着C++20后静态多态直接用 concept来实现就好了就没细看，没必要整这些模板元编程的奇技淫巧。没想到面试某量化C++开发的时候被狠狠拷打&amp;hellip;&amp;hellip;.
+CRTP (curiously recurring template pattern) 一般认为，CRTP可以用来实现静态多态
+template &amp;lt;typename T&amp;gt; class Base { void func() { static_cast&amp;lt;T*&amp;gt;(this)-&amp;gt;funcImpl(); } }; class Derived : public Base&amp;lt;Derived&amp;gt; { void funcImpl() { // do works here } }; 通过CRTP可以使得类具有类似于虚函数的效果，同时又没有虚函数调用时的开销(虚函数调用需要通过虚函数指针查找虚函数表进行调用)，同时类的对象的体积相比使用虚函数也会减少(不需要存储虚函数指针)，但是缺点是无法动态绑定，感觉有点过于鸡肋。
+有什么用呢？可以用来向纯虚类一样做接口：（以下类似的代码在大量数学库中出现）
+template &amp;lt;typename ChildType&amp;gt; struct VectorBase { ChildType &amp;amp;underlying() { return static_cast&amp;lt;ChildType &amp;amp;&amp;gt;(*this); } inline ChildType &amp;amp;operator+=(const ChildType &amp;amp;rhs) { this-&amp;gt;underlying() = this-&amp;gt;underlying() + rhs; return this-&amp;gt;underlying(); } }; struct Vec3f : public VectorBase&amp;lt;Vec3f&amp;gt; { float x{}, y{}, z{}; Vec3f() = default; Vec3f(float x, float y, float z) : x(x), y(y), z(z) {} }; inline Vec3f operator+(const Vec3f &amp;amp;lhs, const Vec3f &amp;amp;rhs) { Vec3f result; result.</description>
+      <content:encoded><![CDATA[<blockquote>
+<p>原先只是了解这个名词，想着C++20后静态多态直接用 <code>concept</code>来实现就好了就没细看，没必要整这些模板元编程的奇技淫巧。没想到面试某量化C++开发的时候被狠狠拷打&hellip;&hellip;.</p>
+</blockquote>
+<h2 id="crtp-curiously-recurring-template-pattern">CRTP (<strong>curiously recurring template pattern</strong>)</h2>
+<p>一般认为，CRTP可以用来实现静态多态</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">template</span> <span style="color:#f92672">&lt;</span><span style="color:#66d9ef">typename</span> T<span style="color:#f92672">&gt;</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Base</span> {
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">func</span>() {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">static_cast</span><span style="color:#f92672">&lt;</span>T<span style="color:#f92672">*&gt;</span>(<span style="color:#66d9ef">this</span>)<span style="color:#f92672">-&gt;</span>funcImpl();
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>};
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Derived</span> <span style="color:#f92672">:</span> <span style="color:#66d9ef">public</span> Base<span style="color:#f92672">&lt;</span>Derived<span style="color:#f92672">&gt;</span> {
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">funcImpl</span>() {
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// do works here
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  }
+</span></span><span style="display:flex;"><span>};
+</span></span></code></pre></div><p>通过CRTP可以使得类具有类似于虚函数的效果，同时又没有虚函数调用时的开销(虚函数调用需要通过虚函数指针查找虚函数表进行调用)，同时类的对象的体积相比使用虚函数也会减少(不需要存储虚函数指针)，但是缺点是无法动态绑定，感觉有点过于鸡肋。</p>
+<p>有什么用呢？可以用来向纯虚类一样做接口：（以下类似的代码在大量数学库中出现）</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">template</span> <span style="color:#f92672">&lt;</span><span style="color:#66d9ef">typename</span> ChildType<span style="color:#f92672">&gt;</span> 
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">VectorBase</span> {
+</span></span><span style="display:flex;"><span>  ChildType <span style="color:#f92672">&amp;</span>underlying() { <span style="color:#66d9ef">return</span> <span style="color:#66d9ef">static_cast</span><span style="color:#f92672">&lt;</span>ChildType <span style="color:#f92672">&amp;&gt;</span>(<span style="color:#f92672">*</span><span style="color:#66d9ef">this</span>); }
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">inline</span> ChildType <span style="color:#f92672">&amp;</span><span style="color:#66d9ef">operator</span><span style="color:#f92672">+=</span>(<span style="color:#66d9ef">const</span> ChildType <span style="color:#f92672">&amp;</span>rhs) {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">this</span><span style="color:#f92672">-&gt;</span>underlying() <span style="color:#f92672">=</span> <span style="color:#66d9ef">this</span><span style="color:#f92672">-&gt;</span>underlying() <span style="color:#f92672">+</span> rhs;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#66d9ef">this</span><span style="color:#f92672">-&gt;</span>underlying();
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>};
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">Vec3f</span> <span style="color:#f92672">:</span> <span style="color:#66d9ef">public</span> VectorBase<span style="color:#f92672">&lt;</span>Vec3f<span style="color:#f92672">&gt;</span> {
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">float</span> x{}, y{}, z{};
+</span></span><span style="display:flex;"><span>  Vec3f() <span style="color:#f92672">=</span> <span style="color:#66d9ef">default</span>;
+</span></span><span style="display:flex;"><span>  Vec3f(<span style="color:#66d9ef">float</span> x, <span style="color:#66d9ef">float</span> y, <span style="color:#66d9ef">float</span> z) <span style="color:#f92672">:</span> x(x), y(y), z(z) {}
+</span></span><span style="display:flex;"><span>};
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">inline</span> Vec3f <span style="color:#66d9ef">operator</span><span style="color:#f92672">+</span>(<span style="color:#66d9ef">const</span> Vec3f <span style="color:#f92672">&amp;</span>lhs, <span style="color:#66d9ef">const</span> Vec3f <span style="color:#f92672">&amp;</span>rhs) {
+</span></span><span style="display:flex;"><span>  Vec3f result;
+</span></span><span style="display:flex;"><span>  result.x <span style="color:#f92672">=</span> lhs.x <span style="color:#f92672">+</span> rhs.x;
+</span></span><span style="display:flex;"><span>  result.y <span style="color:#f92672">=</span> lhs.y <span style="color:#f92672">+</span> rhs.y;
+</span></span><span style="display:flex;"><span>  result.z <span style="color:#f92672">=</span> lhs.z <span style="color:#f92672">+</span> rhs.z;
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">return</span> result;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>定义好VectorBase后，Vec3f, Vec4f等直接实现接口就好。相比虚函数的形式，在空间和runtime都有优势。</p>
+<h3 id="enable_shared_from_this-">enable_shared_from_this ?</h3>
+<p>另一个常见的用处是与 <code>shared_ptr</code>配套的 <code>std::enable_shared_from_this</code>。若我们有一个用shared_ptr管理的资源，当我们想要接管该资源，返回一个接管 <code>this</code>的 <code>shared_ptr</code>时</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#75715e">// buggy
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span><span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">Bad</span> {
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">auto</span> <span style="color:#a6e22e">get</span>() <span style="color:#f92672">-&gt;</span> shared_ptr<span style="color:#f92672">&lt;</span>Bad<span style="color:#f92672">&gt;</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> std<span style="color:#f92672">::</span>shared_ptr<span style="color:#f92672">&lt;</span>Bad<span style="color:#f92672">&gt;</span>(<span style="color:#66d9ef">this</span>);
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>};
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>TEST() {
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">auto</span> p1 <span style="color:#f92672">=</span> std<span style="color:#f92672">::</span>make_shared<span style="color:#f92672">&lt;</span>Bad<span style="color:#f92672">&gt;</span>();
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">auto</span> p2 <span style="color:#f92672">=</span> p1<span style="color:#f92672">-&gt;</span>get();
+</span></span><span style="display:flex;"><span>  assert(p2.use_cont() <span style="color:#f92672">==</span> <span style="color:#ae81ff">1</span>);  <span style="color:#75715e">// Unexpected!
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>}
+</span></span></code></pre></div><p>上述代码错误的原因在于<strong>std::make_shared总是创建一个控制块</strong>，从而导致p1, p2虽然管理的对象相同，却并不知道彼此的存在。两者的 <code>ref-cnt</code>都是1，在析构的时候该对象会被析构两次。类似的bug还有 <em>effective modern c++ Item19</em> 中的例子：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>std<span style="color:#f92672">::</span>vector<span style="color:#f92672">&lt;</span>std<span style="color:#f92672">::</span>shared_ptr<span style="color:#f92672">&lt;</span>Widge<span style="color:#f92672">&gt;&gt;</span> processedWidgets;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Widget</span> {
+</span></span><span style="display:flex;"><span> <span style="color:#66d9ef">public</span><span style="color:#f92672">:</span>
+</span></span><span style="display:flex;"><span>  ...
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">void</span> process() {
+</span></span><span style="display:flex;"><span>    ...  <span style="color:#75715e">// process
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    processedWidgets.emplace_back(<span style="color:#66d9ef">this</span>);  <span style="color:#75715e">// buggy!
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  }
+</span></span><span style="display:flex;"><span>};
+</span></span></code></pre></div><p>正确的做法是</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Widget</span><span style="color:#f92672">:</span> <span style="color:#66d9ef">public</span> std<span style="color:#f92672">::</span>enable_shared_from_this<span style="color:#f92672">&lt;</span>Widget<span style="color:#f92672">&gt;</span> {
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">process</span>() {
+</span></span><span style="display:flex;"><span>    ...  <span style="color:#75715e">// process
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    processedWidgets.emplace_back(std<span style="color:#f92672">::</span>shared_from_this());
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>};
+</span></span></code></pre></div><p>而这里的解决方案就是CRTP。实现大概就是借用一个 <code>weak_ptr</code>，在std::shared_from_this时候利用这个weak_ptr进行新的shared_ptr的拷贝构造，从而增加引用计数。</p>
+]]></content:encoded>
+    </item>
+    
+    <item>
+      <title>轻量级高并发网络库&#43;httpserver</title>
+      <link>https://caaatch22.github.io/posts/%E5%AE%9E%E7%8E%B0%E4%B8%80%E4%B8%AA%E7%AE%80%E5%8D%95%E7%9A%84%E7%BD%91%E7%BB%9C%E5%BA%93-httpserver/</link>
+      <pubDate>Wed, 01 Mar 2023 19:34:21 +0000</pubDate>
+      
+      <guid>https://caaatch22.github.io/posts/%E5%AE%9E%E7%8E%B0%E4%B8%80%E4%B8%AA%E7%AE%80%E5%8D%95%E7%9A%84%E7%BD%91%E7%BB%9C%E5%BA%93-httpserver/</guid>
+      <description>本博客部署在两个服务器上，其中一个的 HTTP 服务就是由本文介绍的 FalconLink 提供。你可以通过IP地址 101.34.211.126:20080 尝试访问。 项目地址 https://github.com/caaatch22/FalconLink
+Overview FalconLink是一个轻量级的高并发网络库。它封装了网络编程套接字API，将其抽象成一个易用，可拓展框架。用户只需通过设置回调函数的形式注入业务逻辑。它同时也具有 HTTP 服务请求与解析的功能。
+上图是FalconLink系统架构的一个简单概括性图示。
+采用非阻塞socket配合边缘触发，及one loop per thread的主从 reactor设计 Acceptor 是专门用于处理接受新用户连接请求的模块。它守候在监听端口。收到请求后建立 Connection 分配给 EventLoop。 FalconLink 将每个 TCP连接抽象成一个 Connection，一个 Connection对应一个连接 socket 套接字。用户可以为每一条Connection注册回调函数。 每个 EventLoop 都拥有一个 Poller。 Poller 负责监听已连接的套接字，将有事件触发的连接反馈给 EventLoop。 EventLoop是该系统的核心组件, 每个都单独运行在一个线程中. 它从 Poller 中接收到有事件触发的用户连接后, 会获取并执行它们的回调函数. ThreadPool 线程池管理着系统中有多少个 EventLoop 在运行，并调度线程，防止注册过多线程导致性能下降。 支持 HTTP(GET,HEAD)请求的解析与回复，支持挂载静态 html 文件（本博客使用FalconLink的 HTTP 服务） 实现异步logger API 使用falconlink，可以轻易且优雅的在20行内实现一个 echo server。
+#include &amp;#34;falconlink.hpp&amp;#34; int main() { falconlink::InetAddr local_address(&amp;#34;0.0.0.0&amp;#34;, 8090); falconlink::Server echo_server(local_address); echo_server .</description>
+      <content:encoded><![CDATA[<blockquote>
+<p>本博客部署在两个服务器上，其中一个的 HTTP 服务就是由本文介绍的 FalconLink 提供。你可以通过IP地址 101.34.211.126:20080 尝试访问。 项目地址 <a href="https://github.com/caaatch22/FalconLink">https://github.com/caaatch22/FalconLink</a></p>
+</blockquote>
+<h2 id="overview">Overview</h2>
+<p><strong>FalconLink</strong>是一个轻量级的高并发网络库。它封装了网络编程套接字API，将其抽象成一个易用，可拓展框架。用户只需通过设置回调函数的形式注入业务逻辑。它同时也具有 HTTP 服务请求与解析的功能。</p>
+<p><img loading="lazy" src="/img/FalconLink/falconlink-architecture.png" alt=""  />
+</p>
+<p>上图是FalconLink系统架构的一个简单概括性图示。</p>
+<ul>
+<li>采用<strong>非阻塞socket</strong>配合<strong>边缘触发</strong>，及<em>one loop per thread</em>的主从 <code>reactor</code>设计</li>
+<li><code>Acceptor</code> 是专门用于处理接受新用户连接请求的模块。它守候在监听端口。收到请求后建立 <code>Connection</code> 分配给 EventLoop。</li>
+<li>FalconLink 将每个 TCP连接抽象成一个 <code>Connection</code>，一个 <code>Connection</code>对应一个连接 socket 套接字。用户可以为每一条Connection注册回调函数。</li>
+<li>每个 <code>EventLoop</code> 都拥有一个 <code>Poller</code>。 <code>Poller</code> 负责监听已连接的套接字，将有事件触发的连接反馈给 <code>EventLoop</code>。</li>
+<li><code>EventLoop</code>是该系统的核心组件, 每个都单独运行在一个线程中. 它从 <code>Poller</code> 中接收到有事件触发的用户连接后, 会获取并执行它们的回调函数.</li>
+<li><code>ThreadPool</code> 线程池管理着系统中有多少个 <code>EventLoop</code> 在运行，并调度线程，防止注册过多线程导致性能下降。</li>
+<li>支持 HTTP(GET,HEAD)请求的解析与回复，支持挂载静态 html 文件（本博客使用FalconLink的 HTTP 服务）</li>
+<li>实现异步logger</li>
+</ul>
+<h2 id="api">API</h2>
+<p>使用falconlink，可以轻易且优雅的在20行内实现一个 <code>echo server</code>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&#34;falconlink.hpp&#34;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">int</span> <span style="color:#a6e22e">main</span>() {
+</span></span><span style="display:flex;"><span>  falconlink<span style="color:#f92672">::</span>InetAddr local_address(<span style="color:#e6db74">&#34;0.0.0.0&#34;</span>, <span style="color:#ae81ff">8090</span>);
+</span></span><span style="display:flex;"><span>  falconlink<span style="color:#f92672">::</span>Server echo_server(local_address);
+</span></span><span style="display:flex;"><span>  echo_server
+</span></span><span style="display:flex;"><span>      .onHandle([<span style="color:#f92672">&amp;</span>](falconlink<span style="color:#f92672">::</span>Connection<span style="color:#f92672">*</span> client_conn) {
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">int</span> from_fd <span style="color:#f92672">=</span> client_conn<span style="color:#f92672">-&gt;</span>fd();
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">auto</span> [read, exit] <span style="color:#f92672">=</span> client_conn<span style="color:#f92672">-&gt;</span>recv();
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> (exit) {
+</span></span><span style="display:flex;"><span>          client_conn<span style="color:#f92672">-&gt;</span>getEventLoop()<span style="color:#f92672">-&gt;</span>deleteConnection(from_fd);
+</span></span><span style="display:flex;"><span>          <span style="color:#75715e">// client_conn ptr is invalid below here, do not touch it again
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>          <span style="color:#66d9ef">return</span>;
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// 只有以下四行是业务逻辑
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>        <span style="color:#66d9ef">if</span> (read) {
+</span></span><span style="display:flex;"><span>          client_conn<span style="color:#f92672">-&gt;</span>WriteToWriteBuffer(client_conn<span style="color:#f92672">-&gt;</span>ReadAsString());
+</span></span><span style="display:flex;"><span>          client_conn<span style="color:#f92672">-&gt;</span>send();
+</span></span><span style="display:flex;"><span>          client_conn<span style="color:#f92672">-&gt;</span>clearReadBuffer();
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>      
+</span></span><span style="display:flex;"><span>      })
+</span></span><span style="display:flex;"><span>      .start();
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="build--test">Build &amp; Test</h2>
+<p>将代码 clone 到本地，进入主目录</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sh" data-lang="sh"><span style="display:flex;"><span>sudo sh ./build_support/pachages.sh
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>mkdir build
+</span></span><span style="display:flex;"><span>cd build
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>cmake ..  <span style="color:#75715e"># Debug mode by default</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># or </span>
+</span></span><span style="display:flex;"><span>cmake -DCMAKE_BUILD_TYPE<span style="color:#f92672">=</span>Release .. <span style="color:#75715e"># to use release mode</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>make
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># test</span>
+</span></span><span style="display:flex;"><span>make build-tests
+</span></span><span style="display:flex;"><span>make test
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># or you can test each file</span>
+</span></span><span style="display:flex;"><span>make xxx_test
+</span></span><span style="display:flex;"><span>./test/xxx_test
+</span></span></code></pre></div><h2 id="http-service">http service</h2>
+<p>你可以进行使用 falconlink 搭建自己的 http 服务器。
+在 <code>build</code> 目录下 <code>make http_server</code>，然后运行</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sh" data-lang="sh"><span style="display:flex;"><span>./bin/http_server <span style="color:#f92672">[</span>optional: port default<span style="color:#f92672">=</span>8090<span style="color:#f92672">]</span> <span style="color:#f92672">[</span>optional:directory 
+</span></span><span style="display:flex;"><span>default<span style="color:#f92672">=</span>../examples/http_server/http_resource/<span style="color:#f92672">]</span>
+</span></span></code></pre></div><p>你可以替换自行 <code>http_resource</code>中的文件，并在浏览器中输入 <code>localhost:{port}</code>查看</p>
+<h2 id="benchmark">Benchmark</h2>
+<p>使用 <code>webbench</code>进行压力测试</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sh" data-lang="sh"><span style="display:flex;"><span>make benchmark
+</span></span></code></pre></div><ul>
+<li>
+<p><strong>硬件</strong>:</p>
+<ul>
+<li>Intel(R) Xeon(R) Gold 6148 CPU @ 2.40GHz</li>
+<li>OS:Ubuntu 20.04 LTS,</li>
+<li>4 核 CPU， 16GiB内存， 100GiB磁盘存储。</li>
+</ul>
+</li>
+<li>
+<p><strong>QPS</strong>: <strong>40K</strong></p>
+</li>
+</ul>
+]]></content:encoded>
+    </item>
+    
+    <item>
+      <title>CMU15445-project3 Query Excution</title>
+      <link>https://caaatch22.github.io/posts/cmu15445-project3-query-execution/</link>
+      <pubDate>Tue, 17 Jan 2023 23:45:12 +0000</pubDate>
+      
+      <guid>https://caaatch22.github.io/posts/cmu15445-project3-query-execution/</guid>
+      <description>Overview 在这次实验写完后，我们已经能使用bustub-shell完成执行 sql 语句了，还是挺有成就感的。同时，TA 为我们准备了浏览器上的bustub ，方便和我们写的对比调试。你也可以使用 explain 来查看他的优化策略与执行步骤。
+这次实验的主要难点在于读代码，理清 bustub 的执行引擎的数据流以及代码中的实现。搞懂了之后各个算子的实现就很简单了（相对 B+树）。
+上图是 bustub 的整体架构。
+Parser sql 语句的解析就像其他编程语言一样，同样需要翻译成比较结构化的东西。Parser 阶段会生成一个抽象语法树(AST, Abstract Syntax Tree)。 这并不是数据库核心部分，bustub 直接使用了 PostgreSQL 的 parser 库 libpg_query。
+Binder 得到 AST 后，需要将这些词语绑定到数据库实体上，这就是 Binder 的工作。例如有这样一条 sql：
+SELECT table1.y, table2.x FROM table1 INNER JOIN table2 ON table1.x = table2.y; 其中 SELECT 和 FROM 是关键字，x 和 table1 是标识符。我们可以使用 explain 来看看 binder 层（bustub-shell 未完成时也可以使用 explain）：
+=== BINDER === BoundSelec { table=BoundJoin { type=Inner, left=BoundBaseTableRef { table=table1, oid=25 }, right=BoundBaseTableRef { table=table2, oid=26 }, condition=(table1.</description>
+      <content:encoded><![CDATA[<h2 id="overview">Overview</h2>
+<blockquote>
+<p>在这次实验写完后，我们已经能使用bustub-shell完成执行 sql 语句了，还是挺有成就感的。同时，TA 为我们准备了<a href="https://15445.courses.cs.cmu.edu/fall2022/bustub/">浏览器上的bustub</a> ，方便和我们写的对比调试。你也可以使用 <code>explain</code> 来查看他的优化策略与执行步骤。</p>
+</blockquote>
+<p>这次实验的主要难点在于读代码，理清 bustub 的执行引擎的数据流以及代码中的实现。搞懂了之后各个算子的实现就很简单了（相对 B+树）。</p>
+<p><img loading="lazy" src="/img/busTub/query_excution/project-structure.png" alt=""  />
+</p>
+<p>上图是 bustub 的整体架构。</p>
+<h3 id="parser">Parser</h3>
+<p>sql 语句的解析就像其他编程语言一样，同样需要翻译成比较结构化的东西。Parser 阶段会生成一个<em>抽象语法树(AST, Abstract Syntax Tree)</em>。 这并不是数据库核心部分，bustub 直接使用了 PostgreSQL 的 parser 库 libpg_query。</p>
+<h3 id="binder">Binder</h3>
+<p>得到 AST 后，需要将这些词语绑定到数据库实体上，这就是 Binder 的工作。例如有这样一条 sql：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sql" data-lang="sql"><span style="display:flex;"><span><span style="color:#66d9ef">SELECT</span> table1.y, table2.x <span style="color:#66d9ef">FROM</span> table1 <span style="color:#66d9ef">INNER</span> <span style="color:#66d9ef">JOIN</span> table2 <span style="color:#66d9ef">ON</span> table1.x <span style="color:#f92672">=</span> table2.y;
+</span></span></code></pre></div><p>其中 <code>SELECT</code> 和 <code>FROM</code> 是关键字，<code>x</code> 和 <code>table1</code> 是标识符。我们可以使用 <code>explain</code> 来看看 <code>binder</code> 层（bustub-shell 未完成时也可以使用 explain）：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span> <span style="color:#f92672">===</span> BINDER <span style="color:#f92672">===</span>                                               
+</span></span><span style="display:flex;"><span> BoundSelec <span style="color:#f92672">{</span>                                        
+</span></span><span style="display:flex;"><span>   table<span style="color:#f92672">=</span>BoundJoin <span style="color:#f92672">{</span> type<span style="color:#f92672">=</span>Inner, left<span style="color:#f92672">=</span>BoundBaseTableRef <span style="color:#f92672">{</span> table<span style="color:#f92672">=</span>table1, oid<span style="color:#f92672">=</span><span style="color:#ae81ff">25</span> <span style="color:#f92672">}</span>, right<span style="color:#f92672">=</span>BoundBaseTableRef <span style="color:#f92672">{</span> table<span style="color:#f92672">=</span>table2, oid<span style="color:#f92672">=</span><span style="color:#ae81ff">26</span> <span style="color:#f92672">}</span>, condition<span style="color:#f92672">=(</span>table1.x<span style="color:#f92672">=</span>table2.y<span style="color:#f92672">)</span> <span style="color:#f92672">}</span>, 
+</span></span><span style="display:flex;"><span>   columns<span style="color:#f92672">=[</span>table1.y, table2.x<span style="color:#f92672">]</span>,                       
+</span></span><span style="display:flex;"><span>   groupBy<span style="color:#f92672">=[]</span>,
+</span></span><span style="display:flex;"><span>   having<span style="color:#f92672">=</span>,  
+</span></span><span style="display:flex;"><span>   where<span style="color:#f92672">=</span>,  
+</span></span><span style="display:flex;"><span>   limit<span style="color:#f92672">=</span>, 
+</span></span><span style="display:flex;"><span>   offset<span style="color:#f92672">=</span>,
+</span></span><span style="display:flex;"><span>   order_by<span style="color:#f92672">=[]</span>,                                 
+</span></span><span style="display:flex;"><span>   is_distinct<span style="color:#f92672">=</span>false,         
+</span></span><span style="display:flex;"><span>   ctes<span style="color:#f92672">=</span>,
+</span></span><span style="display:flex;"><span><span style="color:#f92672">}</span>
+</span></span></code></pre></div><p>可以看出，binder的作用就是对AST的各个节点绑定一个（物理）实体。</p>
+<h3 id="planner">Planner</h3>
+<p>得到 Bustub AST 后，Planner 遍历这棵树，生成初步的查询计划。查询计划也是一棵树的形式。例如这条 sql：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sql" data-lang="sql"><span style="display:flex;"><span><span style="color:#66d9ef">SELECT</span> table1.y, table2.x <span style="color:#66d9ef">FROM</span> table1 <span style="color:#66d9ef">INNER</span> <span style="color:#66d9ef">JOIN</span> table2 <span style="color:#66d9ef">ON</span> t1.x <span style="color:#f92672">=</span> t2.y;
+</span></span></code></pre></div><p>查看 explain：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span> <span style="color:#f92672">===</span> PLANNER <span style="color:#f92672">===</span>
+</span></span><span style="display:flex;"><span> Projection <span style="color:#f92672">{</span> exprs<span style="color:#f92672">=[</span><span style="color:#75715e">#0.1, #0.2] } | (table1.y:INTEGER, table2.x:INTEGER)                                                                                            </span>
+</span></span><span style="display:flex;"><span>   NestedLoopJoin <span style="color:#f92672">{</span> type<span style="color:#f92672">=</span>Inner, predicate<span style="color:#f92672">=(</span><span style="color:#75715e">#0.0=#1.1) } | (table1.x:INTEGER, table1.y:INTEGER, table2.x:INTEGER, table2.y:INTEGER)                                   </span>
+</span></span><span style="display:flex;"><span>     SeqScan <span style="color:#f92672">{</span> table<span style="color:#f92672">=</span>table1 <span style="color:#f92672">}</span> | <span style="color:#f92672">(</span>table1.x:INTEGER, table1.y:INTEGER<span style="color:#f92672">)</span>                                                                                                 
+</span></span><span style="display:flex;"><span>     SeqScan <span style="color:#f92672">{</span> table<span style="color:#f92672">=</span>table2 <span style="color:#f92672">}</span> | <span style="color:#f92672">(</span>table2.x:INTEGER, table2.y:INTEGER<span style="color:#f92672">)</span> 
+</span></span></code></pre></div><p>上面的解释其实是树型的，如下图：
+<img loading="lazy" src="/img/busTub/query_excution/planner-tree.png" alt=""  />
+
+查询计划规定了数据的流向。数据从树叶流向树根，自底向上地流动，在根节点输出结果。</p>
+<h3 id="optimizer">Optimizer</h3>
+<p>生成查询计划后
+由 Planner 得到初步的查询计划后，再将查询计划交给 Optimizer 进行修改优化，生成优化过后的最终查询计划。Optimizer 主要有两种实现方式：</p>
+<ul>
+<li>Rule-based.
+<ul>
+<li>通过自动重写查询来避免效率低的方法。例如我们在 Task 3 中将要实现的，将 <code>Limit + Sort</code> 合并为 <code>TopN</code>。</li>
+<li>这种 Optimizer 不需要知道数据的具体内容，仅是根据预先定义好的规则修改 <code>Plan Node</code>。</li>
+</ul>
+</li>
+<li>Cost-based.
+<ul>
+<li>用某种模型来预估执行计划的时间，这就需要存很多跟数据相关的数据</li>
+<li>通过对不同模型的 cost 比较选出执行 cost 最小的。</li>
+<li>这也会造成一些额外开销 （运行这个cost model）</li>
+</ul>
+</li>
+</ul>
+<p>Bustub 的 Optimizer 采用第一种实现方式。</p>
+<blockquote>
+<p>一般来说，Planner 生成的是 Logical Plan Node，代表抽象的 Plan。Optimizer 则生成 Physical Plan Node，代表具体执行的 Plan。例如是 Join。在 Planner 生成的查询计划中，Join 就是 Join。在 Optimizer 生成的查询计划中，Join 会被优化成具体的 HashJoin 或 NestedIndexJoin 等等。在 Bustub 中，并不区分 Logical Plan Node 和 Physical Plan Node。Planner 会直接生成 Physical Plan Node。</p>
+</blockquote>
+<h3 id="executor">Executor</h3>
+<p>在拿到 Optimizer 生成的具体的查询计划后，就可以生成真正执行查询计划的一系列算子了。算子也是我们在 Project 3 中需要实现的主要内容。生成算子的步骤很简单，遍历查询计划树，将树上的 PlanNode 替换成对应的 Executor。算子的执行模型也大致分为三种：</p>
+<ol>
+<li>
+<p>Iterator/Pipeline Model(volcano model)。每个算子都有 Init() 和 Next() 两个方法。Init() 对算子进行初始化工作。Next() 则是向下层算子请求下一条数据。当 Next() 返回 false 时，则代表下层算子已经没有剩余数据，迭代结束。火山模型一次调用只向下层算子请求一条数据，占用内存较小，但函数调用开销大。 <img loading="lazy" src="/img/busTub/query_excution/iterator-model.png" alt=""  />
+</p>
+</li>
+<li>
+<p>Materialization Model. 所有算子立即计算出所有结果并返回。和 Iterator Model 相反。这种模型的弊端显而易见，当数据量较大时，内存占用很高，但减少了函数调用的开销。比较适合查询数据量较小的 OLTP workloads。</p>
+</li>
+<li>
+<p>Vectorized/Batch Model. 对上面两种模型的中和，一次调用返回一批数据。利于 SIMD 加速。目前比较先进的 OLAP 数据库采用这种模型。</p>
+</li>
+</ol>
+<p>Bustub 采用 Iterator Model。</p>
+<h2 id="metadata">Metadata</h2>
+<p>上面介绍了 sql语句执行过程，足以让我们对整个执行引擎有大体了解。但是我在做这个 lab 时候还是有很多困惑的地方。最后是迷迷糊糊的写完了才整理了下。大体上的信息包括在下图中：
+<img loading="lazy" src="/img/busTub/query_excution/table-matedata.png" alt=""  />
+
+（图片改自<a href="https://blog.eleven.wiki/posts/cmu15-445-project3-query-execution/">这篇博客</a>）</p>
+<h2 id="task-1---access-method-executors">Task #1 - Access Method Executors</h2>
+<h3 id="seqscan">SeqScan</h3>
+<p>实现比较简单，获取 table_iter 直接遍历即可。这里说说这个<code>plan_-&gt;filter_predicate_</code>， 他是一个<code>AbstractExpressionRef</code>，而一个<code>AbstractExpression</code>意思是一个 <em>表达式</em> ，他里面最重要的两个函数是 <code>Evaluate(const Tuple *tuple, const Schema &amp;schema)</code>和 <code>EvaluateJoin(const Tuple *left_tuple, const Schema &amp;left_schema, const Tuple *right_tuple, const Schema &amp;right_schema)</code>，主要就是用来做 filter 的。例如</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sql" data-lang="sql"><span style="display:flex;"><span><span style="color:#66d9ef">select</span> <span style="color:#f92672">*</span> <span style="color:#66d9ef">from</span> table1 <span style="color:#66d9ef">where</span> x <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span>;
+</span></span></code></pre></div><p>如果任何优化都没有，那么上述语句可以解析为两层：</p>
+<ol>
+<li>从 table1 中选出所有的 tuple。</li>
+<li>选出 x = 1的 tuple。相当于底下的 seqscan 结点会将所有 tuple 发到上一层，然后上一层再做一次 filter。但是我们通过谓词下推，可以在seqscan 时候就通过 filter_predicate_ 将需要的过滤出来，不需要的不用发给上一层。（当然，这个例子不太准确。在这个情况下本来就是一次搞定的，总之是在复杂的时候可以把谓词下推）。
+这个 Evaluate 返回一个 <code>Value</code>，实际上如果做filter应该返回 boolean，所以需要通过<code>filter_predicate_-&gt;Evaluate(tuple, table_info_-&gt;schema_).GetAs&lt;bool&gt;()</code>转化一下。
+另外，seqscan 实际上不会用到 filter_predicate。后面遇到需要 predicate 的地方会再强调。</li>
+</ol>
+<h3 id="insert--delete">Insert &amp; Delete</h3>
+<p>这两个算子是唯二的写算子（实际上后面的优化过程中需要实现一个 update算子）。</p>
+<p>我们先看下这两个算子的行为：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sql" data-lang="sql"><span style="display:flex;"><span>bustub<span style="color:#f92672">&gt;</span> <span style="color:#66d9ef">insert</span> <span style="color:#66d9ef">into</span> t1 <span style="color:#66d9ef">values</span> (<span style="color:#ae81ff">0</span>, <span style="color:#e6db74">&#39;🥰&#39;</span>, <span style="color:#ae81ff">10</span>), (<span style="color:#ae81ff">1</span>, <span style="color:#e6db74">&#39;🥰🥰&#39;</span>, <span style="color:#ae81ff">11</span>), (<span style="color:#ae81ff">2</span>, <span style="color:#e6db74">&#39;🥰🥰🥰&#39;</span>, <span style="color:#ae81ff">12</span>), (<span style="color:#ae81ff">3</span>, <span style="color:#e6db74">&#39;🥰🥰🥰🥰&#39;</span>, <span style="color:#ae81ff">13</span>), (<span style="color:#ae81ff">4</span>, <span style="color:#e6db74">&#39;🥰🥰🥰🥰&#39;</span>, <span style="color:#ae81ff">14</span>);
+</span></span><span style="display:flex;"><span><span style="color:#f92672">//</span> <span style="color:#66d9ef">output</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">+</span><span style="color:#75715e">-------------------------------+
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span><span style="color:#f92672">|</span> __bustub_internal.insert_rows <span style="color:#f92672">|</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">+</span><span style="color:#75715e">-------------------------------+
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span><span style="color:#f92672">|</span> <span style="color:#ae81ff">5</span>                             <span style="color:#f92672">|</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">+</span><span style="color:#75715e">-------------------------------+
+</span></span></span></code></pre></div><p>这两个算子他们会一直 next，然后返回一次，返回的是插入/删除 tuple 的个数（所生成的tuple）。有点像 <code>pipeline breaker</code>，但是由于他们一定是顶层算子，所以好像不叫 <code>pipeline breaker</code>。</p>
+<p>个人感觉这个返回个数的设计有点不是很合理，它一定要将个数转化成一个tuple返回。大概是这样的操作。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>  <span style="color:#f92672">*</span>tuple <span style="color:#f92672">=</span>
+</span></span><span style="display:flex;"><span>      Tuple(std<span style="color:#f92672">::</span>vector<span style="color:#f92672">&lt;</span>Value<span style="color:#f92672">&gt;</span>(GetOutputSchema().GetColumnCount() <span style="color:#75715e">/* ColumnCount() should be one*/</span>, Value(TypeId<span style="color:#f92672">::</span>INTEGER, counter)),
+</span></span><span style="display:flex;"><span>            <span style="color:#f92672">&amp;</span>GetOutputSchema());
+</span></span></code></pre></div><p>另外需要注意的就是这些 增加/删除 tuple 时，对应的索引项也需要增加/删除。</p>
+<h3 id="indexscan">IndexScan</h3>
+<p>这个就简单了，在 Init() 时候保存 index_iter， next() 时直接调用再自增就可以。</p>
+<h2 id="task-2---aggregation--join-executors">Task #2 - Aggregation &amp; Join Executors</h2>
+<h3 id="aggregation">Aggregation</h3>
+<p>aggregation 操作是一个 <code>pipeline breaker</code>。他会在 init 得到全部答案然后再 next 时一条一条返回。</p>
+<p><code>SimpleAggregationHashTable</code> 维护一张哈希表，键为 <code>AggregateKey</code>，值为 <code>AggregateValue</code>，均为 <code>std::vector&lt;Value&gt;</code>。key 代表 group by 的字段的数组，value 则是需要 aggregate 的字段的数组。在下层算子传来一个 tuple 时，将 tuple 的 group by 字段和 aggregate 字段分别提取出来，调用 <code>InsertCombine()</code> 将 group by 和 aggregate 的映射关系存入 <code>SimpleAggregationHashTable</code>。若当前 hashmap 中没有 group by 的记录，则创建初值；若已有记录，则按 aggregate 规则逐一更新所有的 aggregate 字段，例如取 max/min，求 sum 等等。例如下面这条 sql：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sql" data-lang="sql"><span style="display:flex;"><span><span style="color:#66d9ef">SELECT</span> <span style="color:#66d9ef">min</span>(t.z), <span style="color:#66d9ef">max</span>(t.z), <span style="color:#66d9ef">sum</span>(t.z) <span style="color:#66d9ef">FROM</span> t <span style="color:#66d9ef">GROUP</span> <span style="color:#66d9ef">BY</span> t.x, t.y;
+</span></span></code></pre></div><p>group by（AggregateKey）为 {t.x, t.y}，aggregate（AggregateValue）为 {t.z, t.z, t.z}。aggregate 规则为 {min, max, sum}。</p>
+<p>需要额外注意 <code>count(column)</code> 和 <code>count(*)</code> 的区别，以及对空值的处理。</p>
+<p>在 Init() 中计算出整张 hashmap 后，在 Next() 中直接利用 hashmap iterator 将结果依次取出。这里的输出形式有点奇怪，需要这样的输出：
+<img loading="lazy" src="/img/busTub/query_excution/aggregate-return.png" alt=""  />
+</p>
+<p><code>schema</code> 已经在 <code>GetOutputSchema()</code> 中准备好了。</p>
+<h3 id="nestedloopjoin">NestedLoopJoin</h3>
+<p>我的实现比较 tricky。我在 init 时候直接把下层算子（left_executor和right_executor）所有的tuple都得到了（相当于当作 pipeline breaker），保存在两张表中。再 next时候进行匹配。这里的 left-join 和 inner-join 是需要分开实现的，可以在网上查下left-join和inner-join的区别。
+在这里判断左右两个 tuple 是否 match 就需要用到<code>plan_-&gt;Predicate().EvaluateJoin()</code>，同样要 <code>GetAs&lt;bool&gt;()</code>。</p>
+<p>当我们得到一个 match 后，返回前记得<strong>保存上下文</strong>，例如，你可以保存 match 的 tuple 再左表中的下标和右表中的下标，这样下次调用 next 时候，就不用重新扫描一次。</p>
+<h3 id="nestedindexjoin">NestedIndexJoin</h3>
+<p>在进行 equi-join 时，如果发现 JOIN ON 右边的字段上建了 index，则 Optimizer 会将 NestedLoopJoin 优化为 NestedIndexJoin。具体实现和 NestedLoopJoin 差不多，只是在尝试匹配右表 tuple 时，会拿 join key 去 B+Tree Index 里进行查询。如果查询到结果，就拿着查到的 RID 去右表获取 tuple 然后装配成结果输出。</p>
+<h2 id="task-3---sort--limit-executors-and-top-n-optimization">Task #3 - Sort + Limit Executors and Top-N Optimization</h2>
+<h3 id="sort">sort</h3>
+<p>这个实验的 sort 无需进行外部排序，重载小于后就可以实现。就是比较的方式有点奇怪，可以类比以下写：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>order_key.second<span style="color:#f92672">-&gt;</span>Evaluate(<span style="color:#f92672">&amp;</span>lhs, schema).CompareLessThan(order_key.second<span style="color:#f92672">-&gt;</span>Evaluate(<span style="color:#f92672">&amp;</span>rhs, schema))
+</span></span></code></pre></div><h3 id="limit">limit</h3>
+<p>简单，limit 限制在 <code>plan_-&gt;Getlimit()</code>里面。</p>
+<h3 id="top-n-optimization-rule">Top-N Optimization Rule</h3>
+<p>简单，优先队列重载小于（重载方式与 sort 相同），然后截取前 n 个。</p>
+<h3 id="sort--limit-as-topn">Sort + Limit As TopN</h3>
+<p>这是 Project 3 里最后一个必做的小问，也是唯一一个 Optimizer ，将 Sort + Limit 优化为 TopN。先看看 Optimizer 是如何执行优化规则的：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">auto</span> Optimizer<span style="color:#f92672">::</span>OptimizeCustom(<span style="color:#66d9ef">const</span> AbstractPlanNodeRef <span style="color:#f92672">&amp;</span>plan) <span style="color:#f92672">-&gt;</span> AbstractPlanNodeRef {
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">auto</span> p <span style="color:#f92672">=</span> plan;
+</span></span><span style="display:flex;"><span>  p <span style="color:#f92672">=</span> OptimizeMergeProjection(p);
+</span></span><span style="display:flex;"><span>  p <span style="color:#f92672">=</span> OptimizeMergeFilterNLJ(p);
+</span></span><span style="display:flex;"><span>  p <span style="color:#f92672">=</span> OptimizeNLJAsIndexJoin(p);
+</span></span><span style="display:flex;"><span>  p <span style="color:#f92672">=</span> OptimizeNLJAsHashJoin(p);  <span style="color:#75715e">// Enable this rule after you have implemented hash join.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  p <span style="color:#f92672">=</span> OptimizeOrderByAsIndexScan(p);
+</span></span><span style="display:flex;"><span>  p <span style="color:#f92672">=</span> OptimizeSortLimitAsTopN(p);  <span style="color:#75715e">// what we should add
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#66d9ef">return</span> p;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>可以看到，让未经优化的原始 plan 树依次经历多条规则，来生成优化过的 plan。我们的任务就是新增一条规则。看看其他规则是怎么实现的，例如 NLJAsIndexJoin：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">auto</span> Optimizer<span style="color:#f92672">::</span>OptimizeNLJAsIndexJoin(<span style="color:#66d9ef">const</span> AbstractPlanNodeRef <span style="color:#f92672">&amp;</span>plan) <span style="color:#f92672">-&gt;</span> AbstractPlanNodeRef {
+</span></span><span style="display:flex;"><span>  std<span style="color:#f92672">::</span>vector<span style="color:#f92672">&lt;</span>AbstractPlanNodeRef<span style="color:#f92672">&gt;</span> children;
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">const</span> <span style="color:#66d9ef">auto</span> <span style="color:#f92672">&amp;</span>child : plan<span style="color:#f92672">-&gt;</span>GetChildren()) {
+</span></span><span style="display:flex;"><span>    children.emplace_back(OptimizeNLJAsIndexJoin(child));
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">auto</span> optimized_plan <span style="color:#f92672">=</span> plan<span style="color:#f92672">-&gt;</span>CloneWithChildren(std<span style="color:#f92672">::</span>move(children));
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">if</span> (optimized_plan<span style="color:#f92672">-&gt;</span>GetType() <span style="color:#f92672">==</span> PlanType<span style="color:#f92672">::</span>NestedLoopJoin) {
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// apply the rule and return
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">return</span> optimized_plan;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>可以看到，实际上就是对 plan tree 进行后序遍历，自底向上地适用规则，改写节点。遍历到某个节点时，通过 if 语句来判断当前节点的类型是否符合我们要优化的类型，若符合则进行优化。</p>
+<p>大致了解如何对 plan 进行优化后，就可以开始写我们的优化规则了。需要特别注意的是，能优化为一个 TopN 算子的形式是，上层节点为 Limit，下层节点为 Sort，不能反过来。同样，我们对 plan tree 进行后续遍历，在遇到 Limit 时，判断其下层节点是否为 Sort，若为 Sort，则将这两个节点替换为一个 TopN。还是比较好实现的，只是代码看起来可能有点复杂。</p>
+<h2 id="leaderboard-task">Leaderboard Task</h2>
+<p>暂时还没写，有空了补补</p>
+<p><strong>AC!</strong>
+<img loading="lazy" src="/img/busTub/query_excution/p3-result.png" alt=""  />
+</p>
+<h2 id="resources">Resources</h2>
+<ul>
+<li><a href="https://15445.courses.cs.cmu.edu/fall2022/bustub/">bustub on web</a></li>
+<li><a href="https://15445.courses.cs.cmu.edu/fall2022">课程官网</a></li>
+<li><a href="https://github.com/cmu-db/bustub">Github Repo</a></li>
+<li><a href="https://www.youtube.com/watch?v=uikbtpVZS2s&amp;list=PLSE8ODhjZXjaKScG3l0nuOiDTTqpfnWFf&amp;ab_channel=CMUDatabaseGroup">Youtube课程视频 2022fall</a> （如果对英文字幕有压力的话可以在 chrome 插件里下个中英文双字幕插件）</li>
+</ul>
+]]></content:encoded>
+    </item>
+    
+    <item>
+      <title>将Wavelet Tree用于算法竞赛</title>
+      <link>https://caaatch22.github.io/posts/%E7%AE%97%E6%B3%95%E7%AB%9E%E8%B5%9B%E4%B8%AD%E7%9A%84wavelet-tree/</link>
+      <pubDate>Tue, 10 Jan 2023 16:18:32 +0000</pubDate>
+      
+      <guid>https://caaatch22.github.io/posts/%E7%AE%97%E6%B3%95%E7%AB%9E%E8%B5%9B%E4%B8%AD%E7%9A%84wavelet-tree/</guid>
+      <description>Wavelet Tree for Competitive Programming 最近在学FM-Index相关算法用于数据库，了解到Wavelet Tree这一数据结构，发现其还可以应用在算法竞赛中。网上相关中文资料比较少，权当自己做个学习笔记
+开始之前 在学习wavelet tree前，不妨看看他能解决什么样的问题。
+假设我们有一长为 $n$ 的序列 $A[0&amp;hellip;n - 1]$ 。在算法竞赛中，典型的数据量是 $n = 1e5, |A[i]| &amp;lt;= 1e9$
+区间 $[L, R)$ 中元素$x$的出现次数 区间 $[L, R)$ 中的第k小数 区间 $[L, R)$ 上 小于等于x的数的个数 &amp;hellip; 以上问题都可以通过可持久化线段树在解决。那为什么还需要wavelet tree呢，我们都知道可持久化线段树的常数很大，并且十分消耗空间，在有些苛刻的题目下可能会被卡 好吧应该都是金牌题，不是我该考虑的 。利用wavelet tree可以在$log(\sigma)$时间内完成的同时（且优秀的常数），若使用bitvector优化空间，空间上大概比可持久化线段树少一个量级。最重要的一点是，我个人觉得他比主席树更加直观易懂。 $\sigma$ = | $\Sigma = {1, 2, \cdots, \sigma}$| （用于序列上时是值域大小）。
+用wavelet tree的缺点就是带修改操作比较难写，码量较大，一般不会在比赛时使用。
+Wavelet Tree 该图给出了用序列 $A = [7, 3, 5, 6, 1, 3, 2, 7, 8, 4]$ 构建的wavelet tree的形态。对于树上的每个节点，我们会将其按照值域分成两个部分$[low, mid), [mid, high)$。通过 稳定划分（stable_partition，即不改变相对顺序的情况下划分）将该节点上的序列中小于 $mid$的划分到左子树中，大于等于mid的划分到右子树中，递归直至节点中只有一种值时为叶节点。需要注意的是，我们并不会在叶子节点中直接存储序列的值，而是通过某个方法使得我们能够使用较小的空间的情况下得到足够的信息。</description>
+      <content:encoded><![CDATA[<h1 id="wavelet-tree-for-competitive-programming">Wavelet Tree for Competitive Programming</h1>
+<blockquote>
+<p>最近在学<em>FM-Index</em>相关算法用于数据库，了解到Wavelet Tree这一数据结构，发现其还可以应用在算法竞赛中。网上相关中文资料比较少，权当自己做个学习笔记</p>
+</blockquote>
+<h2 id="开始之前">开始之前</h2>
+<p>在学习<code>wavelet tree</code>前，不妨看看他能解决什么样的问题。</p>
+<p>假设我们有一长为 $n$ 的序列 $A[0&hellip;n - 1]$ 。在算法竞赛中，典型的数据量是  $n = 1e5,  |A[i]| &lt;= 1e9$</p>
+<ul>
+<li>区间 $[L, R)$ 中元素$x$的<code>出现次数</code></li>
+<li>区间 $[L, R)$ 中的<code>第k小数</code></li>
+<li>区间 $[L, R)$ 上 <code>小于等于x的数的个数</code></li>
+<li>&hellip;</li>
+</ul>
+<p>以上问题都可以通过<em>可持久化线段树</em>在解决。那为什么还需要wavelet tree呢，我们都知道可持久化线段树的常数很大，并且十分消耗空间，在有些苛刻的题目下可能会被卡  <del>好吧应该都是金牌题，不是我该考虑的</del> 。利用wavelet tree可以在$log(\sigma)$时间内完成的同时（且优秀的常数），若使用<code>bitvector</code>优化空间，空间上大概比可持久化线段树少一个量级。最重要的一点是，我个人觉得他比主席树更加直观易懂。
+$\sigma$ = | $\Sigma = {1, 2, \cdots, \sigma}$| （用于序列上时是值域大小）。</p>
+<blockquote>
+<p>用wavelet tree的缺点就是带修改操作比较难写，码量较大，一般不会在比赛时使用。</p>
+</blockquote>
+<h2 id="wavelet-tree">Wavelet Tree</h2>
+<p><img loading="lazy" src="/img/waveletTree/waveletTree.png" alt=""  />
+</p>
+<p>该图给出了用序列 $A = [7, 3, 5, 6, 1, 3, 2, 7, 8, 4]$ 构建的wavelet tree的形态。对于树上的每个节点，我们会将其按照值域分成两个部分$[low, mid), [mid, high)$。通过 <strong>稳定划分</strong>（stable_partition，即不改变相对顺序的情况下划分）将该节点上的序列中小于 $mid$的划分到左子树中，大于等于mid的划分到右子树中，递归直至节点中只有一种值时为叶节点。需要注意的是，我们并不会在叶子节点中直接存储序列的值，而是通过某个方法使得我们能够使用较小的空间的情况下得到足够的信息。</p>
+<p>设根节点编号为 $u = 1$ ，其左子树的根节点为 $2 * u$ , 右子树的根节点为 $2 * u + 1$ ，以此类推。每个节点都对应一对左闭右开的区间 $[lo, hi)$，表示该节点中数值的值域范围。同时有一个 $mid = \lfloor \frac{lo + hi}{2} \rfloor$ ，表示该节点左右子树分裂标准，即左子树中值域范围是 $[lo, mid)$ , 右子树 $[mid, hi)$ 。</p>
+<p>在wavelet tree中，我们实际上在维护一个二维数组<code>vector&lt;vector&lt;int&gt;&gt; c</code>，我们不妨叫他<strong>前缀计数数组</strong>，其中 <strong><code>c[u][i]</code>表示的是u结点中下标为[0, i)中的数有多少个小于该节点对应的mid</strong>。另外，若$u$结点中有$n$个数，那么<code>c[u].size() = n + 1</code>， 我们另<code>c[u][0] = 0</code>。例如，下图给出了部分结点对应的 <code>c[u][i]</code>数组
+<img loading="lazy" src="/img/waveletTree/Counting-array.png" alt=""  />
+</p>
+<p>现在，我们来看如何用这个构建好的前缀计数数组完成以下的查询问题：</p>
+<h3 id="rankint-val-int-pos">rank(int val, int pos)</h3>
+<p>该函数返回区间 $[0, pos)$ 中值为$val$的数的个数（我也不知道为什么叫rank。。。或许这个名称是由bitvector中继承而来？）。有了这个函数，我们就容易得到区间 $[i, j)$ 内某个数的出现次数，就是 $rank(val, j) - rank(val, i)$</p>
+<p>设 $rank_u (val, pos)$ 为结点$u$中值为val的数在 $[0, pos)$ 中的出现次数（ $pos &lt;= size(u)$ ）$mid$为节点$u$分裂标准，我们可以得到：</p>
+<ul>
+<li>若 $val &lt; mid$，则 $rank_u(val, pos) = rank_{LeftChild(u)}(val, c[u][pos])$</li>
+<li>若 $val &gt;= mid$,  $rank_u(val, pos) = rank_{RightChild(u)}(val, pos - c[u][pos])$</li>
+</ul>
+<p>如何理解上述变化呢，其实也很简单，就是要理解<code>c[u][i]</code>的意义，它同时也表示将u结点中下标为i的点映射到子结点中后他的位置。而映射规则为<strong>若这个数小于mid，则将其映射到左儿子的c[u][i]处；若这个数大于等于mid，则将其映射到右儿子的i-c[u][i]处</strong> 不理解的可再仔细想想<code>c[u][i]</code>的这两个解释之间的等价性。</p>
+<p>有了上述说明，我们就容易递归的完成$rank$操作。例如，假设我们需要得到 $rank_1(val = 3, pos = 7)$
+-由于 $3&lt;mid，c[1][7] = 4$, 则递归左子树 $rank_2(3, 4)$；</p>
+<ul>
+<li>左子树中，$3 &gt;= (mid = 2), 4-c[2][4] = 3$，递归到右子树 $rank_5(3, 3)$</li>
+<li>右子树中，$3 &gt;= (mid = 3), 3-c[5][3] = 2$，递归到右子树</li>
+<li>右子树为叶子节点，则此时结点内的树的个数（即为上一步中 $3-c[5][3] = 2$）为$val$的个数</li>
+</ul>
+<h3 id="quantileint-k-int-l-int-r">quantile(int k, int l, int r)</h3>
+<p>该函数返回区间 $[l, r)$间的第k小数（最小的为第一小）。我们知道，<code>c[u][l]</code>表示下标为结点 $u$中有多少个下标在 $[0， l)$中的数被映射到了左子树。那么，</p>
+<ul>
+<li>若<code>c[u][r] - c[u][l] &gt;= k</code>，则区间 $[l, r)$内第k小即为左子树中的第k小。</li>
+<li>若<code>c[u][r] - c[u][l] &lt; k</code>，则区间 $[l, r)$内第k小即为右子树中的第<code>k - (c[u][r] - c[u][l])</code>小。</li>
+</ul>
+<p>从而我们可以递归的进行求解。</p>
+<h3 id="c数组的构建">c数组的构建</h3>
+<p>实际上上面已经讲的差不多了，直接看代码：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#75715e">// 参数都是该结点对应序列相关
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">// u: 该结点编号
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">// begin， end: 该结点对应序列的首个，末尾迭代器
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">// lo, hi： 该结点对应值域为 [lo, hi)
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span><span style="color:#66d9ef">void</span> <span style="color:#a6e22e">build</span>(iter begin, iter end, <span style="color:#66d9ef">int</span> lo, <span style="color:#66d9ef">int</span> hi, <span style="color:#66d9ef">int</span> u) {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span>(hi <span style="color:#f92672">-</span> lo <span style="color:#f92672">==</span> <span style="color:#ae81ff">1</span>) {
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span>;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int</span> m <span style="color:#f92672">=</span> (lo <span style="color:#f92672">+</span> hi) <span style="color:#f92672">/</span> <span style="color:#ae81ff">2</span>;
+</span></span><span style="display:flex;"><span>    c[u].reserve(end <span style="color:#f92672">-</span> begin <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span>); <span style="color:#75715e">// reverse只分配空间不进行构造，所以后面还可以push_back
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    c[u].push_back(<span style="color:#ae81ff">0</span>);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">auto</span> it <span style="color:#f92672">=</span> begin; it <span style="color:#f92672">!=</span> end; <span style="color:#f92672">++</span>it) {
+</span></span><span style="display:flex;"><span>        c[u].push_back(c[u].back() <span style="color:#f92672">+</span> (<span style="color:#f92672">*</span>it <span style="color:#f92672">&lt;</span> m));
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// 稳定划分，将[begin, end)间的小于m的值划分到前半部分，pivot为后半部分首个迭代器
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">auto</span> pivot <span style="color:#f92672">=</span> stable_partition(begin, end, [<span style="color:#f92672">=</span>](<span style="color:#66d9ef">int</span> i){<span style="color:#66d9ef">return</span> i <span style="color:#f92672">&lt;</span> m};);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    build(begin, pivot, lo, m, <span style="color:#ae81ff">2</span> <span style="color:#f92672">*</span> u);
+</span></span><span style="display:flex;"><span>    build(pivot, end, m, hi, <span style="color:#ae81ff">2</span> <span style="color:#f92672">*</span> u <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span>);
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>到这个，我们已经可以利用没有进行空间优化的wavelet tree轻松切掉这道 <a href="https://www.luogu.com.cn/problem/P3834">可持久化线段树的模板题</a>了，代码如下</p>
+<h2 id="模板">模板</h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;bits/stdc++.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">using</span> <span style="color:#66d9ef">namespace</span> std;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">WaveletTree</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">using</span> iter <span style="color:#f92672">=</span> vector<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">int</span><span style="color:#f92672">&gt;::</span>iterator;
+</span></span><span style="display:flex;"><span>    vector<span style="color:#f92672">&lt;</span>vector<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">int</span><span style="color:#f92672">&gt;&gt;</span> c;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">const</span> <span style="color:#66d9ef">int</span> SIGMA;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    WaveletTree(vector<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">int</span><span style="color:#f92672">&gt;</span> a, <span style="color:#66d9ef">int</span> sigma)<span style="color:#f92672">:</span> c(sigma<span style="color:#f92672">*</span><span style="color:#ae81ff">2</span>), SIGMA(sigma) {
+</span></span><span style="display:flex;"><span>        build(a.begin(), a.end(), <span style="color:#ae81ff">0</span>, SIGMA, <span style="color:#ae81ff">1</span>);
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">build</span>(iter begin, iter end, <span style="color:#66d9ef">int</span> lo, <span style="color:#66d9ef">int</span> hi, <span style="color:#66d9ef">int</span> u) {
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span>(hi <span style="color:#f92672">-</span> lo <span style="color:#f92672">==</span> <span style="color:#ae81ff">1</span>) <span style="color:#66d9ef">return</span>;
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">int</span> m <span style="color:#f92672">=</span> (lo <span style="color:#f92672">+</span> hi) <span style="color:#f92672">/</span> <span style="color:#ae81ff">2</span>;
+</span></span><span style="display:flex;"><span>        c[u].reserve(end <span style="color:#f92672">-</span> begin <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span>);
+</span></span><span style="display:flex;"><span>        c[u].push_back(<span style="color:#ae81ff">0</span>);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">auto</span> it <span style="color:#f92672">=</span> begin; it <span style="color:#f92672">!=</span> end; <span style="color:#f92672">++</span>it) {
+</span></span><span style="display:flex;"><span>            c[u].push_back(c[u].back() <span style="color:#f92672">+</span> (<span style="color:#f92672">*</span>it <span style="color:#f92672">&lt;</span> m));
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">auto</span> p <span style="color:#f92672">=</span> stable_partition(begin, end, [<span style="color:#f92672">=</span>](<span style="color:#66d9ef">int</span> i)
+</span></span><span style="display:flex;"><span>                                  { <span style="color:#66d9ef">return</span> i <span style="color:#f92672">&lt;</span> m; });
+</span></span><span style="display:flex;"><span>        build(begin, p, lo, m, <span style="color:#ae81ff">2</span> <span style="color:#f92672">*</span> u);
+</span></span><span style="display:flex;"><span>        build(p, end, m, hi, <span style="color:#ae81ff">2</span> <span style="color:#f92672">*</span> u <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span>);
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// occurrences of val in position[0, i)
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">int</span> <span style="color:#a6e22e">rank</span>(<span style="color:#66d9ef">int</span> val, <span style="color:#66d9ef">int</span> i) <span style="color:#66d9ef">const</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span>(val <span style="color:#f92672">&lt;</span> <span style="color:#ae81ff">0</span> or val <span style="color:#f92672">&gt;=</span> SIGMA) <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">int</span> lo <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>, hi <span style="color:#f92672">=</span> SIGMA, u <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">while</span>(hi <span style="color:#f92672">-</span> lo <span style="color:#f92672">&gt;</span> <span style="color:#ae81ff">1</span>) {
+</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">int</span> m <span style="color:#f92672">=</span> (lo <span style="color:#f92672">+</span> hi) <span style="color:#f92672">/</span> <span style="color:#ae81ff">2</span>;
+</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">if</span>(val <span style="color:#f92672">&lt;</span> m) {
+</span></span><span style="display:flex;"><span>                i <span style="color:#f92672">=</span> c[u][i], hi <span style="color:#f92672">=</span> m;
+</span></span><span style="display:flex;"><span>                u <span style="color:#f92672">=</span> u <span style="color:#f92672">*</span> <span style="color:#ae81ff">2</span>;
+</span></span><span style="display:flex;"><span>            } <span style="color:#66d9ef">else</span> {
+</span></span><span style="display:flex;"><span>                i <span style="color:#f92672">-=</span> c[u][i], lo <span style="color:#f92672">=</span> m;
+</span></span><span style="display:flex;"><span>                u <span style="color:#f92672">=</span> u <span style="color:#f92672">*</span> <span style="color:#ae81ff">2</span> <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>            }
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> i;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// get kth smallest number in [l, r)
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">int</span> <span style="color:#a6e22e">quantile</span>(<span style="color:#66d9ef">int</span> k, <span style="color:#66d9ef">int</span> l, <span style="color:#66d9ef">int</span> r) <span style="color:#66d9ef">const</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// assert(k &gt; 0 &amp;&amp; k &lt;= j - i);
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>        <span style="color:#66d9ef">int</span> lo <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>, hi <span style="color:#f92672">=</span> SIGMA, u <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">while</span>(hi <span style="color:#f92672">-</span> lo <span style="color:#f92672">&gt;</span> <span style="color:#ae81ff">1</span>) {
+</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">int</span> m <span style="color:#f92672">=</span> (lo <span style="color:#f92672">+</span> hi) <span style="color:#f92672">/</span> <span style="color:#ae81ff">2</span>;
+</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">int</span> nl <span style="color:#f92672">=</span> c[u][l], nr <span style="color:#f92672">=</span> c[u][r];
+</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">if</span>(k <span style="color:#f92672">&lt;=</span> nr <span style="color:#f92672">-</span> nl) {
+</span></span><span style="display:flex;"><span>                r <span style="color:#f92672">=</span> nr, l <span style="color:#f92672">=</span> nl, hi <span style="color:#f92672">=</span> m;
+</span></span><span style="display:flex;"><span>                u <span style="color:#f92672">=</span> <span style="color:#ae81ff">2</span> <span style="color:#f92672">*</span> u;
+</span></span><span style="display:flex;"><span>            } <span style="color:#66d9ef">else</span> {
+</span></span><span style="display:flex;"><span>                k <span style="color:#f92672">-=</span> nr <span style="color:#f92672">-</span> nl;
+</span></span><span style="display:flex;"><span>                r <span style="color:#f92672">-=</span> nr, l <span style="color:#f92672">-=</span> nl, lo <span style="color:#f92672">=</span> m;
+</span></span><span style="display:flex;"><span>                u <span style="color:#f92672">=</span> <span style="color:#ae81ff">2</span> <span style="color:#f92672">*</span> u <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>            }
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> lo;   
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>};
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">int</span> <span style="color:#a6e22e">main</span>() {
+</span></span><span style="display:flex;"><span>    ios<span style="color:#f92672">::</span>sync_with_stdio(false);
+</span></span><span style="display:flex;"><span>    cin.tie(<span style="color:#66d9ef">nullptr</span>); cout.tie(<span style="color:#66d9ef">nullptr</span>);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int</span> n, q;
+</span></span><span style="display:flex;"><span>    cin <span style="color:#f92672">&gt;&gt;</span> n <span style="color:#f92672">&gt;&gt;</span> q;
+</span></span><span style="display:flex;"><span>    vector<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">int</span><span style="color:#f92672">&gt;</span> a(n);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">int</span> <span style="color:#f92672">&amp;</span>x : a) {
+</span></span><span style="display:flex;"><span>        cin <span style="color:#f92672">&gt;&gt;</span> x;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    WaveletTree wt(a, <span style="color:#f92672">*</span>max_element(a.begin(), a.end()) <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span>);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">while</span>(q <span style="color:#f92672">--</span>) {
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">int</span> k, l, r;
+</span></span><span style="display:flex;"><span>        cin <span style="color:#f92672">&gt;&gt;</span> l <span style="color:#f92672">&gt;&gt;</span> r <span style="color:#f92672">&gt;&gt;</span> k;
+</span></span><span style="display:flex;"><span>        l<span style="color:#f92672">--</span>;
+</span></span><span style="display:flex;"><span>        cout <span style="color:#f92672">&lt;&lt;</span> wt.quantile(k, l, r) <span style="color:#f92672">&lt;&lt;</span> <span style="color:#e6db74">&#39;\n&#39;</span>;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div>]]></content:encoded>
+    </item>
+    
+    <item>
+      <title>CMU15445-project2 Concurrent B&#43; tree</title>
+      <link>https://caaatch22.github.io/posts/cmu15445-project2-concurrent-b-tree/</link>
+      <pubDate>Tue, 27 Dec 2022 23:45:12 +0000</pubDate>
+      
+      <guid>https://caaatch22.github.io/posts/cmu15445-project2-concurrent-b-tree/</guid>
+      <description>Overview 这个实验应该是最难的一个实验了。。。（感觉和Project 4 —— Transaction实现的难度差不多） 另外，2022fall版本的B+ tree更是变态，因为几乎没有给任何内部的API，让人无从下手。建议到 Github repo 里找到20年的，我基本是根据里面定义的函数来实现的。
+实验材料贴心的为你分成了两个检查点，四个小任务。
+Checkpoint #1
+Task #1 - B+Tree Pages Task #2 - B+Tree Data Structure (Insertion, Deletion, Point Search) Checkpoint #2
+Task #3 - Index Iterator Task #4 - Concurrent Index Task #1 - B+Tree Pages 第一个任务算是热身，主要是搞清楚 B+ 树的一些类之间的关系。 我们知道，数据库中的索引也是数据，同样以 page 的形式被组织。我们先来看看要完成的这些类之间的关系。
+B+ tree internal page 与 B + tree leaf page 都继承自B + tree page，B + tree page 中定义了 B+ 树每个结点的一些信息。而B + Tree 这个类则是Checkpoint 1的主要对象，它对internal page 以及 leaf page 进行管理，并对外开放接口。而在内存中，internal page 与 leaf page 都属于 page 的一部分，关系如下图所示。他们就是 page 中的 data 部分。因此，每次 从 buffer pool manager 得到一个 page 后，若是将他们用作 B+树的结点，则需要对这个 data 进行释义，也就是将他强制转化为internal page 或者 leaf page。这在 C++ 中通过 reinterpret_cast 完成。</description>
+      <content:encoded><![CDATA[<h2 id="overview">Overview</h2>
+<blockquote>
+<p>这个实验应该是最难的一个实验了。。。（感觉和Project 4 —— Transaction实现的难度差不多） 另外，2022fall版本的B+ tree更是变态，因为几乎没有给任何内部的API，让人无从下手。建议到 Github repo 里找到20年的，我基本是根据里面定义的函数来实现的。</p>
+</blockquote>
+<p>实验材料<del>贴心的</del>为你分成了两个检查点，四个小任务。</p>
+<p>Checkpoint #1</p>
+<ul>
+<li>Task #1 - B+Tree Pages</li>
+<li>Task #2 - B+Tree Data Structure (Insertion, Deletion, Point Search)</li>
+</ul>
+<p>Checkpoint #2</p>
+<ul>
+<li>Task #3 - Index Iterator</li>
+<li>Task #4 - Concurrent Index</li>
+</ul>
+<h2 id="task-1---btree-pages">Task #1 - B+Tree Pages</h2>
+<p>第一个任务算是热身，主要是搞清楚 B+ 树的一些类之间的关系。
+我们知道，数据库中的索引也是数据，同样以 page 的形式被组织。我们先来看看要完成的这些类之间的关系。</p>
+<p><img loading="lazy" src="/img/busTub/B-tree/B-tree-page-relation.png" alt=""  />
+</p>
+<p><code>B+ tree internal page</code> 与 <code>B + tree leaf page</code> 都继承自<code>B + tree page</code>，<code>B + tree page</code> 中定义了 B+ 树每个结点的一些信息。而B + Tree 这个类则是Checkpoint 1的主要对象，它对<code>internal page</code> 以及 <code>leaf page</code> 进行管理，并对外开放接口。而在内存中，internal page 与 leaf page 都属于 page 的一部分，关系如下图所示。他们就是 <code>page</code> 中的 data 部分。因此，每次
+从 buffer pool manager 得到一个 page 后，若是将他们用作 B+树的结点，则需要对这个 data 进行<strong>释义</strong>，也就是将他强制转化为internal page 或者 leaf page。这在 C++ 中通过 <a href="https://en.cppreference.com/w/cpp/language/reinterpret_cast"><strong>reinterpret_cast</strong></a> 完成。</p>
+<p><img loading="lazy" src="/img/busTub/B-tree/pages.png" alt=""  />
+</p>
+<p>然后就是一些getter，setter的实现。这个 <code>MappingType array[1]</code> 是个奇技淫巧叫<a href="https://en.wikipedia.org/wiki/Flexible_array_member">flexible array member</a>，由于整个internal page的大小是确定的（由data[buffer_size]转义而来），这个 array 的大小就是去掉 header后的大小。（另外，实际上应该写作 <code>MappingType array[0]</code>，不然过不了 check-format）。</p>
+<h2 id="task-2---btree-data-structure-insertion-deletion-point-search">Task #2 - B+Tree Data Structure (Insertion, Deletion, Point Search)</h2>
+<p>这个任务就是本实验最为核心的一点——实现基于磁盘的 B+ 树数据结构。这里不会详细展开，因为过于复杂且很多细节<del>因为忘光了</del>。给个<a href="https://github.com/cmu-db/bustub/blob/1cc1bb2f7b0746c67a974c0554c843ac35519315/src/storage/index/b_plus_tree.cpp">20年fall</a>的B+ tree，功能是一样的，但是提供了完善的内部接口，照着这个和书上完成要清晰不少。</p>
+<h3 id="debug">debug</h3>
+<p>TAs准备了b_plus_tree_printer工具，并且已经准备的Draw/ToString方法，善用它们将B+树可视化，更好的观察插入、删除行为是否正确。 示例：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">int</span> step <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;     
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">auto</span> key : keys) {       
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">int64_t</span> value <span style="color:#f92672">=</span> key <span style="color:#f92672">&amp;</span> <span style="color:#ae81ff">0xFFFFFFFF</span>;       
+</span></span><span style="display:flex;"><span>  rid.Set(<span style="color:#66d9ef">static_cast</span><span style="color:#f92672">&lt;</span><span style="color:#66d9ef">int32_t</span><span style="color:#f92672">&gt;</span>(key <span style="color:#f92672">&gt;&gt;</span> <span style="color:#ae81ff">32</span>), value);       
+</span></span><span style="display:flex;"><span>  index_key.SetFromInteger(key);       
+</span></span><span style="display:flex;"><span>  tree.Insert(index_key, rid, transaction);       
+</span></span><span style="display:flex;"><span>  tree.Draw(bpm, <span style="color:#e6db74">&#34;xxxxx/InsertTest_step&#34;</span> <span style="color:#f92672">+</span> std<span style="color:#f92672">::</span>to_string(step<span style="color:#f92672">++</span>) <span style="color:#f92672">+</span> <span style="color:#e6db74">&#34;_insert&#34;</span> <span style="color:#f92672">+</span> std<span style="color:#f92672">::</span>to_string(key) <span style="color:#f92672">+</span> <span style="color:#e6db74">&#34;.dot&#34;</span>);     
+</span></span><span style="display:flex;"><span>}     
+</span></span><span style="display:flex;"><span>tree.Draw(bpm, <span style="color:#e6db74">&#34;xxxxxx/InsertTest_step.dot&#34;</span>);
+</span></span></code></pre></div><p>得到生成的文件后打开，可以和<a href="https://15445.courses.cs.cmu.edu/fall2022/bpt-printer/">reference solution</a>比较。</p>
+<h2 id="task-3---index-iterator">Task #3 - Index Iterator</h2>
+<p>我想重点说下这个 iterator 的实现，因为在这个实验中，我调了最久的 bug 就出现在这个子任务中。（实际上已经过了lab-2的评测已经过了，是在 lab3评测时发生锁资源的问题）</p>
+<p>记得哪个大佬说过，如何看一个人的 C++ 水平，从他写的构造函数就可以略窥一二。C++ 的构造函数属实花里胡哨，<code>copy ctor</code>, <code>copy assignment</code>, <code>move ctor</code>, <code>move assignment</code> , 再加上 <code>initializatier list</code>以及模板&hellip; 哪些要写，哪些应当禁止都是门学问。</p>
+<p>根据 <a href="https://zh.wikipedia.org/zh-hans/RAII">RAII</a> 的思想，C++ 的 contructor（配合dtor）肩负了管理资源的作用。这个资源不知包括内存资源，还包括锁资源等等。而对于 Index iterator 来说，每个 iterator 都带有一个隐含的读属性，并发读要求对 page 上读锁，但是我们的 iterator 又不直接管理 page 资源，需要通过传入指针（用shared_ptr最好）的方式对 page 进行操作。</p>
+<p>我们来看这个例子 在</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>index_iter_ <span style="color:#f92672">=</span> GetBPlusTreeIndex()<span style="color:#f92672">-&gt;</span>GetBeginIterator();
+</span></span></code></pre></div><p>这是lab3中用到索引迭代器的一个地方的代码。注意到这会产生一个临时对象，并把它赋值给 index_iter_。如果我们在析构的时候释放了对应 page 的锁而没有写<code>copy assignment</code>，编译器生成的assignment是不会在赋值的时候为page上锁的。</p>
+<p>这个bug归根结底在于，我们的迭代器应该是 <strong>值语义(value semantic)</strong> 的（至少对于锁资源来讲）</p>
+<p>我们用 <strong>copy and swap</strong> idiom 来解决这个问题</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>INDEX_TEMPLATE_ARGUMENTS
+</span></span><span style="display:flex;"><span>INDEXITERATOR_TYPE<span style="color:#f92672">::</span>IndexIterator(BufferPoolManager <span style="color:#f92672">*</span>bpm, Page <span style="color:#f92672">*</span>page, <span style="color:#66d9ef">int</span> index, page_id_t page_id)
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">:</span> bpm_(bpm), page_(page), index_(index), page_id_(page_id) {
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">if</span> (page <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nullptr</span>) {
+</span></span><span style="display:flex;"><span>    leaf_ <span style="color:#f92672">=</span> <span style="color:#66d9ef">reinterpret_cast</span><span style="color:#f92672">&lt;</span>LeafPage <span style="color:#f92672">*&gt;</span>(page<span style="color:#f92672">-&gt;</span>GetData());
+</span></span><span style="display:flex;"><span>  } <span style="color:#66d9ef">else</span> {
+</span></span><span style="display:flex;"><span>    leaf_ <span style="color:#f92672">=</span> <span style="color:#66d9ef">nullptr</span>;
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>INDEX_TEMPLATE_ARGUMENTS
+</span></span><span style="display:flex;"><span>INDEXITERATOR_TYPE<span style="color:#f92672">::</span>IndexIterator(<span style="color:#66d9ef">const</span> IndexIterator <span style="color:#f92672">&amp;</span>rhs)
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">:</span> bpm_(rhs.bpm_), index_(rhs.index_), page_id_(rhs.page_id_), leaf_(rhs.leaf_) {
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">if</span> (page_id_ <span style="color:#f92672">!=</span> INVALID_PAGE_ID) {
+</span></span><span style="display:flex;"><span>    page_ <span style="color:#f92672">=</span> bpm_<span style="color:#f92672">-&gt;</span>FetchPage(page_id_);
+</span></span><span style="display:flex;"><span>    page_<span style="color:#f92672">-&gt;</span>RLatch();
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>INDEX_TEMPLATE_ARGUMENTS
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">auto</span> INDEXITERATOR_TYPE<span style="color:#f92672">::</span><span style="color:#66d9ef">operator</span><span style="color:#f92672">=</span>(IndexIterator rhs) <span style="color:#f92672">-&gt;</span> IndexIterator <span style="color:#f92672">&amp;</span> {
+</span></span><span style="display:flex;"><span>  Swap(<span style="color:#f92672">*</span><span style="color:#66d9ef">this</span>, rhs);
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">return</span> <span style="color:#f92672">*</span><span style="color:#66d9ef">this</span>;
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">friend</span> <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">Swap</span>(IndexIterator <span style="color:#f92672">&amp;</span>lhs, IndexIterator <span style="color:#f92672">&amp;</span>rhs) {
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">using</span> std<span style="color:#f92672">::</span>swap;
+</span></span><span style="display:flex;"><span>  swap(lhs.bpm_, rhs.bpm_);
+</span></span><span style="display:flex;"><span>  swap(lhs.page_, rhs.page_);
+</span></span><span style="display:flex;"><span>  swap(lhs.index_, rhs.index_);
+</span></span><span style="display:flex;"><span>  swap(lhs.page_id_, rhs.page_id_);
+</span></span><span style="display:flex;"><span>  swap(lhs.leaf_, rhs.leaf_);
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="task-4---index-iterator">Task #4 - Index Iterator</h2>
+<p>这是并发 B+ 树的重点。我们要使此前实现的 B+ 树支持并发的 Search/Insert/Delete 操作。整棵树一把锁逻辑上来说当然是可以的，但性能肯定不行，我们需要更加细粒度的锁管理。在这里，我们会使用一种特殊的加锁方式，叫做 latch crabbing。顾名思义，就像螃蟹一样，移动一只脚，放下，移动另一只脚，再放下。基本思想是：</p>
+<ol>
+<li>先锁住 parent page，</li>
+<li>再锁住 child page，</li>
+<li>假设 child page 是安全的，则释放 parent page 的锁。安全指当前 page 在当前操作下一定不会发生 split/steal/merge。同时，安全对不同操作的定义是不同的，Search 时，任何节点都安全；Insert 时，判断 max size；Delete 时，判断 min size。</li>
+</ol>
+<p>这么做的原因和正确性还是比较明显的。当 page 为安全的时候，当前操作仅可能改变此 page 及其 child page 的值，因此可以提前释放掉其祖先的锁来提高并发性能。</p>
+<p>最后是AC截图：</p>
+<p><img loading="lazy" src="/img/busTub/B-tree/p2-result.png" alt=""  />
+</p>
+<h2 id="resources">Resources</h2>
+<ul>
+<li><a href="https://15445.courses.cs.cmu.edu/fall2022">课程官网</a></li>
+<li><a href="https://github.com/cmu-db/bustub">Github Repo</a></li>
+<li><a href="https://www.youtube.com/watch?v=uikbtpVZS2s&amp;list=PLSE8ODhjZXjaKScG3l0nuOiDTTqpfnWFf&amp;ab_channel=CMUDatabaseGroup">Youtube课程视频 2022fall</a> （如果对英文字幕有压力的话可以在 chrome 插件里下个中英文双字幕插件）</li>
+</ul>
+]]></content:encoded>
+    </item>
+    
+    <item>
+      <title>CMU15445-project1 Buffer Pool Manager</title>
+      <link>https://caaatch22.github.io/posts/cmu15445-project1-buffer-pool-manager/</link>
+      <pubDate>Thu, 22 Dec 2022 15:37:34 +0000</pubDate>
+      
+      <guid>https://caaatch22.github.io/posts/cmu15445-project1-buffer-pool-manager/</guid>
+      <description>Buffer Pool Manager cmu15445 是一门关于数据库管理系统（DBMS）设计与实现的经典公开课，是很多dba和内核开发人员的入门课程。开课教授Andy Pavlo 非常风趣幽默，他有自己上课的DJ，他曾在浴缸里录课，且时常语出惊人。这门课的实验项目BusTub非常有挑战性，并对所有人开放评测资源。
+Overview BusTub是一个面向磁盘的 DBMS(Database Management System)。由于磁盘上的数据不支持字节粒度的访问，这就需要一个管理页的中间层，而 Andy 坚持&amp;ldquo;The OS is not your friend&amp;rdquo;， 反对使用 mmap 进行页操作，因此实验一的目标便在于通过实现 Buffer Pool Manager 主动管理磁盘中的页（page）在内存中的缓存，从而，最小化磁盘访问次数（时间上）、最大化相关数据连续（空间上）。
+这次实验有三个子任务，分别是
+Task #1: Extendible Hash Table Task #2: LRU-K Replacer Task #3: Buffer Pool Manager Instance 可拓展哈希表是这个是实验中相对独立的模块。这里不会讲它的细节，后面的两个任务中需要用到哈希表的地方我直接用std::unordered_map替代，而且效率还更高。应该是因为 Extendible Hash Table 要求线程安全，为了方便在我在每个函数入口都加了大锁。 想要 Extendible Hash Table 具体细节的可以看这个b站视频。关于它的优化，我想可以进行更细粒度的锁管理甚至写一个无锁(lockfree)的哈希表。
+Buffer Pool Manager 在后两个实验开始之前，我建议先将Task #2和Task #3的实验材料完整的看完在开始写代码。因为 replacer 和 buffer pool manager 有较大程度的耦合。很多API设计需要对照两个组件才能知道自己应该维护的数据与功能的边界。为了更符合直觉，我会先阐述 buffer pool manager 的设计，同时会穿插着 LRU-k 的API什么时候，在哪用。</description>
+      <content:encoded><![CDATA[<h1 id="buffer-pool-manager">Buffer Pool Manager</h1>
+<blockquote>
+<p>cmu15445 是一门关于数据库管理系统（DBMS）设计与实现的经典公开课，是很多dba和内核开发人员的入门课程。开课教授Andy Pavlo 非常风趣幽默，他有自己上课的DJ，他曾在浴缸里录课，且时常语出惊人。这门课的实验项目BusTub非常有挑战性，并对所有人开放评测资源。</p>
+</blockquote>
+<h2 id="overview">Overview</h2>
+<p>BusTub是一个面向磁盘的 DBMS(Database Management System)。由于磁盘上的数据不支持字节粒度的访问，这就需要一个管理页的中间层，而 Andy 坚持<a href="https://db.cs.cmu.edu/mmap-cidr2022/">&ldquo;The OS is not your friend&rdquo;</a>， 反对使用 mmap 进行页操作，因此实验一的目标便在于通过实现 Buffer Pool Manager 主动管理磁盘中的页（page）在内存中的缓存，从而，最小化磁盘访问次数（时间上）、最大化相关数据连续（空间上）。</p>
+<p>这次实验有三个子任务，分别是</p>
+<ul>
+<li>Task #1: Extendible Hash Table</li>
+<li>Task #2: LRU-K Replacer</li>
+<li>Task #3: Buffer Pool Manager Instance</li>
+</ul>
+<p>可拓展哈希表是这个是实验中相对独立的模块。这里不会讲它的细节，后面的两个任务中需要用到哈希表的地方我直接用std::unordered_map替代，而且效率还更高。应该是因为 Extendible Hash Table 要求线程安全，为了方便在我在每个函数入口都加了大锁。
+想要 Extendible Hash Table 具体细节的可以看这个<a href="https://www.bilibili.com/video/BV1nV4y1N7LM/?spm_id_from=333.788&amp;vd_source=11c680307875dda5d5b5c13fca2e5c57">b站视频</a>。关于它的优化，我想可以进行更细粒度的锁管理甚至写一个无锁(lockfree)的哈希表。</p>
+<h2 id="buffer-pool-manager-1">Buffer Pool Manager</h2>
+<p>在后两个实验开始之前，我建议先将Task #2和Task #3的<a href="https://15445.courses.cs.cmu.edu/fall2022/project1/">实验材料</a>完整的看完在开始写代码。因为 <code>replacer</code> 和 <code>buffer pool manager</code> 有较大程度的耦合。很多API设计需要对照两个组件才能知道自己应该维护的数据与功能的边界。为了更符合直觉，我会先阐述 <code>buffer pool manager</code> 的设计，同时会穿插着 <code>LRU-k</code> 的API什么时候，在哪用。</p>
+<p><strong>Buffer Pool Manager</strong> 维护的数据的基本单位为一段逻辑连续的字节数组，在磁盘上表现为<strong>页（page）</strong>，页内部结构有自己的一些结构（包括header, content等），在这个实验中我们只关心 <code>page_id_</code> (页的唯一标识)， <code>pin_conut_</code> 以及 <code>is_dirty_</code> 。对应在内存上，我们用 <strong>frame</strong> 这个词代表 <strong>框</strong>，就是装着某个物理页的框。在代码中其实就是buffer pool管理着一大片内存 <code>Page pages[pool_size_]</code>，但是 buffer pool 初始化时（资源获取时）我们得到的 pages 并不包含我们想要的页，它里面的数据是没有意义的，从而它是一个<em>空的框</em>。frame_id指的就是这个数组的下标。里面装的页有自己的<code>page_id</code>。另外，我们用一个哈希表<code>page_table_</code>保存从 页号(page id) 到 框号(frame_id) 的映射。</p>
+<!-- raw HTML omitted -->
+<p>管理帧的内存池大小一般来说是远小于磁盘的，因此在内存池满了后，再从磁盘加载新的页到内存池，需要某种替换策略（replacer）将一些不再使用的页踢出内存池以腾出空间。</p>
+<p>buffer pool manager 的<strong>实现核心</strong>在于对所有 page 的状态的管理。每个page有四种状态：</p>
+<ol>
+<li><strong>Not Allocated(Not Exist):</strong> 我们将不存在的 page 也当作一种状态</li>
+<li><strong>Allocated but Not in MEM:</strong> allocated 但是不存在于内存中（某一时刻内存装的 page 达到上线后被 evict 出内存）</li>
+<li><strong>Unpinned and in MEM:</strong> 随时可能被 evict</li>
+<li><strong>Pinned(definitely in MEM)</strong></li>
+</ol>
+<p><strong>这几种状态是互斥的</strong></p>
+<p>待实现函数：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">auto</span> BufferPoolManagerInstance<span style="color:#f92672">::</span>NewPgImp(page_id_t <span style="color:#f92672">*</span>page_id) <span style="color:#f92672">-&gt;</span> Page <span style="color:#f92672">*</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">auto</span> BufferPoolManagerInstance<span style="color:#f92672">::</span>FetchPgImp(page_id_t page_id) <span style="color:#f92672">-&gt;</span> Page <span style="color:#f92672">*</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">auto</span> BufferPoolManagerInstance<span style="color:#f92672">::</span>UnpinPgImp(page_id_t page_id, <span style="color:#66d9ef">bool</span> is_dirty) <span style="color:#f92672">-&gt;</span> <span style="color:#66d9ef">bool</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">auto</span> BufferPoolManagerInstance<span style="color:#f92672">::</span>DeletePgImp(page_id_t page_id) <span style="color:#f92672">-&gt;</span> <span style="color:#66d9ef">bool</span>
+</span></span></code></pre></div><p>便是驱动状态机中上述状态发生改变的动作（action），（注意： <em>AllocatePage 和 DeallocatePage</em>不对外部公开） 状态机如下：</p>
+<!-- raw HTML omitted -->
+<p>每个函数声明处的注释已经非常详细的描述了函数行为了。以下列出一些我在做的时候容易困惑的点：</p>
+<ul>
+<li><code>page_table_</code>维护的只是在内存中的page的<code>page_id</code>到<code>frame_id</code>的映射。也就是说它不保存 <em>Allocated but not in MEM</em> 的 page（因为在磁盘上的page也没有一个到 <code>frame_id</code> 的映射）</li>
+<li><code>Unpin</code> 操作并不一定会使 page 变成 <em>Unpinned and in MEM</em>，因为这只是这一个 <em>worker（一般来说是一个thread）</em> 对该 page 进行 unpin，其他线程可能也正在读取这个 page 的内容。 只有当 某次 Unpin 操作后，它的<code>pin_count_</code> 等于0时，才能让这个 page 变成 <code>evitable</code>的状态（在 replacer 中维护）</li>
+<li><code>AllocatePage</code> 只在 <code>NewPage</code>中用到，<code>DeallocatePage</code> 只在 <code>DeletePage</code> 中用到</li>
+<li><code>Unpin</code> 的 <code>is_dirty</code> 参数为 true 时，将这个 page 的<code>is_dirty_</code>设置为true， <strong>而当参数为false时，不可以将page的 is_dirty_ 设置为false! 而应该保持原 dirty 状态不变</strong> 因为 <code>is_dirty</code> 参数表示的只是这个线程是否对这个 page 有修改操作。（这个点害我debug了好久）</li>
+</ul>
+<p>现在我们借助 replacer 的 API 来理解一下每个 page 在他的生命周期中需要被维护什么内容。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#75715e">/**
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"> * 发生在NewPage和FetchPage时，且free_list_为空
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"> * @param[out] frame_id id of frame that is evicted.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"> */</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">auto</span> <span style="color:#a6e22e">Evict</span>(frame_id_t <span style="color:#f92672">*</span>frame_id) <span style="color:#f92672">-&gt;</span> <span style="color:#66d9ef">bool</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">/* 发生在NewPage和FetchPage中 */</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">void</span> <span style="color:#a6e22e">RecordAccess</span>(frame_id_t frame_id);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">/** 在NewPage和FetchPage set_evictable 设置为 false
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"> *  在 Unpin后，pin_count为0下 set_evictable 设置为 true
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"> */</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">void</span> <span style="color:#a6e22e">SetEvictable</span>(frame_id_t frame_id, <span style="color:#66d9ef">bool</span> set_evictable);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">/* 发生在DeletePage中 */</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">void</span> <span style="color:#a6e22e">Remove</span>(frame_id_t frame_id);
+</span></span></code></pre></div><p>以 FetchPageImpl 为例强调下一些实现的细节。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">auto</span> BufferPoolManagerInstance<span style="color:#f92672">::</span>FetchPgImp(page_id_t page_id) <span style="color:#f92672">-&gt;</span> Page <span style="color:#f92672">*</span> {
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e">// 1. 上锁！
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#75715e">// 2. 查看 page 是否在 page_table_ 中
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#75715e">//  2.1 若在 
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#75715e">//   2.1.2 得到frame_id, 目标为pages[frame_id]
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#75715e">//   2.1.3 目标内部的pin_count状态维护
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#75715e">//   2.1.4 replacer 维护recordAccess和setEvictable
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#75715e">//   2.1.5 返回
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#75715e">// 2.2 若不在
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#75715e">//  2.2.1 找一个可用的 frame (先从free list里找，没有则让 replacer evict一个)
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#75715e">//  2.2.2 清空frame_id中原来的信息 （包括old_page dirty的话写回磁盘）
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#75715e">//  2.2.3 维护 page_table (删除这个frame_id对应的old_page的信息)
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#75715e">//  2.2.4 设置新的page_id，从磁盘中读入，并维护新 page 内部信息
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#75715e">//  2.2.5 维护 replacer 相关
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#75715e">//  2.2.6 维护page_table 
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#75715e">//  2.2.7 返回
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="lru-k-replacer">LRU-K Replacer</h2>
+<p><strong>LRU-k evict policy</strong> 是让访问次数未到 k 的结点会被优先 evict 出去（这么做或许是为了防止一些微小的 <em>扰动访问</em> 污染了原来经常访问的区域），然后对于访问次数到达 k 次的结点则按照最近访问时间（或逻辑上的时间戳）最久远的被 evict。（实际上按照原始论文和 slides 上的意思应该是最近访问时间和第前 k 次访问时间<strong>之差</strong>相差最大的被 evict，但是按照前面的方法也过了。。。）</p>
+<ul>
+<li><a href="https://www.cs.cmu.edu/~natassa/courses/15-721/papers/p297-o_neil.pdf">LRU-k的原始论文</a></li>
+<li><a href="https://leetcode.cn/problems/lru-cache/">leetcode上的lru算法</a>，不熟悉的可以先试试</li>
+</ul>
+<p>针对 LRU-k 算法，我实现了两种方法，简单说一下思路。</p>
+<h3 id="方法一">方法一</h3>
+<p>维护两个链表，一个存未到 k 次访问的<code>frame_id</code>,另一个存已到（或超过）k 次访问的 <code>frame_id</code>，我们分别将其叫做 <code>history_list</code>以及<code>cache_list</code>。</p>
+<p>同时维护一个从<code>frame_id</code>到 <code>FrameEntry</code>的哈希表，这个<code>FrameEntry</code>保存了<code>hit_count</code>，<code>evictible</code>以及一个list&lt;frame_id_t&gt;的迭代器。</p>
+<ul>
+<li><strong>Evict:</strong> 若 hist_list 非空，找到第一个 evictable 的 frame 将其踢出，否则找cache_list 中第一个evictable 的 frame。</li>
+<li><strong>RecordAccess(frame_id):</strong>  通过 <code>FrameEntry</code> 查看 hit_count （1）若他是第一次访问，则将其放在 history_list 尾部，注意，同时还要维护这个 frame_id 在FrameEntry 中的迭代器 。（2）若 new_count == k 则在history_list中删去这个frame(无需遍历，通过保存在哈希表中的迭代器进行 $\mathcal{O}(1)$ 删除)，添加到 cache_list 中，同时维护哈希表 （3）new_count &gt; k，将这个 frame_id 移动到 cache_list 最后（删除和添加都可以做到 $\mathcal{O}(1)$ ）</li>
+<li><strong>SetEvictable</strong> 和 <strong>Remove</strong>都可以类似的操作。</li>
+</ul>
+<h3 id="方法一时间复杂度">方法一时间复杂度：</h3>
+<p>假设 history_list 和 cache_list 中的元素个数都是 n， 两个队列中 non-evictable 的个数都为 m，则 Evict 的时间复杂度为 $\mathcal{O}(m)$（最差遍历 m 个元素） 其余操作时间复杂度都是 $\mathcal{O}(1)$。需要注意的是，RecordAccess 要比 Evict 经常使用的多，且 Evict 遍历 m 个元素是在 non-evictable page 都在 evictable page 的先前访问。实际上可以看作一个常数。</p>
+<h3 id="方法二">方法二</h3>
+<p>为了绝对 $\mathcal{O}(1)$ 的 evict，我们可以使用std::set（红黑树），结点内部维护 <em>hit_count</em> 和 <em>到达时间</em>，需要重载&lt;=，就可以达到。但是这种做法不仅常数大（结点之间比较需要先比较访问了k次没有，对到达k次和没到达k次的结点还需分别比较），更致命的是它使得 <code>RecordAccess(frame_id)</code>的复杂度变成 $\mathcal{O}(log(n))$ （需要一次 find， 一次 delete，一次 insert）。</p>
+<h2 id="summary">Summary</h2>
+<p>这是四个实验（不算primer）中最简单的一个了，如果实在卡在某部分的话试试通过分析测试样例来得到预期行为，或者使用 gdb （可以使用 lldb 配合 vscode 代替命令行条件下进行调试）。相信我，越早学会如何调试对后面越有益。</p>
+<p>最后当然是 AC 截图了</p>
+<p><img loading="lazy" src="/img/busTub/buffer_pool_manager/p1-result.png" alt=""  />
+</p>
+<h2 id="resources">Resources</h2>
+<ul>
+<li><a href="https://15445.courses.cs.cmu.edu/fall2022">课程官网</a></li>
+<li><a href="https://github.com/cmu-db/bustub">Github Repo</a></li>
+<li><a href="https://www.youtube.com/watch?v=uikbtpVZS2s&amp;list=PLSE8ODhjZXjaKScG3l0nuOiDTTqpfnWFf&amp;ab_channel=CMUDatabaseGroup">Youtube课程视频 2022fall</a> （如果对英文字幕有压力的话可以在 chrome 插件里下个中英文双字幕插件）</li>
+</ul>
+]]></content:encoded>
+    </item>
+    
+    <item>
+      <title>个人常用配置备忘</title>
+      <link>https://caaatch22.github.io/posts/memo/</link>
+      <pubDate>Tue, 20 Dec 2022 17:33:40 +0000</pubDate>
+      
+      <guid>https://caaatch22.github.io/posts/memo/</guid>
+      <description>vscode 插件：
+C/C++, ~ Extension Pack, Themes, InteliCode CMake Tools, CodeLLDB Vim remote ssh, docker Error Lens, GitLens user的settings.json
+&amp;#34;editor.fontFamily&amp;#34;: &amp;#34;Fira Code&amp;#34;, &amp;#34;workbench.panel.defaultLocation&amp;#34;: &amp;#34;right&amp;#34;, &amp;#34;vim.handleKeys&amp;#34;: { &amp;#34;&amp;lt;C-c&amp;gt;&amp;#34;: false, &amp;#34;&amp;lt;C-f&amp;gt;&amp;#34;: false, &amp;#34;&amp;lt;C-x&amp;gt;&amp;#34;: false, &amp;#34;&amp;lt;C-a&amp;gt;&amp;#34;: false, &amp;#34;&amp;lt;C-p&amp;gt;&amp;#34;: false, }, &amp;#34;C_Cpp.vcFormat.newLine.beforeOpenBrace.block&amp;#34;: &amp;#34;sameLine&amp;#34;, &amp;#34;C_Cpp.vcFormat.newLine.beforeOpenBrace.function&amp;#34;: &amp;#34;sameLine&amp;#34;, &amp;#34;editor.formatOnSave&amp;#34;: true, &amp;#34;C_Cpp.clang_format_fallbackStyle&amp;#34;: &amp;#34;{ BasedOnStyle: LLVM, UseTab: Never, IndentWidth: 2, TabWidth: 2}&amp;#34;, pip, python, pyenv 使用pyenv控制多个python版本
+pyenv versions # 查看所有安装的python脚本 pyenv install 3.8.0 # 安装python 3.8.0 pyenv global 3.8.0 # 将3.</description>
+      <content:encoded><![CDATA[<h2 id="vscode">vscode</h2>
+<p>插件：</p>
+<ul>
+<li>C/C++, ~ Extension Pack, Themes, InteliCode</li>
+<li>CMake Tools, CodeLLDB</li>
+<li>Vim</li>
+<li>remote ssh, docker</li>
+<li>Error Lens, GitLens</li>
+</ul>
+<p>user的settings.json</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-json" data-lang="json"><span style="display:flex;"><span>    <span style="color:#e6db74">&#34;editor.fontFamily&#34;</span><span style="color:#960050;background-color:#1e0010">:</span> <span style="color:#e6db74">&#34;Fira Code&#34;</span><span style="color:#960050;background-color:#1e0010">,</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#e6db74">&#34;workbench.panel.defaultLocation&#34;</span><span style="color:#960050;background-color:#1e0010">:</span> <span style="color:#e6db74">&#34;right&#34;</span><span style="color:#960050;background-color:#1e0010">,</span>
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#e6db74">&#34;vim.handleKeys&#34;</span><span style="color:#960050;background-color:#1e0010">:</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#f92672">&#34;&lt;C-c&gt;&#34;</span>: <span style="color:#66d9ef">false</span>,
+</span></span><span style="display:flex;"><span>        <span style="color:#f92672">&#34;&lt;C-f&gt;&#34;</span>: <span style="color:#66d9ef">false</span>,
+</span></span><span style="display:flex;"><span>        <span style="color:#f92672">&#34;&lt;C-x&gt;&#34;</span>: <span style="color:#66d9ef">false</span>,
+</span></span><span style="display:flex;"><span>        <span style="color:#f92672">&#34;&lt;C-a&gt;&#34;</span>: <span style="color:#66d9ef">false</span>,
+</span></span><span style="display:flex;"><span>        <span style="color:#f92672">&#34;&lt;C-p&gt;&#34;</span>: <span style="color:#66d9ef">false</span>,
+</span></span><span style="display:flex;"><span>    }<span style="color:#960050;background-color:#1e0010">,</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#e6db74">&#34;C_Cpp.vcFormat.newLine.beforeOpenBrace.block&#34;</span><span style="color:#960050;background-color:#1e0010">:</span> <span style="color:#e6db74">&#34;sameLine&#34;</span><span style="color:#960050;background-color:#1e0010">,</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#e6db74">&#34;C_Cpp.vcFormat.newLine.beforeOpenBrace.function&#34;</span><span style="color:#960050;background-color:#1e0010">:</span> <span style="color:#e6db74">&#34;sameLine&#34;</span><span style="color:#960050;background-color:#1e0010">,</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#e6db74">&#34;editor.formatOnSave&#34;</span><span style="color:#960050;background-color:#1e0010">:</span> <span style="color:#66d9ef">true</span><span style="color:#960050;background-color:#1e0010">,</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#e6db74">&#34;C_Cpp.clang_format_fallbackStyle&#34;</span><span style="color:#960050;background-color:#1e0010">:</span> <span style="color:#e6db74">&#34;{ BasedOnStyle: LLVM, UseTab: Never, IndentWidth: 2, TabWidth: 2}&#34;</span><span style="color:#960050;background-color:#1e0010">,</span>
+</span></span></code></pre></div><h2 id="pip-python-pyenv">pip, python, pyenv</h2>
+<p>使用<code>pyenv</code>控制多个python版本</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>pyenv versions <span style="color:#75715e"># 查看所有安装的python脚本</span>
+</span></span><span style="display:flex;"><span>pyenv install 3.8.0 <span style="color:#75715e"># 安装python 3.8.0</span>
+</span></span><span style="display:flex;"><span>pyenv global 3.8.0 <span style="color:#75715e"># 将3.8.0设置为全局python，对应pip也会改变</span>
+</span></span></code></pre></div><p>删除<code>__pycache__</code></p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>find . -name <span style="color:#e6db74">&#34;*.pyc&#34;</span> -type f -print -exec rm -rf <span style="color:#f92672">{}</span> <span style="color:#ae81ff">\;</span>
+</span></span></code></pre></div><h2 id="about-clash">about clash</h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#75715e"># start.sh</span>
+</span></span><span style="display:flex;"><span>nohup ./clash -d . &gt;/dev/null 2&gt;&amp;<span style="color:#ae81ff">1</span> &amp;
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#75715e">#shutdown.sh</span>
+</span></span><span style="display:flex;"><span>ps -A | grep clash | awk <span style="color:#e6db74">&#39;{print $1}&#39;</span> | xargs kill
+</span></span></code></pre></div><p>暂时设置7890做全局代理</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sh" data-lang="sh"><span style="display:flex;"><span>export HTTPS_PROXY<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;http://127.0.0.1:7890&#34;</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># unset HTTPS_PROXY</span>
+</span></span></code></pre></div><h2 id="docker">docker</h2>
+<ol>
+<li>启动镜像</li>
+</ol>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>sudo docker run -it -d --name<span style="color:#f92672">=</span>&lt;name&gt; --privileged --net<span style="color:#f92672">=</span>host --ipc<span style="color:#f92672">=</span>host --gpus<span style="color:#f92672">=</span>all -v /opt:/opt2 repo/tag
+</span></span></code></pre></div><p>2.进入容器的bash命令行</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>sudo docker exec -it &lt;name&gt; bash
+</span></span></code></pre></div><ol start="3">
+<li>make and run</li>
+</ol>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>sudo docker build -t &lt;name&gt; -f Dockerfile .
+</span></span></code></pre></div><ol start="4">
+<li>将当前容器的镜像push到远程repo，首先确保自己登录了docker，没有登录的话先登录：</li>
+</ol>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>docker login -u &lt;用户名&gt; -p &lt;密码&gt;
+</span></span><span style="display:flex;"><span>sudo docker commit &lt;container_id&gt; &lt;repo&gt;/&lt;tag&gt;
+</span></span><span style="display:flex;"><span>sudo docker push &lt;repo&gt;/&lt;tag&gt;
+</span></span></code></pre></div><ol start="5">
+<li>删除image之前需要先删除容器</li>
+</ol>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>sudo docker ps
+</span></span><span style="display:flex;"><span>sudo docker rm &lt;container&gt;
+</span></span><span style="display:flex;"><span>sudo docker image ls
+</span></span><span style="display:flex;"><span>sudo docker rmi &lt;image&gt;
+</span></span></code></pre></div>]]></content:encoded>
+    </item>
+    
+    <item>
+      <title>cs144-note1</title>
+      <link>https://caaatch22.github.io/posts/cs144-note1/</link>
+      <pubDate>Mon, 09 May 2022 22:35:22 +0000</pubDate>
+      
+      <guid>https://caaatch22.github.io/posts/cs144-note1/</guid>
+      <description>Computer Network introduction dominant model : bidirectional, reliable byte stream connection
+http: hypertext transfer protocol : designed to be a document centric way for programs to communicate. Client &amp;mdash;&amp;gt; Server model
+Bit-Torrent: (peer-to-peer model) a client requests document from other clients, a single client can request from many others. these collections of collaborating clients are called swarms when a client wants to downloads a file, it first find torrent, usually using www and download using http.</description>
+      <content:encoded><![CDATA[<h1 id="computer-network">Computer Network</h1>
+<h2 id="introduction">introduction</h2>
+<p>dominant model : bidirectional, reliable byte stream connection</p>
+<ul>
+<li>
+<p><strong>http</strong>: hypertext transfer protocol : designed to be a document centric way for programs to communicate.
+Client  &mdash;&gt;  Server  model</p>
+</li>
+<li>
+<p><strong>Bit-Torrent</strong>: (peer-to-peer model) a client requests document from other clients, a single client can request from many others.
+these collections of collaborating clients are called <strong>swarms</strong>
+when a client wants to downloads a file, it first find <code>torrent</code>, usually using www and download using http.
+<strong>torrent</strong> file describes information about data file, also tells bit-torrent about the <strong>tracker</strong> (a node keeps track names of clients of the swarm)</p>
+</li>
+<li>
+<p><strong>skype</strong>: client &lt;&ndash;NAT&ndash;&gt;client   two clients request data from each other</p>
+<p><em>NAT</em> : network address translator
+if you&rsquo;re <em>behind a NAT</em>, you can open connections out to the internet, but other nodes on the internet can&rsquo;t easily open connections to you.</p>
+</li>
+</ul>
+<h2 id="the-4-layer-internet-model">The 4 layer Internet Model</h2>
+<h3 id="network-layer-and-link-layer">Network layer and link layer</h3>
+<!-- raw HTML omitted -->
+<p>data is delivered in <strong>packets</strong>
+a packet is a self-contained unit consisting of the data we want to be delivered.</p>
+<p>link layer&rsquo;s job is  to carry the data over one link  at a time.
+<code>ethernet</code> and <code>wifi</code> &ndash;&gt; two examples of different links layers</p>
+<p>Network layer&rsquo;s job is to deliver packets end to end across the internet.
+<strong>a packet is a collection data with header</strong>.
+<!-- raw HTML omitted --></p>
+<p>network layer packet are called <code>datagram</code>.</p>
+<p><img loading="lazy" src="/img/cs144%5cNetwork_link.png" alt=""  />
+</p>
+<h3 id="the-network-layer--is-special">The network layer  is &ldquo;special&rdquo;</h3>
+<p>we must use the internet Protocol (IP)</p>
+<ul>
+<li>IP makes a best-effort attempt to deliver our datagrams to the other end. <strong>But it make no promise</strong></li>
+<li>IP datagrams can get lost, delivered out of order, and be corrupted. <strong>No guarantees</strong>.</li>
+</ul>
+<h3 id="transport-layer">Transport layer</h3>
+<p>the most common transport layer is <strong>TCP</strong> (transmission control protocol)</p>
+<ul>
+<li>guarantee correct in-order delivery of data</li>
+</ul>
+<p>some applications doesn&rsquo;t need reliable delivery, it can use <strong>UDP</strong> (user datagram protocol).</p>
+<ul>
+<li>an alternative transport layer that bundles up application data and hands it to the network layer</li>
+<li>it offers no delivery guarantees at all</li>
+</ul>
+<h3 id="application">Application</h3>
+<p>they have their own protocol to define the syntax and semantics of data flowing between two end points
+(e.g. http, bit-torrent)</p>
+<h3 id="others">others</h3>
+<!-- raw HTML omitted -->
+<h2 id="ip-service-model">IP Service model</h2>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Datagram</td>
+<td>Individually routed packets.</td>
+</tr>
+<tr>
+<td>Unreliable</td>
+<td>packet might be dropped</td>
+</tr>
+<tr>
+<td>Best effort</td>
+<td>only if necessary</td>
+</tr>
+<tr>
+<td>Connectionless</td>
+<td>No per-flow state.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>IP is &ldquo;simple&rdquo;</strong></p>
+<ul>
+<li>faster, lower cost to build and maintain</li>
+<li>The end-to-end principle</li>
+<li>allows a variety of reliable (or unreliable) service to be built on top</li>
+<li>make very few assumptions about link layer</li>
+</ul>
+<p><strong>IP Service Model</strong></p>
+<ol>
+<li>Tried to prevent packets looping forever
+add a hop count field in the header of every datagram (<code>ttl</code>:time to live), start at a number like 128, decremented by every router passes through, when it reaches 0, IP think it be stuck in a loop then drop it.</li>
+<li>will fragment packets if they are too long.
+bc most links have a limit on the size of packets.(ethernet &ndash; 1500bytes)</li>
+<li>uses a header checksum to reduce chances of delivering datagram to wrong destination.</li>
+<li>allows for new version of IP
+<ul>
+<li>IPv4     32 bit addresses</li>
+<li>IPv6     128 bit addresses</li>
+</ul>
+</li>
+<li>allows for new options to be added to header</li>
+</ol>
+<!-- raw HTML omitted -->
+<h2 id="life-of-a-packet">Life of a Packet</h2>
+<h3 id="three-way-handshake">three-way handshake</h3>
+<ol>
+<li>
+<p>Client &mdash;&ndash;sends a synchronized message(同步信息)&mdash;&ndash;&gt; Server   (synchronize, <strong>SYN</strong>)</p>
+</li>
+<li>
+<p>Server &mdash;&ndash;responds with a synchronized message and also acknowledges the client synchronize&mdash;-&gt; Client   (synchronize and acknowledge, <strong>SYN/ACK</strong>)</p>
+</li>
+<li>
+<p>Client &mdash;&ndash;responds by acknowledging the server synchronized &mdash;-&gt; Server   (acknowledge, <strong>ACK</strong>)</p>
+</li>
+</ol>
+<p>IP addressed:  like computer addresses.
+TCP port: tells which applications to deliver data to.</p>
+<p>Web Server usually run on tcp port 80.</p>
+<p><img loading="lazy" src="/img/cs144/inside-the-stream.png" alt=""  />
+</p>
+]]></content:encoded>
+    </item>
+    
+    <item>
+      <title>xcpc template</title>
+      <link>https://caaatch22.github.io/posts/xcpc-template/</link>
+      <pubDate>Thu, 17 Mar 2022 23:38:14 +0000</pubDate>
+      
+      <guid>https://caaatch22.github.io/posts/xcpc-template/</guid>
+      <description>icpc模板 Previous Next &amp;nbsp; &amp;nbsp; / [pdf] View the PDF file here. algorithm-template Competitive Programming template
+basic algorithm 双指针 离散化，去重 前缀和与差分 二分 单调栈 单调队列 尺取法 归并排序，快速排序，第k小 树的中心 拓扑排序 math 素数，筛素数，素性测试， 反素数 质因数分解，预处理质因数 欧拉函数 组合数 拓展欧几里得，线性同余方程 中国剩余定理 容斥原理 高斯消元，高斯异或 矩阵乘法 博弈论，Nim游戏 莫比乌斯反演 BSGS FFT 生成函数 线性基 date strcture 并查集 Sparse table Trie, 01Trie 树状数组 线段树，扫描线 树链剖分 可持久化线段树，kth number, 主席树 splay 分块 莫队 点分治 kdtree Graph Floyd bellman-ford, spfa，判负环 dijkstra， 拆点 分层图最短路 差分约束 最小生成树 prim, kruskal 瓶颈生成树 kruskal重构树 lca 二分图匹配 欧拉回路欧拉路径 强连通分量 2-sat 网络流相关 string 字符串hash KMP， 前缀函数 Z-algorithm ac自动机 SA SAM dp 01pack, 完全背包，多重背包及优化，分组背包 线性dp, LCS, LIS, 编辑距离 区间dp 字符串压缩 数位dp 状压dp 树形dp 基环树dp 单调队列优化dp 斜率优化dp Geometry 常用模板 二维凸包 github地址 https://github.</description>
+      <content:encoded><![CDATA[<h2 id="icpc模板">icpc模板</h2>
+<script src= '/js/pdf-js/build/pdf.js'></script>
+
+<style>
+  #embed-pdf-container {
+    position: relative;
+    width: 100%;
+    height: auto;
+    min-height: 20vh;
+     
+  }
+  
+  .pdf-canvas {
+    border: 1px solid black;
+    direction: ltr;
+    width: 100%;
+    height: auto;
+    display: none;
+  }
+  
+  #the-canvas {
+    border: 1px solid black;
+    direction: ltr;
+    width: 100%;
+    height: auto;
+    display: none;
+  }
+  
+  
+  .pdf-loadingWrapper {
+    display: none;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 350px;
+  }
+  
+  .pdf-loading {
+    display: inline-block;
+    width: 50px;
+    height: 50px;
+    border: 3px solid #d2d0d0;;
+    border-radius: 50%;
+    border-top-color: #383838;
+    animation: spin 1s ease-in-out infinite;
+    -webkit-animation: spin 1s ease-in-out infinite;
+  }
+  
+  
+  
+  
+  
+  #overlayText {
+    word-wrap: break-word;
+    display: grid;
+    justify-content: end;
+  }
+  
+  #overlayText a {
+    position: relative;
+    top: 10px;
+    right: 4px;
+    color: #000;
+    margin: auto;
+    background-color: #eeeeee;
+    padding: 0.3em 1em;
+    border: solid 2px;
+    border-radius: 12px;
+    border-color: #00000030;
+    text-decoration: none;
+  }
+  
+  #overlayText svg {
+    height: clamp(1em, 2vw, 1.4em);
+    width:  clamp(1em, 2vw, 1.4em);
+  }
+  
+  
+  
+  @keyframes spin {
+    to { -webkit-transform: rotate(360deg); }
+  }
+  @-webkit-keyframes spin {
+    to { -webkit-transform: rotate(360deg); }
+  }
+  </style><div class="embed-pdf-container" id="embed-pdf-container-e21a8caf">
+    <div class="pdf-loadingWrapper" id="pdf-loadingWrapper-e21a8caf">
+        <div class="pdf-loading" id="pdf-loading-e21a8caf"></div>
+    </div>
+    <div id="overlayText">
+      <a href="/catch22-algorithm-template.pdf" aria-label="Download" download>
+        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18">
+            <path d="M9 13c.3 0 .5-.1.7-.3L15.4 7 14 5.6l-4 4V1H8v8.6l-4-4L2.6 7l5.7 5.7c.2.2.4.3.7.3zm-7 2h14v2H2z" />
+        </svg>
+      </a>
+    </div>
+    <canvas class="pdf-canvas" id="pdf-canvas-e21a8caf"></canvas>
+</div>
+
+<div class="pdf-paginator" id="pdf-paginator-e21a8caf">
+    <button id="pdf-prev-e21a8caf">Previous</button>
+    <button id="pdf-next-e21a8caf">Next</button> &nbsp; &nbsp;
+    <span>
+      <span class="pdf-pagenum" id="pdf-pagenum-e21a8caf"></span> / <span class="pdf-pagecount" id="pdf-pagecount-e21a8caf"></span>
+    </span>
+    <a class="pdf-source" id="pdf-source-e21a8caf" href="/catch22-algorithm-template.pdf">[pdf]</a>
+</div>
+
+<noscript>
+View the PDF file <a class="pdf-source" id="pdf-source-noscript-e21a8caf" href="/catch22-algorithm-template.pdf">here</a>.
+</noscript>
+
+<script type="text/javascript">
+    (function(){
+    var url = '\/catch22-algorithm-template.pdf';
+
+    var hidePaginator = "" === "true";
+    var hideLoader = "" === "true";
+    var selectedPageNum = parseInt("") || 1;
+
+    
+    var pdfjsLib = window['pdfjs-dist/build/pdf'];
+
+    
+    if (pdfjsLib.GlobalWorkerOptions.workerSrc == '')
+      pdfjsLib.GlobalWorkerOptions.workerSrc = "https:\/\/caaatch22.github.io" + 'js/pdf-js/build/pdf.worker.js';
+
+    
+    var pdfDoc = null,
+        pageNum = selectedPageNum,
+        pageRendering = false,
+        pageNumPending = null,
+        scale = 3,
+        canvas = document.getElementById('pdf-canvas-e21a8caf'),
+        ctx = canvas.getContext('2d'),
+        paginator = document.getElementById("pdf-paginator-e21a8caf"),
+        loadingWrapper = document.getElementById('pdf-loadingWrapper-e21a8caf');
+
+
+    
+    showPaginator();
+    showLoader();
+
+    
+
+    function renderPage(num) {
+      pageRendering = true;
+      
+      pdfDoc.getPage(num).then(function(page) {
+        var viewport = page.getViewport({scale: scale});
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+
+        
+        var renderContext = {
+          canvasContext: ctx,
+          viewport: viewport
+        };
+        var renderTask = page.render(renderContext);
+
+        
+        renderTask.promise.then(function() {
+          pageRendering = false;
+          showContent();
+
+          if (pageNumPending !== null) {
+            
+            renderPage(pageNumPending);
+            pageNumPending = null;
+          }
+        });
+      });
+
+      
+      document.getElementById('pdf-pagenum-e21a8caf').textContent = num;
+    }
+
+    
+
+    function showContent() {
+      loadingWrapper.style.display = 'none';
+      canvas.style.display = 'block';
+    }
+
+    
+
+    function showLoader() {
+      if(hideLoader) return
+      loadingWrapper.style.display = 'flex';
+      canvas.style.display = 'none';
+    }
+
+    
+
+    function showPaginator() {
+      if(hidePaginator) return
+      paginator.style.display = 'block';
+    }
+
+    
+
+    function queueRenderPage(num) {
+      if (pageRendering) {
+        pageNumPending = num;
+      } else {
+        renderPage(num);
+      }
+    }
+
+    
+
+    function onPrevPage() {
+      if (pageNum <= 1) {
+        return;
+      }
+      pageNum--;
+      queueRenderPage(pageNum);
+    }
+    document.getElementById('pdf-prev-e21a8caf').addEventListener('click', onPrevPage);
+
+    
+
+    function onNextPage() {
+      if (pageNum >= pdfDoc.numPages) {
+        return;
+      }
+      pageNum++;
+      queueRenderPage(pageNum);
+    }
+    document.getElementById('pdf-next-e21a8caf').addEventListener('click', onNextPage);
+
+    
+
+    pdfjsLib.getDocument(url).promise.then(function(pdfDoc_) {
+      pdfDoc = pdfDoc_;
+      var numPages = pdfDoc.numPages;
+      document.getElementById('pdf-pagecount-e21a8caf').textContent = numPages;
+
+      
+      if(pageNum > numPages) {
+        pageNum = numPages
+      }
+
+      
+      renderPage(pageNum);
+    });
+    })();
+</script>
+
+<h1 id="algorithm-template">algorithm-template</h1>
+<blockquote>
+<p>Competitive Programming template</p>
+</blockquote>
+<h2 id="basic-algorithm">basic algorithm</h2>
+<ul>
+<li><input checked="" disabled="" type="checkbox"> 双指针</li>
+<li><input checked="" disabled="" type="checkbox"> 离散化，去重</li>
+<li><input checked="" disabled="" type="checkbox"> 前缀和与差分</li>
+<li><input checked="" disabled="" type="checkbox"> 二分</li>
+<li><input checked="" disabled="" type="checkbox"> 单调栈</li>
+<li><input checked="" disabled="" type="checkbox"> 单调队列</li>
+<li><input checked="" disabled="" type="checkbox"> 尺取法</li>
+<li><input disabled="" type="checkbox"> 归并排序，快速排序，第k小</li>
+<li><input checked="" disabled="" type="checkbox"> 树的中心</li>
+<li><input checked="" disabled="" type="checkbox"> 拓扑排序</li>
+</ul>
+<h2 id="math">math</h2>
+<ul>
+<li><input checked="" disabled="" type="checkbox"> 素数，筛素数，素性测试， 反素数</li>
+<li><input checked="" disabled="" type="checkbox"> 质因数分解，预处理质因数</li>
+<li><input checked="" disabled="" type="checkbox"> 欧拉函数</li>
+<li><input checked="" disabled="" type="checkbox"> 组合数</li>
+<li><input checked="" disabled="" type="checkbox"> 拓展欧几里得，线性同余方程</li>
+<li><input disabled="" type="checkbox"> 中国剩余定理</li>
+<li><input checked="" disabled="" type="checkbox"> 容斥原理</li>
+<li><input checked="" disabled="" type="checkbox"> 高斯消元，高斯异或</li>
+<li><input checked="" disabled="" type="checkbox"> 矩阵乘法</li>
+<li><input disabled="" type="checkbox"> 博弈论，Nim游戏</li>
+<li><input checked="" disabled="" type="checkbox"> 莫比乌斯反演</li>
+<li><input checked="" disabled="" type="checkbox"> BSGS</li>
+<li><input checked="" disabled="" type="checkbox"> FFT</li>
+<li><input disabled="" type="checkbox"> 生成函数</li>
+<li><input disabled="" type="checkbox"> 线性基</li>
+</ul>
+<h2 id="date-strcture">date strcture</h2>
+<ul>
+<li><input checked="" disabled="" type="checkbox"> 并查集</li>
+<li><input checked="" disabled="" type="checkbox"> Sparse table</li>
+<li><input checked="" disabled="" type="checkbox"> Trie, 01Trie</li>
+<li><input checked="" disabled="" type="checkbox"> 树状数组</li>
+<li><input checked="" disabled="" type="checkbox"> 线段树，扫描线</li>
+<li><input checked="" disabled="" type="checkbox"> 树链剖分</li>
+<li><input checked="" disabled="" type="checkbox"> 可持久化线段树，kth number, 主席树</li>
+<li><input disabled="" type="checkbox"> splay</li>
+<li><input disabled="" type="checkbox"> 分块</li>
+<li><input checked="" disabled="" type="checkbox"> 莫队</li>
+<li><input disabled="" type="checkbox"> 点分治</li>
+<li><input disabled="" type="checkbox"> kdtree</li>
+</ul>
+<h2 id="graph">Graph</h2>
+<ul>
+<li><input checked="" disabled="" type="checkbox"> Floyd</li>
+<li><input checked="" disabled="" type="checkbox"> bellman-ford, spfa，判负环</li>
+<li><input checked="" disabled="" type="checkbox"> dijkstra， 拆点</li>
+<li><input checked="" disabled="" type="checkbox"> 分层图最短路</li>
+<li><input checked="" disabled="" type="checkbox"> 差分约束</li>
+<li><input checked="" disabled="" type="checkbox"> 最小生成树 prim, kruskal</li>
+<li><input checked="" disabled="" type="checkbox"> 瓶颈生成树</li>
+<li><input checked="" disabled="" type="checkbox"> kruskal重构树</li>
+<li><input checked="" disabled="" type="checkbox"> lca</li>
+<li><input checked="" disabled="" type="checkbox"> 二分图匹配</li>
+<li><input disabled="" type="checkbox"> 欧拉回路欧拉路径</li>
+<li><input checked="" disabled="" type="checkbox"> 强连通分量</li>
+<li><input checked="" disabled="" type="checkbox"> 2-sat</li>
+<li><input disabled="" type="checkbox"> 网络流相关</li>
+</ul>
+<h2 id="string">string</h2>
+<ul>
+<li><input checked="" disabled="" type="checkbox"> 字符串hash</li>
+<li><input checked="" disabled="" type="checkbox"> KMP， 前缀函数</li>
+<li><input checked="" disabled="" type="checkbox"> Z-algorithm</li>
+<li><input checked="" disabled="" type="checkbox"> ac自动机</li>
+<li><input checked="" disabled="" type="checkbox"> SA</li>
+<li><input checked="" disabled="" type="checkbox"> SAM</li>
+</ul>
+<h2 id="dp">dp</h2>
+<ul>
+<li><input checked="" disabled="" type="checkbox"> 01pack, 完全背包，多重背包及优化，分组背包</li>
+<li><input checked="" disabled="" type="checkbox"> 线性dp, LCS, LIS, 编辑距离</li>
+<li><input checked="" disabled="" type="checkbox"> 区间dp 字符串压缩</li>
+<li><input checked="" disabled="" type="checkbox"> 数位dp</li>
+<li><input disabled="" type="checkbox"> 状压dp</li>
+<li><input checked="" disabled="" type="checkbox"> 树形dp</li>
+<li><input checked="" disabled="" type="checkbox"> 基环树dp</li>
+<li><input checked="" disabled="" type="checkbox"> 单调队列优化dp</li>
+<li><input disabled="" type="checkbox"> 斜率优化dp</li>
+</ul>
+<h2 id="geometry">Geometry</h2>
+<ul>
+<li><input disabled="" type="checkbox"> 常用模板</li>
+<li><input disabled="" type="checkbox"> 二维凸包</li>
+</ul>
+<blockquote>
+<p>github地址 <a href="https://github.com/caaatch22/algorithm-template">https://github.com/caaatch22/algorithm-template</a></p>
+</blockquote>
+]]></content:encoded>
+    </item>
+    
+  </channel>
+</rss>

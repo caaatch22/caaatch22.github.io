@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>FalconLink on Mingjie&#39;s Home</title>
+    <link>https://caaatch22.github.io/tags/falconlink/</link>
+    <description>Recent content in FalconLink on Mingjie&#39;s Home</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh-cn</language>
+    <lastBuildDate>Wed, 01 Mar 2023 19:34:21 +0000</lastBuildDate><atom:link href="https://caaatch22.github.io/tags/falconlink/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>轻量级高并发网络库&#43;httpserver</title>
+      <link>https://caaatch22.github.io/posts/%E5%AE%9E%E7%8E%B0%E4%B8%80%E4%B8%AA%E7%AE%80%E5%8D%95%E7%9A%84%E7%BD%91%E7%BB%9C%E5%BA%93-httpserver/</link>
+      <pubDate>Wed, 01 Mar 2023 19:34:21 +0000</pubDate>
+      
+      <guid>https://caaatch22.github.io/posts/%E5%AE%9E%E7%8E%B0%E4%B8%80%E4%B8%AA%E7%AE%80%E5%8D%95%E7%9A%84%E7%BD%91%E7%BB%9C%E5%BA%93-httpserver/</guid>
+      <description>本博客部署在两个服务器上，其中一个的 HTTP 服务就是由本文介绍的 FalconLink 提供。你可以通过IP地址 101.34.211.126:20080 尝试访问。 项目地址 https://github.com/caaatch22/FalconLink
+Overview FalconLink是一个轻量级的高并发网络库。它封装了网络编程套接字API，将其抽象成一个易用，可拓展框架。用户只需通过设置回调函数的形式注入业务逻辑。它同时也具有 HTTP 服务请求与解析的功能。
+上图是FalconLink系统架构的一个简单概括性图示。
+采用非阻塞socket配合边缘触发，及one loop per thread的主从 reactor设计 Acceptor 是专门用于处理接受新用户连接请求的模块。它守候在监听端口。收到请求后建立 Connection 分配给 EventLoop。 FalconLink 将每个 TCP连接抽象成一个 Connection，一个 Connection对应一个连接 socket 套接字。用户可以为每一条Connection注册回调函数。 每个 EventLoop 都拥有一个 Poller。 Poller 负责监听已连接的套接字，将有事件触发的连接反馈给 EventLoop。 EventLoop是该系统的核心组件, 每个都单独运行在一个线程中. 它从 Poller 中接收到有事件触发的用户连接后, 会获取并执行它们的回调函数. ThreadPool 线程池管理着系统中有多少个 EventLoop 在运行，并调度线程，防止注册过多线程导致性能下降。 支持 HTTP(GET,HEAD)请求的解析与回复，支持挂载静态 html 文件（本博客使用FalconLink的 HTTP 服务） 实现异步logger API 使用falconlink，可以轻易且优雅的在20行内实现一个 echo server。
+#include &amp;#34;falconlink.hpp&amp;#34; int main() { falconlink::InetAddr local_address(&amp;#34;0.0.0.0&amp;#34;, 8090); falconlink::Server echo_server(local_address); echo_server .</description>
+      <content:encoded><![CDATA[<blockquote>
+<p>本博客部署在两个服务器上，其中一个的 HTTP 服务就是由本文介绍的 FalconLink 提供。你可以通过IP地址 101.34.211.126:20080 尝试访问。 项目地址 <a href="https://github.com/caaatch22/FalconLink">https://github.com/caaatch22/FalconLink</a></p>
+</blockquote>
+<h2 id="overview">Overview</h2>
+<p><strong>FalconLink</strong>是一个轻量级的高并发网络库。它封装了网络编程套接字API，将其抽象成一个易用，可拓展框架。用户只需通过设置回调函数的形式注入业务逻辑。它同时也具有 HTTP 服务请求与解析的功能。</p>
+<p><img loading="lazy" src="/img/FalconLink/falconlink-architecture.png" alt=""  />
+</p>
+<p>上图是FalconLink系统架构的一个简单概括性图示。</p>
+<ul>
+<li>采用<strong>非阻塞socket</strong>配合<strong>边缘触发</strong>，及<em>one loop per thread</em>的主从 <code>reactor</code>设计</li>
+<li><code>Acceptor</code> 是专门用于处理接受新用户连接请求的模块。它守候在监听端口。收到请求后建立 <code>Connection</code> 分配给 EventLoop。</li>
+<li>FalconLink 将每个 TCP连接抽象成一个 <code>Connection</code>，一个 <code>Connection</code>对应一个连接 socket 套接字。用户可以为每一条Connection注册回调函数。</li>
+<li>每个 <code>EventLoop</code> 都拥有一个 <code>Poller</code>。 <code>Poller</code> 负责监听已连接的套接字，将有事件触发的连接反馈给 <code>EventLoop</code>。</li>
+<li><code>EventLoop</code>是该系统的核心组件, 每个都单独运行在一个线程中. 它从 <code>Poller</code> 中接收到有事件触发的用户连接后, 会获取并执行它们的回调函数.</li>
+<li><code>ThreadPool</code> 线程池管理着系统中有多少个 <code>EventLoop</code> 在运行，并调度线程，防止注册过多线程导致性能下降。</li>
+<li>支持 HTTP(GET,HEAD)请求的解析与回复，支持挂载静态 html 文件（本博客使用FalconLink的 HTTP 服务）</li>
+<li>实现异步logger</li>
+</ul>
+<h2 id="api">API</h2>
+<p>使用falconlink，可以轻易且优雅的在20行内实现一个 <code>echo server</code>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&#34;falconlink.hpp&#34;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">int</span> <span style="color:#a6e22e">main</span>() {
+</span></span><span style="display:flex;"><span>  falconlink<span style="color:#f92672">::</span>InetAddr local_address(<span style="color:#e6db74">&#34;0.0.0.0&#34;</span>, <span style="color:#ae81ff">8090</span>);
+</span></span><span style="display:flex;"><span>  falconlink<span style="color:#f92672">::</span>Server echo_server(local_address);
+</span></span><span style="display:flex;"><span>  echo_server
+</span></span><span style="display:flex;"><span>      .onHandle([<span style="color:#f92672">&amp;</span>](falconlink<span style="color:#f92672">::</span>Connection<span style="color:#f92672">*</span> client_conn) {
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">int</span> from_fd <span style="color:#f92672">=</span> client_conn<span style="color:#f92672">-&gt;</span>fd();
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">auto</span> [read, exit] <span style="color:#f92672">=</span> client_conn<span style="color:#f92672">-&gt;</span>recv();
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> (exit) {
+</span></span><span style="display:flex;"><span>          client_conn<span style="color:#f92672">-&gt;</span>getEventLoop()<span style="color:#f92672">-&gt;</span>deleteConnection(from_fd);
+</span></span><span style="display:flex;"><span>          <span style="color:#75715e">// client_conn ptr is invalid below here, do not touch it again
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>          <span style="color:#66d9ef">return</span>;
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// 只有以下四行是业务逻辑
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>        <span style="color:#66d9ef">if</span> (read) {
+</span></span><span style="display:flex;"><span>          client_conn<span style="color:#f92672">-&gt;</span>WriteToWriteBuffer(client_conn<span style="color:#f92672">-&gt;</span>ReadAsString());
+</span></span><span style="display:flex;"><span>          client_conn<span style="color:#f92672">-&gt;</span>send();
+</span></span><span style="display:flex;"><span>          client_conn<span style="color:#f92672">-&gt;</span>clearReadBuffer();
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>      
+</span></span><span style="display:flex;"><span>      })
+</span></span><span style="display:flex;"><span>      .start();
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="build--test">Build &amp; Test</h2>
+<p>将代码 clone 到本地，进入主目录</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sh" data-lang="sh"><span style="display:flex;"><span>sudo sh ./build_support/pachages.sh
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>mkdir build
+</span></span><span style="display:flex;"><span>cd build
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>cmake ..  <span style="color:#75715e"># Debug mode by default</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># or </span>
+</span></span><span style="display:flex;"><span>cmake -DCMAKE_BUILD_TYPE<span style="color:#f92672">=</span>Release .. <span style="color:#75715e"># to use release mode</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>make
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># test</span>
+</span></span><span style="display:flex;"><span>make build-tests
+</span></span><span style="display:flex;"><span>make test
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># or you can test each file</span>
+</span></span><span style="display:flex;"><span>make xxx_test
+</span></span><span style="display:flex;"><span>./test/xxx_test
+</span></span></code></pre></div><h2 id="http-service">http service</h2>
+<p>你可以进行使用 falconlink 搭建自己的 http 服务器。
+在 <code>build</code> 目录下 <code>make http_server</code>，然后运行</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sh" data-lang="sh"><span style="display:flex;"><span>./bin/http_server <span style="color:#f92672">[</span>optional: port default<span style="color:#f92672">=</span>8090<span style="color:#f92672">]</span> <span style="color:#f92672">[</span>optional:directory 
+</span></span><span style="display:flex;"><span>default<span style="color:#f92672">=</span>../examples/http_server/http_resource/<span style="color:#f92672">]</span>
+</span></span></code></pre></div><p>你可以替换自行 <code>http_resource</code>中的文件，并在浏览器中输入 <code>localhost:{port}</code>查看</p>
+<h2 id="benchmark">Benchmark</h2>
+<p>使用 <code>webbench</code>进行压力测试</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sh" data-lang="sh"><span style="display:flex;"><span>make benchmark
+</span></span></code></pre></div><ul>
+<li>
+<p><strong>硬件</strong>:</p>
+<ul>
+<li>Intel(R) Xeon(R) Gold 6148 CPU @ 2.40GHz</li>
+<li>OS:Ubuntu 20.04 LTS,</li>
+<li>4 核 CPU， 16GiB内存， 100GiB磁盘存储。</li>
+</ul>
+</li>
+<li>
+<p><strong>QPS</strong>: <strong>40K</strong></p>
+</li>
+</ul>
+]]></content:encoded>
+    </item>
+    
+  </channel>
+</rss>
