@@ -224,18 +224,18 @@ non-blocking caches 本节主要参考了超标量处理器设计9.6.2...</p>
 
 <article class="post-entry"> 
   <header class="entry-header">
-    <h2>parallel-hashmap
+    <h2>phmap —— 缓存友好的搞笑hashtable
     </h2>
   </header>
   <div class="entry-content">
-    <p>众所周知，C&#43;&#43;标准库的 unordered_map向来不是一个好的选择。开源市场上有非常多的高性能哈希表可供选择，phmap继承自 absl-hashmap，有着非常好的插入、查找性能。在著名的Comprehensive C&#43;&#43; Hashmap Benchmarks 2022榜单中名列前茅。事实上，我比对了 phmap::flat_hash_map与榜单中综合性能第一的 ankerl::unordered_dense::map，我的benchmark中只有遍历哈希表时，flat_hash_map的性能低于 unordered_dense::map，其余无论是插入还是随即查找，大部分情况下 flat_hash_map的性能都更优。本文简单介绍了 flat_hash_map相关情况，以及一些使用上的建议与坑点。
+    <p>众所周知，C&#43;&#43;标准库的 unordered_map在性能上向来不是一个好的选择。开源市场上有非常多的高性能哈希表可供选择，phmap继承自 absl-hashmap，有着非常好的插入、查找性能。在著名的Comprehensive C&#43;&#43; Hashmap Benchmarks 2022榜单中名列前茅。事实上，我比对了 phmap::flat_hash_map与榜单中综合性能第一的 ankerl::unordered_dense::map，我的benchmark中只有遍历哈希表时，flat_hash_map的性能低于 unordered_dense::map，其余无论是插入还是随即查找，大部分情况下 flat_hash_map的性能都更优。本文简单介绍了 flat_hash_map相关情况，以及一些使用上的建议与坑点。
 flat_hash_map 和 node_hash_map区别 phmap中有提供了两类哈希表，其内部布局示意图如下：
 由上图（忽略了bucket的细节）可以看出，flat_hash_map的最大的优点在于
 node之间的内存是连续的(虽然可能中间存在空node)，遍历的时候对cache更加友好 并且相比于 node_hash_map版少一次寻址过程（std::unordered_map的设计与 node_hash_map）相同。 而 flat_*系列的缺点就是在 rehash的时候:
 会引发原来的value失效（这里的失效指的是原来的那个对象所对应的内存失效，而不是value所包含的内容失效，例如，value是一个指针，那它的值——所指向的对象，不会受到影响）。举个例子： flat_hash_map&lt;int, Data&gt; mp; node_hash_map&lt;int, Data&gt; nodemp; mp[0] = Data(); nodemp[0] = Data(); auto&amp; mp0 = mp[0]; auto&amp; nodemp0 = nodemp[0]; // tigger rehash for (int i = 1; i &lt;= 10; i &#43;&#43;) { mp[i] = Data(); nodemp[i] = Data(); } assert(std::addressof(mp[0]) != std::addressof(mp0)); assert(std::addressof(nodemp[0]) == std::addressof(nodemp0)); 原因就是 flat_hash_map的内存布局导致的。而 node_hash_map或者 std::unordered_map就保证不会出现这种情况，因为当他们rehash的时候，只需要将bucket内的指针重新分配，指针的值还是指向原来的 node&lt;key, value&gt;....</p>
   </div>
   <footer class="entry-footer"><span title='2023-07-23 21:23:15 +0000 UTC'>July 23, 2023</span>&nbsp;·&nbsp;3 min</footer>
-  <a class="entry-link" aria-label="post link to parallel-hashmap" href="https://caaatch22.github.io/posts/parallel-hashmap/"></a>
+  <a class="entry-link" aria-label="post link to phmap —— 缓存友好的搞笑hashtable" href="https://caaatch22.github.io/posts/phmap/"></a>
 </article>
 
 <article class="post-entry"> 
