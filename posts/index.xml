@@ -1723,6 +1723,9 @@ pyenv versions # 查看所有安装的python脚本 pyenv install 3.8.0 # 安装p
 </span></span><span style="display:flex;"><span>sudo docker rm &lt;container&gt;
 </span></span><span style="display:flex;"><span>sudo docker image ls
 </span></span><span style="display:flex;"><span>sudo docker rmi &lt;image&gt;
+</span></span></code></pre></div><h2 id="others">others</h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#f92672">import</span> torch
+</span></span><span style="display:flex;"><span>print(<span style="color:#f92672">*</span>torch<span style="color:#f92672">.</span>__config__<span style="color:#f92672">.</span>show()<span style="color:#f92672">.</span>split(<span style="color:#e6db74">&#34;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>), sep<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>)
 </span></span></code></pre></div>]]></content:encoded>
     </item>
     
