@@ -164,6 +164,23 @@ if (!doNotTrack) {
 
 <article class="post-entry"> 
   <header class="entry-header">
+    <h2>dlsystem-note1-计算图与自动微分
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>寒假完成的一份高质量的公开课，个人认为是dl入门最适合的一门课程。除了介绍传统的网络结构（如cnn, rnn），优化方法等，更多的聚焦于dl的框架实现，例如计算图与自动微分，利用硬件加速（cpu以及cuda后端）还介绍了模型部署，机器学习编译等偏工程方向的内容。课程实验是一个自制的深度学习框架needle (necessary elements of deep learning) 以下都是些个人笔记，以及一些课程实验的实现
+overview 对于任何的机器学习问题(至少对于监督学习)，我们大可以将其分成三个组件：
+1. hypothesis class： 定义了我们如何通过一堆的参数将输入映射成输出 2. loss function：定义了我们当前的通过hypothesis的输出跟我们希望的输出（一般是label）的举例 3. optimization method： 确定一组参数的程序，使其（近似）最小化训练集上的损失总和。
+以简单的k分类为例， 训练数据 $x^{i} \in \mathbb{R}^{n} $, $y^{i} \in {1…k}\ for\ i = 1, …, m $ 所以我们需要这样一个假设函数： $$ h: \mathbb{R}^{n} \rightarrow \mathbb{R}^{k} $$ 输出为 $\mathbb{R}^{k}$, 也就是我们对一个数据预测出其属于 ${1,…,k}$ 每种类别的“概率”然后选取最大的概率。
+现在我们定义 $ h_{\theta}(x) = \theta^{T}x $, 其中 $\theta \in \mathbb{R}^{n \times k}$, $x \in \mathbb{R}^{n}$, $h_{\theta}(x) \in \mathbb{R}^{k}$ (简单的线性函数)
+在代码中，我们常用batch form的形式来进行训练，也就是每次输入的是一个矩阵，每一行是一个数据，一共batch_size行。所以我们的数据可以表示为...</p>
+  </div>
+  <footer class="entry-footer"><span title='2024-02-10 22:35:22 +0000 UTC'>February 10, 2024</span>&nbsp;·&nbsp;1 min</footer>
+  <a class="entry-link" aria-label="post link to dlsystem-note1-计算图与自动微分" href="https://caaatch22.github.io/posts/dlsystem-1/"></a>
+</article>
+
+<article class="post-entry"> 
+  <header class="entry-header">
     <h2>Computer Architecture —— 分支预测
     </h2>
   </header>
@@ -249,22 +266,6 @@ ICPC西安邀请赛</p>
   </div>
   <footer class="entry-footer"><span title='2023-05-29 13:35:22 +0000 UTC'>May 29, 2023</span>&nbsp;·&nbsp;1 min</footer>
   <a class="entry-link" aria-label="post link to ICPC西安游记" href="https://caaatch22.github.io/posts/icpc%E8%A5%BF%E5%AE%89%E6%B8%B8%E8%AE%B0/"></a>
-</article>
-
-<article class="post-entry"> 
-  <header class="entry-header">
-    <h2>C&#43;&#43; CRTP
-    </h2>
-  </header>
-  <div class="entry-content">
-    <p>原先只是了解这个名词，想着C&#43;&#43;20后静态多态直接用 concept来实现就好了就没细看，没必要整这些模板元编程的奇技淫巧。没想到面试某量化C&#43;&#43;开发的时候被狠狠拷打…….
-CRTP (curiously recurring template pattern) 一般认为，CRTP可以用来实现静态多态
-template &lt;typename T&gt; class Base { void func() { static_cast&lt;T*&gt;(this)-&gt;funcImpl(); } }; class Derived : public Base&lt;Derived&gt; { void funcImpl() { // do works here } }; 通过CRTP可以使得类具有类似于虚函数的效果，同时又没有虚函数调用时的开销(虚函数调用需要通过虚函数指针查找虚函数表进行调用)，同时类的对象的体积相比使用虚函数也会减少(不需要存储虚函数指针)，但是缺点是无法动态绑定，感觉有点过于鸡肋。
-有什么用呢？可以用来向纯虚类一样做接口：（以下类似的代码在大量数学库中出现）
-template &lt;typename ChildType&gt; struct VectorBase { ChildType &amp;underlying() { return static_cast&lt;ChildType &amp;&gt;(*this); } inline ChildType &amp;operator&#43;=(const ChildType &amp;rhs) { this-&gt;underlying() = this-&gt;underlying() &#43; rhs; return this-&gt;underlying(); } }; struct Vec3f : public VectorBase&lt;Vec3f&gt; { float x{}, y{}, z{}; Vec3f() = default; Vec3f(float x, float y, float z) : x(x), y(y), z(z) {} }; inline Vec3f operator&#43;(const Vec3f &amp;lhs, const Vec3f &amp;rhs) { Vec3f result; result....</p>
-  </div>
-  <footer class="entry-footer"><span title='2023-05-20 17:33:40 +0000 UTC'>May 20, 2023</span>&nbsp;·&nbsp;1 min</footer>
-  <a class="entry-link" aria-label="post link to C&#43;&#43; CRTP" href="https://caaatch22.github.io/posts/c-crtp/"></a>
 </article>
 <footer class="page-footer">
   <nav class="pagination">
