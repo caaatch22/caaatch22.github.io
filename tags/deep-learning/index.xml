@@ -9,25 +9,27 @@
     <lastBuildDate>Sat, 10 Feb 2024 22:35:22 +0000</lastBuildDate><atom:link href="https://caaatch22.github.io/tags/deep-learning/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>dlsystem-note1-计算图与自动微分</title>
-      <link>https://caaatch22.github.io/posts/dlsystem-1/</link>
+      <link>https://caaatch22.github.io/posts/dlsystem1/</link>
       <pubDate>Sat, 10 Feb 2024 22:35:22 +0000</pubDate>
       
-      <guid>https://caaatch22.github.io/posts/dlsystem-1/</guid>
-      <description>寒假完成的一份高质量的公开课，个人认为是dl入门最适合的一门课程。除了介绍传统的网络结构（如cnn, rnn），优化方法等，更多的聚焦于dl的框架实现，例如计算图与自动微分，利用硬件加速（cpu以及cuda后端）还介绍了模型部署，机器学习编译等偏工程方向的内容。课程实验是一个自制的深度学习框架needle (necessary elements of deep learning) 以下都是些个人笔记，以及一些课程实验的实现
+      <guid>https://caaatch22.github.io/posts/dlsystem1/</guid>
+      <description> 寒假完成的一份高质量的公开课，个人认为是dl入门最适合的一门课程。除了介绍传统的网络结构（如cnn, rnn），优化方法等，更多的聚焦于dl的框架实现，例如计算图与自动微分，利用硬件加速（cpu以及cuda后端）还介绍了模型部署，机器学习编译等偏工程方向的内容。课程实验是一个自制的深度学习框架needle (necessary elements of deep learning) 以下都是些个人笔记，以及一些课程实验的实现
 overview 对于任何的机器学习问题(至少对于监督学习)，我们大可以将其分成三个组件：
-1. hypothesis class： 定义了我们如何通过一堆的参数将输入映射成输出 2. loss function：定义了我们当前的通过hypothesis的输出跟我们希望的输出（一般是label）的举例 3. optimization method： 确定一组参数的程序，使其（近似）最小化训练集上的损失总和。
-以简单的k分类为例， 训练数据 $x^{i} \in \mathbb{R}^{n} $, $y^{i} \in {1&amp;hellip;k}\ for\ i = 1, &amp;hellip;, m $ 所以我们需要这样一个假设函数： $$ h: \mathbb{R}^{n} \rightarrow \mathbb{R}^{k} $$ 输出为 $\mathbb{R}^{k}$, 也就是我们对一个数据预测出其属于 ${1,&amp;hellip;,k}$ 每种类别的“概率”然后选取最大的概率。
+hypothesis class： 定义了我们如何通过一堆的参数将输入映射成输出 loss function：定义了我们当前的通过hypothesis的输出跟我们希望的输出（一般是label）的举例 optimization method： 确定一组参数的程序，使其（近似）最小化训练集上的损失总和。 以简单的k分类为例， 训练数据 $x^{i} \in \mathbb{R}^{n} $, $y^{i} \in {1&amp;hellip;k}\ for\ i = 1, &amp;hellip;, m $ 所以我们需要这样一个假设函数： $$ h: \mathbb{R}^{n} \rightarrow \mathbb{R}^{k} $$ 输出为 $\mathbb{R}^{k}$, 也就是我们对一个数据预测出其属于 ${1,&amp;hellip;,k}$ 每种类别的“概率”然后选取最大的概率。
 现在我们定义 $ h_{\theta}(x) = \theta^{T}x $, 其中 $\theta \in \mathbb{R}^{n \times k}$, $x \in \mathbb{R}^{n}$, $h_{\theta}(x) \in \mathbb{R}^{k}$ (简单的线性函数)
-在代码中，我们常用batch form的形式来进行训练，也就是每次输入的是一个矩阵，每一行是一个数据，一共batch_size行。所以我们的数据可以表示为</description>
+在代码中，我们常用batch form的形式来进行训练，也就是每次输入的是一个矩阵，每一行是一个数据，一共batch_size行。所以我们的数据可以表示为
+hypothsis function $h_{\theta}(x)$ 也可以表示为： </description>
       <content:encoded><![CDATA[<blockquote>
 <p>寒假完成的一份高质量的公开课，个人认为是dl入门最适合的一门课程。除了介绍传统的网络结构（如cnn, rnn），优化方法等，更多的聚焦于dl的框架实现，例如计算图与自动微分，利用硬件加速（cpu以及cuda后端）还介绍了模型部署，机器学习编译等偏工程方向的内容。课程实验是一个自制的深度学习框架<strong>needle</strong> (<strong>ne</strong>cessary <strong>e</strong>lements of <strong>d</strong>eep <strong>le</strong>arning)
 以下都是些个人笔记，以及一些课程实验的实现</p>
 </blockquote>
 <h2 id="overview">overview</h2>
 <p>对于任何的机器学习问题(至少对于监督学习)，我们大可以将其分成三个组件：</p>
-<p><strong>1. hypothesis class：</strong> 定义了我们如何通过一堆的参数将输入映射成输出
-<strong>2. loss function</strong>：定义了我们当前的通过hypothesis的输出跟我们希望的输出（一般是label）的举例
-<strong>3. optimization method：</strong> 确定一组参数的程序，使其（近似）最小化训练集上的损失总和。</p>
+<ol>
+<li><strong>hypothesis class：</strong> 定义了我们如何通过一堆的参数将输入映射成输出</li>
+<li><strong>loss function</strong>：定义了我们当前的通过hypothesis的输出跟我们希望的输出（一般是label）的举例</li>
+<li><strong>optimization method：</strong> 确定一组参数的程序，使其（近似）最小化训练集上的损失总和。</li>
+</ol>
 <p>以简单的k分类为例，
 训练数据 $x^{i} \in \mathbb{R}^{n} $, $y^{i} \in {1&hellip;k}\ for\ i = 1, &hellip;, m $
 所以我们需要这样一个假设函数：
@@ -37,18 +39,11 @@ $$
 输出为 $\mathbb{R}^{k}$, 也就是我们对一个数据预测出其属于 ${1,&hellip;,k}$ 每种类别的“概率”然后选取最大的概率。</p>
 <p>现在我们定义 $ h_{\theta}(x) = \theta^{T}x $, 其中 $\theta \in \mathbb{R}^{n \times k}$, $x \in \mathbb{R}^{n}$, $h_{\theta}(x) \in \mathbb{R}^{k}$ (简单的线性函数)</p>
 <p>在代码中，我们常用batch form的形式来进行训练，也就是每次输入的是一个矩阵，每一行是一个数据，一共batch_size行。所以我们的数据可以表示为</p>
-<p>$$
-X \in \mathbb{R}^{m \times n} =
-\begin{bmatrix}</p>
-<ul>
-<li>x^{(1)T} - \
-\vdots \</li>
-<li>x^{(m)T} -
-\end{bmatrix}
-$$</li>
-</ul>
-<!-- raw HTML omitted -->
-<!-- raw HTML omitted -->
+<p><img loading="lazy" src="/img/dlsystem/dlsystem1/batchform-data.png" alt="batchform-data"  />
+</p>
+<p>hypothsis function $h_{\theta}(x)$ 也可以表示为：
+<img loading="lazy" src="/img/dlsystem/dlsystem1/batchform-hypothesis.png" alt="batchform-hypothesis"  />
+</p>
 ]]></content:encoded>
     </item>
     
