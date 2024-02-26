@@ -170,10 +170,9 @@ if (!doNotTrack) {
   <div class="entry-content">
     <p>寒假完成的一份高质量的公开课，个人认为是dl入门最适合的一门课程。除了介绍传统的网络结构（如cnn, rnn），优化方法等，更多的聚焦于dl的框架实现，例如计算图与自动微分，利用硬件加速（cpu以及cuda后端）还介绍了模型部署，机器学习编译等偏工程方向的内容。课程实验是一个自制的深度学习框架needle (necessary elements of deep learning) 以下都是些个人笔记，以及一些课程实验的实现
 overview 对于任何的机器学习问题(至少对于监督学习)，我们大可以将其分成三个组件：
-hypothesis class： 定义了我们如何通过一堆的参数将输入映射成输出 loss function：定义了我们当前的通过hypothesis的输出跟我们希望的输出（一般是label）的举例 optimization method： 确定一组参数的程序，使其（近似）最小化训练集上的损失总和。 以简单的k分类为例， 训练数据 $x^{i} \in \mathbb{R}^{n} $, $y^{i} \in {1…k}\ for\ i = 1, …, m $ 所以我们需要这样一个假设函数： $$ h: \mathbb{R}^{n} \rightarrow \mathbb{R}^{k} $$ 输出为 $\mathbb{R}^{k}$, 也就是我们对一个数据预测出其属于 ${1,…,k}$ 每种类别的“概率”然后选取最大的概率。
+hypothesis class： 定义了我们如何通过一堆的参数将输入映射成输出 loss function：定义了我们当前的通过hypothesis的输出跟我们希望的输出（一般是label）的举例 optimization method： 确定一组参数的程序，使其（近似）最小化训练集上的损失总和。 以简单的 $k$ 分类为例， 训练数据 $x^{i} \in \mathbb{R}^{n} $, $y^{i} \in {1…k}\ for\ i = 1, …, m $ 所以我们需要这样一个假设函数： $$ h: \mathbb{R}^{n} \rightarrow \mathbb{R}^{k} $$ 输出为 $\mathbb{R}^{k}$, 也就是我们对一个数据预测出其属于 ${1,…,k}$ 每种类别的“概率”然后选取最大的概率。
 现在我们定义 $ h_{\theta}(x) = \theta^{T}x $, 其中 $\theta \in \mathbb{R}^{n \times k}$, $x \in \mathbb{R}^{n}$, $h_{\theta}(x) \in \mathbb{R}^{k}$ (简单的线性函数)
-在代码中，我们常用batch form的形式来进行训练，也就是每次输入的是一个矩阵，每一行是一个数据，一共batch_size行。所以我们的数据可以表示为
-hypothsis function $h_{\theta}(x)$ 也可以表示为： 现在我们定义损失函数为： $$ L(\theta) = \frac{1}{m} \sum_{i=1}^{m} L(h_{\theta}(x^{i}), y^{i}) $$</p>
+在代码中，我们常用batch form的形式来进行训练，也就是每次输入的是一个矩阵，每一行是一个数据，一共batch_size行。所以我们的数据可以表示为...</p>
   </div>
   <footer class="entry-footer"><span title='2024-02-10 22:35:22 +0000 UTC'>February 10, 2024</span>&nbsp;·&nbsp;1 min</footer>
   <a class="entry-link" aria-label="post link to dlsystem-note1-计算图与自动微分" href="https://caaatch22.github.io/posts/dlsystem1/"></a>
