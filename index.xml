@@ -6,65 +6,7 @@
     <description>Recent content on Mingjie&#39;s Home</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>zh-cn</language>
-    <lastBuildDate>Sat, 10 Feb 2024 22:35:22 +0000</lastBuildDate><atom:link href="https://caaatch22.github.io/index.xml" rel="self" type="application/rss+xml" />
-    <item>
-      <title>dlsystem-note1-计算图与自动微分</title>
-      <link>https://caaatch22.github.io/posts/dlsystem1/</link>
-      <pubDate>Sat, 10 Feb 2024 22:35:22 +0000</pubDate>
-      
-      <guid>https://caaatch22.github.io/posts/dlsystem1/</guid>
-      <description>寒假完成的一份高质量的公开课，个人认为是dl入门最适合的一门课程。除了介绍传统的网络结构（如cnn, rnn），优化方法等，更多的聚焦于dl的框架实现，例如计算图与自动微分，利用硬件加速（cpu以及cuda后端）还介绍了模型部署，机器学习编译等偏工程方向的内容。课程实验是一个自制的深度学习框架needle (necessary elements of deep learning) 以下都是些个人笔记，以及一些课程实验的实现
-overview 对于任何的机器学习问题(至少对于监督学习)，我们大可以将其分成三个组件：
-hypothesis class： 定义了我们如何通过一堆的参数将输入映射成输出 loss function：定义了我们当前的通过hypothesis的输出跟我们希望的输出（一般是label）的举例 optimization method： 确定一组参数的程序，使其（近似）最小化训练集上的损失总和。 以简单的 $k$ 分类为例， 训练数据 $x^{i} \in \mathbb{R}^{n} $, $y^{i} \in {1&amp;hellip;k}\ for\ i = 1, &amp;hellip;, m $ 所以我们需要这样一个假设函数： $$ h: \mathbb{R}^{n} \rightarrow \mathbb{R}^{k} $$ 输出为 $\mathbb{R}^{k}$, 也就是我们对一个数据预测出其属于 ${1,&amp;hellip;,k}$ 每种类别的“概率”然后选取最大的概率。
-现在我们定义 $ h_{\theta}(x) = \theta^{T}x $, 其中 $\theta \in \mathbb{R}^{n \times k}$, $x \in \mathbb{R}^{n}$, $h_{\theta}(x) \in \mathbb{R}^{k}$ (简单的线性函数)
-在代码中，我们常用batch form的形式来进行训练，也就是每次输入的是一个矩阵，每一行是一个数据，一共batch_size行。所以我们的数据可以表示为</description>
-      <content:encoded><![CDATA[<blockquote>
-<p>寒假完成的一份高质量的公开课，个人认为是dl入门最适合的一门课程。除了介绍传统的网络结构（如cnn, rnn），优化方法等，更多的聚焦于dl的框架实现，例如计算图与自动微分，利用硬件加速（cpu以及cuda后端）还介绍了模型部署，机器学习编译等偏工程方向的内容。课程实验是一个自制的深度学习框架<strong>needle</strong> (<strong>ne</strong>cessary <strong>e</strong>lements of <strong>d</strong>eep <strong>le</strong>arning)
-以下都是些个人笔记，以及一些课程实验的实现</p>
-</blockquote>
-<h2 id="overview">overview</h2>
-<p>对于任何的机器学习问题(至少对于监督学习)，我们大可以将其分成三个组件：</p>
-<ol>
-<li><strong>hypothesis class：</strong> 定义了我们如何通过一堆的参数将输入映射成输出</li>
-<li><strong>loss function</strong>：定义了我们当前的通过hypothesis的输出跟我们希望的输出（一般是label）的举例</li>
-<li><strong>optimization method：</strong> 确定一组参数的程序，使其（近似）最小化训练集上的损失总和。</li>
-</ol>
-<p>以简单的 $k$ 分类为例，
-训练数据 $x^{i} \in \mathbb{R}^{n} $, $y^{i} \in {1&hellip;k}\ for\ i = 1, &hellip;, m $
-所以我们需要这样一个假设函数：
-$$
-h: \mathbb{R}^{n} \rightarrow \mathbb{R}^{k}
-$$
-输出为 $\mathbb{R}^{k}$, 也就是我们对一个数据预测出其属于 ${1,&hellip;,k}$ 每种类别的“概率”然后选取最大的概率。</p>
-<p>现在我们定义 $ h_{\theta}(x) = \theta^{T}x $, 其中 $\theta \in \mathbb{R}^{n \times k}$, $x \in \mathbb{R}^{n}$, $h_{\theta}(x) \in \mathbb{R}^{k}$ (简单的线性函数)</p>
-<p>在代码中，我们常用batch form的形式来进行训练，也就是每次输入的是一个矩阵，每一行是一个数据，一共batch_size行。所以我们的数据可以表示为</p>
-<p><img loading="lazy" src="/img/dlsystem/dlsystem1/batchform-data.png" alt="batchform-data"  />
-</p>
-<p>hypothsis function $h_{\theta}(x)$ 也可以表示为：
-<img loading="lazy" src="/img/dlsystem/dlsystem1/batchform-hypothesis.png" alt="batchform-hypothesis"  />
-</p>
-<p>再看损失函数的部分，我们先对预测的结果进行一些变换：定义一个预测 $h_{i}(x)$ 的<em>softmax</em> 为</p>
-<p>$$
-z_i = p(label) = \frac{e^{h_{i}(x)}}{\sum_{j=1}^{k}e^{h_{j}(x)}}
-$$</p>
-<p>为什么要这么变化呢，它使得我们的预测结果是一个概率分布：$z_i$ 始终为正且 $\sum_{i = 1}^{k}z_i = 1$
-（注意，我们并未要求我们的hypothesis得到的结果是概率）</p>
-<p>接着，我们定义损失函数为softmax的负对数（取负数是因为我们习惯“最小化”损失函数）：
-$$
-l_{ce}(h_{i}(x), y) = -\log(p(label=i)) = -\log(\frac{e^{h_{i}(x)}}{\sum_{j=1}^{k}e^{h_{j}(x)}})
-$$</p>
-<p>（一个更直观的损失函数是所谓的0-1损失，即：
-$$
-l_{01}(h_{i}(x), y) = \begin{cases} 0 &amp; \text{if } h_{i}(x) = y \ 1 &amp; \text{otherwise} \end{cases}
-$$</p>
-<p>但是他的数学形式不太好优化，所以我们一般不用它）</p>
-<p>现在我们希望寻找一个参数 $\theta$ 使得我们的损失函数最小化，也就是
-$$
-\min_{\theta} \frac{1}{m}\sum_{i=1}^{m}l_{ce}(h_{\theta}(x^{i}), y^{i})
-$$</p>
-]]></content:encoded>
-    </item>
-    
+    <lastBuildDate>Tue, 17 Oct 2023 23:38:14 +0000</lastBuildDate><atom:link href="https://caaatch22.github.io/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Computer Architecture —— 分支预测</title>
       <link>https://caaatch22.github.io/posts/branch-prediction/</link>
