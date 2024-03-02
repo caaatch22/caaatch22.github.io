@@ -82,7 +82,7 @@ $$</p>
 <p>这都是针对infernece的情况，对于training，还需要考虑一些额外的参数，例如momentum，以及保存梯度等等。</p>
 <h4 id="model-size">model size</h4>
 <p>$$
-Model Size = # parameters * bitwidth
+Model Size = \# parameters * bitwidth
 $$</p>
 <p>举个例子，AlexNet有$61M$个参数，如果我们用32bit的float来表示，那么model size就是$61M * 4byte = 224MB$。但如果我们用8-bit来表示每个weight，那么model size就是$61M * 1byte = 61MB$。</p>
 <p>这就是quantization的一个应用，通过减少bitwidth来减少model size。</p>
@@ -125,7 +125,7 @@ $$</p>
 一般一个MAC对应两个FLOP，一乘一加。</p>
 <h3 id="energy-consumption">Energy Consumption</h3>
 <p>对于边缘设备，我们还需要考虑能耗的问题。
-<img loading="lazy" src="/img/tinyml/energy-memory-is-expensive.png" alt="energy-consumption"  />
+<img loading="lazy" src="/img/tinyml/memory-is-expensive.png" alt="energy-consumption"  />
 
 图中可以看出，数据的移动消耗的能量是远大于其运算的。</p>
 <h2 id="neural-network-pruning">neural network pruning</h2>
