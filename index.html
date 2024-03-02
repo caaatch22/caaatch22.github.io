@@ -215,8 +215,8 @@ if (!doNotTrack) {
 Introduction 正式介绍pruning and sparsity之前，我们先来聊聊为什么要做model compression这个事情。 Today’s Model is Too Big!
 随着Large language model的出现，如GPT-3，如今的模型参数量已经达到了上百billion，别说训练，我们甚至无法在一个gpu上对其进行推理。更别提如果我们想要将其部署在其他边缘设备上。
 所以当前在做inference之前，一般都会有个model-compression的过程，包括pruning（剪枝），quantization（量化），distillation（蒸馏）等。这些方法都是为了减少模型的大小，加速推理过程。这些方法也被广泛地集成到了各种加速卡，gpu中。例如nv的A100就支持structured sparsity（[N:M]形式的，具体含义下文会详细介绍）。
-Efficiency Metrics 我们再来看看一些 efficiency metrics，这也是我们在做inference过程中需要考虑的指标。主要包括两类：
-Memory-Related Metrics # parameters model size total/peak #activations Computation-Related Metrics FLOP, FLOPs MACs Latency, throughput # parameters Model #Parameters Linear Layer(FC) $feature_{in} * feature_{out}$ Conv Layer $c_{i} * c_{o} * k_{h} * k_{w} $ Grouped Conv Layer $c_{i} * c_{o} * k_{h} * k_{w} / g$ Depthwise Conv Layer $c_{o} * k_{h} * k_{w}$ 其中，Grouped Conv指的是将输入在channel维度进行分组，然后分别进行卷积，最后concatenate。Depthwise Conv分组个数g等于输入channel数的情况。...</p>
+Efficiency Metrics 我们再来看看一些 efficiency metrics，这也是我们在做inference过程中需要考虑的指标：
+Memory-Related Metrics # parameters model size total/peak #activations Computation-Related Metrics MACs FLOP, FLOPs # parameters Model #Parameters Linear Layer(FC) $feature_{in} * feature_{out}$ Conv Layer $c_{i} * c_{o} * k_{h} * k_{w} $ Grouped Conv Layer $c_{i} * c_{o} * k_{h} * k_{w} / g$ Depthwise Conv Layer $c_{o} * k_{h} * k_{w}$ 其中，Grouped Conv指的是将输入在channel维度进行分组，然后分别进行卷积，最后concatenate。Depthwise Conv分组个数g等于输入channel数的情况。...</p>
   </div>
   <footer class="entry-footer"><span title='2024-02-20 15:35:59 +0000 UTC'>February 20, 2024</span>&nbsp;·&nbsp;1 min</footer>
   <a class="entry-link" aria-label="post link to tinyml —— pruning" href="https://caaatch22.github.io/posts/tinyml-pruning/"></a>

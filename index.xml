@@ -17,8 +17,8 @@
 Introduction 正式介绍pruning and sparsity之前，我们先来聊聊为什么要做model compression这个事情。 Today&amp;rsquo;s Model is Too Big!
 随着Large language model的出现，如GPT-3，如今的模型参数量已经达到了上百billion，别说训练，我们甚至无法在一个gpu上对其进行推理。更别提如果我们想要将其部署在其他边缘设备上。
 所以当前在做inference之前，一般都会有个model-compression的过程，包括pruning（剪枝），quantization（量化），distillation（蒸馏）等。这些方法都是为了减少模型的大小，加速推理过程。这些方法也被广泛地集成到了各种加速卡，gpu中。例如nv的A100就支持structured sparsity（[N:M]形式的，具体含义下文会详细介绍）。
-Efficiency Metrics 我们再来看看一些 efficiency metrics，这也是我们在做inference过程中需要考虑的指标。主要包括两类：
-Memory-Related Metrics # parameters model size total/peak #activations Computation-Related Metrics FLOP, FLOPs MACs Latency, throughput # parameters Model #Parameters Linear Layer(FC) $feature_{in} * feature_{out}$ Conv Layer $c_{i} * c_{o} * k_{h} * k_{w} $ Grouped Conv Layer $c_{i} * c_{o} * k_{h} * k_{w} / g$ Depthwise Conv Layer $c_{o} * k_{h} * k_{w}$ 其中，Grouped Conv指的是将输入在channel维度进行分组，然后分别进行卷积，最后concatenate。Depthwise Conv分组个数g等于输入channel数的情况。</description>
+Efficiency Metrics 我们再来看看一些 efficiency metrics，这也是我们在做inference过程中需要考虑的指标：
+Memory-Related Metrics # parameters model size total/peak #activations Computation-Related Metrics MACs FLOP, FLOPs # parameters Model #Parameters Linear Layer(FC) $feature_{in} * feature_{out}$ Conv Layer $c_{i} * c_{o} * k_{h} * k_{w} $ Grouped Conv Layer $c_{i} * c_{o} * k_{h} * k_{w} / g$ Depthwise Conv Layer $c_{o} * k_{h} * k_{w}$ 其中，Grouped Conv指的是将输入在channel维度进行分组，然后分别进行卷积，最后concatenate。Depthwise Conv分组个数g等于输入channel数的情况。</description>
       <content:encoded><![CDATA[<blockquote>
 <p>最近正在学习 <a href="https://hanlab.mit.edu/courses/2023-fall-65940">MIT 6.5940</a>, <a href="https://hanlab.mit.edu/songhan">韩松</a>老师的课，做deep learning compression的应该都只知道。课程分为三个部分，<strong>efficient inference, domain-specific optimization, efficient training</strong>。有完整的课件，视频和实验。最后一个lab是将llama2部署在个人电脑上，非常有意思（谁不想要个自己的大模型呢）。其余lab也都可以白嫖google colab的gpu</p>
 </blockquote>
@@ -30,7 +30,7 @@ Memory-Related Metrics # parameters model size total/peak #activations Computati
 <p>随着Large language model的出现，如GPT-3，如今的模型参数量已经达到了上百billion，别说训练，我们甚至无法在一个gpu上对其进行推理。更别提如果我们想要将其部署在其他边缘设备上。</p>
 <p>所以当前在做inference之前，一般都会有个model-compression的过程，包括pruning（剪枝），quantization（量化），distillation（蒸馏）等。这些方法都是为了减少模型的大小，加速推理过程。这些方法也被广泛地集成到了各种加速卡，gpu中。例如nv的A100就支持structured sparsity（[N:M]形式的，具体含义下文会详细介绍）。</p>
 <h3 id="efficiency-metrics">Efficiency Metrics</h3>
-<p>我们再来看看一些 efficiency metrics，这也是我们在做inference过程中需要考虑的指标。主要包括两类：</p>
+<p>我们再来看看一些 efficiency metrics，这也是我们在做inference过程中需要考虑的指标：</p>
 <ul>
 <li>Memory-Related Metrics
 <ul>
@@ -41,9 +41,8 @@ Memory-Related Metrics # parameters model size total/peak #activations Computati
 <li>total/peak #activations</li>
 <li>Computation-Related Metrics
 <ul>
-<li>FLOP, FLOPs</li>
 <li>MACs</li>
-<li>Latency, throughput</li>
+<li>FLOP, FLOPs</li>
 </ul>
 </li>
 </ul>
@@ -92,6 +91,38 @@ $$</p>
 <img loading="lazy" src="/img/tinyml/mcunet-activations.png" alt="activation"  />
 </p>
 <p>图中是MCUNet(一个专门用在IoT设备上的模型)的参数量和activations数量对比resnet的减少。可以看出，参数的减少量十分显著，但是# activations不降反增，和param的占比是一个数量级的。所以我们若想在边缘设备上部署模型，需要考虑activations的数量。</p>
+<h4 id="mac">MAC</h4>
+<p><code>MAC</code>的含义是 <strong>Multiply-Accumulate operation</strong>。例如，一个gemm(genearl matrix multiplication)的$MACs = m * n * k$（对于m * k的矩阵和k * n的矩阵相乘）。深度学习中几乎90%的时间都在做gemm，一个conv2d操作也可以由im2col转换为gemm操作。</p>
+<p>以下是常见的一些layer的MACs计算：</p>
+<table>
+<thead>
+<tr>
+<th>layer</th>
+<th>MACs(batch size = 1)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Linear</td>
+<td>$feature_{in} * feature_{out}$</td>
+</tr>
+<tr>
+<td>Conv</td>
+<td>$c_{i}  * k_{h} * k_{w} * h_{o} * w_{o} * c_{o}$</td>
+</tr>
+<tr>
+<td>grouped conv</td>
+<td>$c_{i}/g * k_{h} * k_{w} * h_{o} * w_{o}* c_{o} $</td>
+</tr>
+<tr>
+<td>depthwise conv</td>
+<td>$c_{o} * k_{h} * k_{w} * h_{o} * w_{o}$</td>
+</tr>
+</tbody>
+</table>
+<h4 id="flop-and-flops">FLOP and FLOPs</h4>
+<p>FLOP的意思是 <strong>Floating Point Operations</strong>，是指浮点运算的次数。FLOPs是指每秒的FLOP数量。
+一般一个MAC对应两个FLOP，一乘一加。</p>
 ]]></content:encoded>
     </item>
     
