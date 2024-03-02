@@ -130,7 +130,9 @@ $$</p>
 图中可以看出，数据的移动消耗的能量是做运算的200倍以上。</p>
 <h2 id="neural-network-pruning">neural network pruning</h2>
 <p>那么，到底什么是模型剪枝（prune）呢？顾名思义，就是将模型中的一些参数去掉，或者更加细粒度的，我们可以把某些参数与参数之间的连接去掉。（但在实际操作中，我们都是直接减去某个参数而非减去参数之间的连接）</p>
+<blockquote>
 <p><strong>注意：减去某个参数并不意味着单纯将其设置为0。<strong>因为我们剪枝的目的是</strong>减少内存使用</strong>以及<strong>加速推理</strong>，若只是讲某个$W$矩阵中的一些值变成0，并不能达到减少内存的目的。我们需要将剪枝后的参数$W_{p}$用特定的方式存储（例如，稀疏矩阵）以及结合特定的优化后的运算才能减少内存使用并加速。当然，从正确性的角度来说，将某些参数设置为0可以得到一样的结果。所以我们可以在确定 <em>sparsity</em> 时先将一定的参数置为0，然后再通过fine-tuning来确定剪去这么多的参数是否会影响模型最终的效果。</p>
+</blockquote>
 <p><img loading="lazy" src="/img/tinyml/nnpruning.png" alt="pruning"  />
 </p>
 <p>减去一定的参数后，肯定会对我们的模型效果造成影响。这时候我们需要进行fine-tuning调整参数分布，具体会在后文展开。</p>
@@ -138,8 +140,8 @@ $$</p>
 <img loading="lazy" src="/img/tinyml/prune-formalized.png" alt="prune-formalized"  />
 </p>
 <h3 id="pruning-granularity">pruning granularity</h3>
-<p>我们有不同的剪枝粒度，from unstructured to structured:
-对于一个FC layer，其实就是将一个2d matrix进行剪枝：
+<p>我们有不同的剪枝粒度，from unstructured to structured。</p>
+<p>对于一个FC layer，其实就是将一个2d matrix进行剪枝：
 <img loading="lazy" src="/img/tinyml/fc-prune.png" alt="fc-prune"  />
 
 如图，细粒度的、不规则的剪枝一般能有更高的sparsity，但是却难以加速（就像上文说的，如果只是将一些参数设置为0，不会有任何内存与速度上的收益）。而粗粒度的剪枝，就可以不需要改变原有的矩阵结构获得更少的内存使用以及加速，但一般sparsity会高一些（同等accuracy下）。</p>
