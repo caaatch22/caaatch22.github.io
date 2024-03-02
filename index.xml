@@ -8,27 +8,28 @@
     <language>zh-cn</language>
     <lastBuildDate>Tue, 20 Feb 2024 15:35:59 +0000</lastBuildDate><atom:link href="https://caaatch22.github.io/index.xml" rel="self" type="application/rss+xml" />
     <item>
-      <title>tinyml-pruning</title>
+      <title>tinyml —— pruning</title>
       <link>https://caaatch22.github.io/posts/tinyml-pruning/</link>
       <pubDate>Tue, 20 Feb 2024 15:35:59 +0000</pubDate>
       
       <guid>https://caaatch22.github.io/posts/tinyml-pruning/</guid>
       <description> 最近正在学习 MIT 6.5940, 韩松老师的课，做deep learning compression的应该都只知道。课程分为三个部分，efficient inference, domain-specific optimization, efficient training。有完整的课件，视频和实验。最后一个lab是将llama2部署在个人电脑上，非常有意思（谁不想要个自己的大模型呢）。其余lab也都可以白嫖google colab的gpu
-正式介绍pruning and sparsity之前，我们先来聊聊为什么要做model compression这个事情。 Today&amp;rsquo;s Model is Too Big!
-Large language model的出现，如GPT-3，参数量已经达到了175 billion，别说训练，我们甚至无法在一个gpu上对其进行推理。更别提如果我们想要将其部署在其他边缘设备上。
-所以当前在做inference之前，一般都会有个model-compression的过程，包括pruning，quantization，distillation等。这些方法都是为了减少模型的大小，加速推理过程。这些方法也被广泛地集成到了各种加速卡，gpu中。例如nv的A100就支持structured sparsity（[N:M]形式的）等（后面会详细介绍）
+Introduction 正式介绍pruning and sparsity之前，我们先来聊聊为什么要做model compression这个事情。 Today&amp;rsquo;s Model is Too Big!
+随着Large language model的出现，如GPT-3，如今的模型参数量已经达到了上百billion，别说训练，我们甚至无法在一个gpu上对其进行推理。更别提如果我们想要将其部署在其他边缘设备上。
+所以当前在做inference之前，一般都会有个model-compression的过程，包括pruning（剪枝），quantization（量化），distillation（蒸馏）等。这些方法都是为了减少模型的大小，加速推理过程。这些方法也被广泛地集成到了各种加速卡，gpu中。例如nv的A100就支持structured sparsity（[N:M]形式的）等（后面会详细介绍）
 我们再来看看一些 efficiency metrics，主要包括
 Memory-Related Metrics # parameters model size Computation-Related Metrics FLOP, FLOPs MACs Latency, throughput 下表是一些常见的模型结构的参数量
-Model #Parameters linear layer $feature_in * feature_out$ conv layer $c_{i} * c_{o} * k_{h} * k_{w} $ group conv layer $c_{i} * c_{o} * k_{h} * k_{w} / g$ depthwise conv layer $c_{o} * k_{h} * k_{w}$ </description>
+Model #Parameters linear layer $feature_{in} * feature_{out}$ conv layer $c_{i} * c_{o} * k_{h} * k_{w} $ group conv layer $c_{i} * c_{o} * k_{h} * k_{w} / g$ depthwise conv layer $c_{o} * k_{h} * k_{w}$ </description>
       <content:encoded><![CDATA[<blockquote>
 <p>最近正在学习 <a href="https://hanlab.mit.edu/courses/2023-fall-65940">MIT 6.5940</a>, <a href="https://hanlab.mit.edu/songhan">韩松</a>老师的课，做deep learning compression的应该都只知道。课程分为三个部分，<strong>efficient inference, domain-specific optimization, efficient training</strong>。有完整的课件，视频和实验。最后一个lab是将llama2部署在个人电脑上，非常有意思（谁不想要个自己的大模型呢）。其余lab也都可以白嫖google colab的gpu</p>
 </blockquote>
+<h2 id="introduction">Introduction</h2>
 <p>正式介绍pruning and sparsity之前，我们先来聊聊为什么要做model compression这个事情。
 <img loading="lazy" src="/img/tinyml/todays-model-size.png" alt="todays-model-size"  />
 </p>
 <p><strong>Today&rsquo;s Model is Too Big!</strong></p>
-<p>Large language model的出现，如GPT-3，参数量已经达到了175 billion，别说训练，我们甚至无法在一个gpu上对其进行推理。更别提如果我们想要将其部署在其他边缘设备上。</p>
-<p>所以当前在做inference之前，一般都会有个model-compression的过程，包括pruning，quantization，distillation等。这些方法都是为了减少模型的大小，加速推理过程。这些方法也被广泛地集成到了各种加速卡，gpu中。例如nv的A100就支持structured sparsity（[N:M]形式的）等（后面会详细介绍）</p>
+<p>随着Large language model的出现，如GPT-3，如今的模型参数量已经达到了上百billion，别说训练，我们甚至无法在一个gpu上对其进行推理。更别提如果我们想要将其部署在其他边缘设备上。</p>
+<p>所以当前在做inference之前，一般都会有个model-compression的过程，包括pruning（剪枝），quantization（量化），distillation（蒸馏）等。这些方法都是为了减少模型的大小，加速推理过程。这些方法也被广泛地集成到了各种加速卡，gpu中。例如nv的A100就支持structured sparsity（[N:M]形式的）等（后面会详细介绍）</p>
 <p>我们再来看看一些 efficiency metrics，主要包括</p>
 <ul>
 <li>Memory-Related Metrics
@@ -56,7 +57,7 @@ Model #Parameters linear layer $feature_in * feature_out$ conv layer $c_{i} * c_
 <tbody>
 <tr>
 <td>linear layer</td>
-<td>$feature_in * feature_out$</td>
+<td>$feature_{in} * feature_{out}$</td>
 </tr>
 <tr>
 <td>conv layer</td>
