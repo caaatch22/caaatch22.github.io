@@ -156,10 +156,10 @@ if (!doNotTrack) {
     <p> 最近正在学习 MIT 6.5940, 韩松老师的课，做deep learning compression的应该都只知道。课程分为三个部分，efficient inference, domain-specific optimization, efficient training。有完整的课件，视频和实验。最后一个lab是将llama2部署在个人电脑上，非常有意思（谁不想要个自己的大模型呢）。其余lab也都可以白嫖google colab的gpu
 Introduction 正式介绍pruning and sparsity之前，我们先来聊聊为什么要做model compression这个事情。 Today’s Model is Too Big!
 随着Large language model的出现，如GPT-3，如今的模型参数量已经达到了上百billion，别说训练，我们甚至无法在一个gpu上对其进行推理。更别提如果我们想要将其部署在其他边缘设备上。
-所以当前在做inference之前，一般都会有个model-compression的过程，包括pruning（剪枝），quantization（量化），distillation（蒸馏）等。这些方法都是为了减少模型的大小，加速推理过程。这些方法也被广泛地集成到了各种加速卡，gpu中。例如nv的A100就支持structured sparsity（[N:M]形式的）等（后面会详细介绍）
-我们再来看看一些 efficiency metrics，主要包括
+所以当前在做inference之前，一般都会有个model-compression的过程，包括pruning（剪枝），quantization（量化），distillation（蒸馏）等。这些方法都是为了减少模型的大小，加速推理过程。这些方法也被广泛地集成到了各种加速卡，gpu中。例如nv的A100就支持structured sparsity（[N:M]形式的，具体含义下文会详细介绍）。
+我们再来看看一些 efficiency metrics，主要包括两类：
 Memory-Related Metrics # parameters model size Computation-Related Metrics FLOP, FLOPs MACs Latency, throughput 下表是一些常见的模型结构的参数量
-Model #Parameters linear layer $feature_{in} * feature_{out}$ conv layer $c_{i} * c_{o} * k_{h} * k_{w} $ group conv layer $c_{i} * c_{o} * k_{h} * k_{w} / g$ depthwise conv layer $c_{o} * k_{h} * k_{w}$ </p>
+Model #Parameters Linear Layer(FC) $feature_{in} * feature_{out}$ Conv Layer $c_{i} * c_{o} * k_{h} * k_{w} $ Group Conv Layer $c_{i} * c_{o} * k_{h} * k_{w} / g$ Depthwise Conv Layer $c_{o} * k_{h} * k_{w}$ notations $n$ batch size $c_{i}/c_{o}$ Input/Output Channels $k_{h}/k_{w}$ kernel height/weight $g$ group number </p>
   </div>
   <footer class="entry-footer"><span title='2024-02-20 15:35:59 +0000 UTC'>February 20, 2024</span>&nbsp;·&nbsp;1 min</footer>
   <a class="entry-link" aria-label="post link to tinyml —— pruning" href="https://caaatch22.github.io/posts/tinyml-pruning/"></a>
