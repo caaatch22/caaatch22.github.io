@@ -6,62 +6,73 @@
     <description>Recent content in deep-learning on Mingjie&#39;s Home</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>zh-cn</language>
-    <lastBuildDate>Sat, 10 Feb 2024 22:35:22 +0000</lastBuildDate><atom:link href="https://caaatch22.github.io/tags/deep-learning/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Tue, 20 Feb 2024 15:35:59 +0000</lastBuildDate><atom:link href="https://caaatch22.github.io/tags/deep-learning/index.xml" rel="self" type="application/rss+xml" />
     <item>
-      <title>dlsystem-note1-计算图与自动微分</title>
-      <link>https://caaatch22.github.io/posts/dlsystem1/</link>
-      <pubDate>Sat, 10 Feb 2024 22:35:22 +0000</pubDate>
+      <title>tinyml-pruning</title>
+      <link>https://caaatch22.github.io/posts/tinyml-pruning/</link>
+      <pubDate>Tue, 20 Feb 2024 15:35:59 +0000</pubDate>
       
-      <guid>https://caaatch22.github.io/posts/dlsystem1/</guid>
-      <description>寒假完成的一份高质量的公开课，个人认为是dl入门最适合的一门课程。除了介绍传统的网络结构（如cnn, rnn），优化方法等，更多的聚焦于dl的框架实现，例如计算图与自动微分，利用硬件加速（cpu以及cuda后端）还介绍了模型部署，机器学习编译等偏工程方向的内容。课程实验是一个自制的深度学习框架needle (necessary elements of deep learning) 以下都是些个人笔记，以及一些课程实验的实现
-overview 对于任何的机器学习问题(至少对于监督学习)，我们大可以将其分成三个组件：
-hypothesis class： 定义了我们如何通过一堆的参数将输入映射成输出 loss function：定义了我们当前的通过hypothesis的输出跟我们希望的输出（一般是label）的举例 optimization method： 确定一组参数的程序，使其（近似）最小化训练集上的损失总和。 以简单的 $k$ 分类为例， 训练数据 $x^{i} \in \mathbb{R}^{n} $, $y^{i} \in {1&amp;hellip;k}\ for\ i = 1, &amp;hellip;, m $ 所以我们需要这样一个假设函数： $$ h: \mathbb{R}^{n} \rightarrow \mathbb{R}^{k} $$ 输出为 $\mathbb{R}^{k}$, 也就是我们对一个数据预测出其属于 ${1,&amp;hellip;,k}$ 每种类别的“概率”然后选取最大的概率。
-现在我们定义 $ h_{\theta}(x) = \theta^{T}x $, 其中 $\theta \in \mathbb{R}^{n \times k}$, $x \in \mathbb{R}^{n}$, $h_{\theta}(x) \in \mathbb{R}^{k}$ (简单的线性函数)
-在代码中，我们常用batch form的形式来进行训练，也就是每次输入的是一个矩阵，每一行是一个数据，一共batch_size行。所以我们的数据可以表示为</description>
+      <guid>https://caaatch22.github.io/posts/tinyml-pruning/</guid>
+      <description> 最近正在学习 MIT 6.5940, 韩松老师的课，做deep learning compression的应该都只知道。课程分为三个部分，efficient inference, domain-specific optimization, efficient training。有完整的课件，视频和实验。最后一个lab是将llama2部署在个人电脑上，非常有意思（谁不想要个自己的大模型呢）。其余lab也都可以白嫖google colab的gpu
+正式介绍pruning and sparsity之前，我们先来聊聊为什么要做model compression这个事情。 Today&amp;rsquo;s Model is Too Big!
+Large language model的出现，如GPT-3，参数量已经达到了175 billion，别说训练，我们甚至无法在一个gpu上对其进行推理。更别提如果我们想要将其部署在其他边缘设备上。
+所以当前在做inference之前，一般都会有个model-compression的过程，包括pruning，quantization，distillation等。这些方法都是为了减少模型的大小，加速推理过程。这些方法也被广泛地集成到了各种加速卡，gpu中。例如nv的A100就支持structured sparsity（[N:M]形式的）等（后面会详细介绍）
+我们再来看看一些 efficiency metrics，主要包括
+Memory-Related Metrics # parameters model size Computation-Related Metrics FLOP, FLOPs MACs Latency, throughput 下表是一些常见的模型结构的参数量
+Model #Parameters linear layer $feature_in * feature_out$ conv layer $c_{i} * c_{o} * k_{h} * k_{w} $ group conv layer $c_{i} * c_{o} * k_{h} * k_{w} / g$ depthwise conv layer $c_{o} * k_{h} * k_{w}$ </description>
       <content:encoded><![CDATA[<blockquote>
-<p>寒假完成的一份高质量的公开课，个人认为是dl入门最适合的一门课程。除了介绍传统的网络结构（如cnn, rnn），优化方法等，更多的聚焦于dl的框架实现，例如计算图与自动微分，利用硬件加速（cpu以及cuda后端）还介绍了模型部署，机器学习编译等偏工程方向的内容。课程实验是一个自制的深度学习框架<strong>needle</strong> (<strong>ne</strong>cessary <strong>e</strong>lements of <strong>d</strong>eep <strong>le</strong>arning)
-以下都是些个人笔记，以及一些课程实验的实现</p>
+<p>最近正在学习 <a href="https://hanlab.mit.edu/courses/2023-fall-65940">MIT 6.5940</a>, <a href="https://hanlab.mit.edu/songhan">韩松</a>老师的课，做deep learning compression的应该都只知道。课程分为三个部分，<strong>efficient inference, domain-specific optimization, efficient training</strong>。有完整的课件，视频和实验。最后一个lab是将llama2部署在个人电脑上，非常有意思（谁不想要个自己的大模型呢）。其余lab也都可以白嫖google colab的gpu</p>
 </blockquote>
-<h2 id="overview">overview</h2>
-<p>对于任何的机器学习问题(至少对于监督学习)，我们大可以将其分成三个组件：</p>
-<ol>
-<li><strong>hypothesis class：</strong> 定义了我们如何通过一堆的参数将输入映射成输出</li>
-<li><strong>loss function</strong>：定义了我们当前的通过hypothesis的输出跟我们希望的输出（一般是label）的举例</li>
-<li><strong>optimization method：</strong> 确定一组参数的程序，使其（近似）最小化训练集上的损失总和。</li>
-</ol>
-<p>以简单的 $k$ 分类为例，
-训练数据 $x^{i} \in \mathbb{R}^{n} $, $y^{i} \in {1&hellip;k}\ for\ i = 1, &hellip;, m $
-所以我们需要这样一个假设函数：
-$$
-h: \mathbb{R}^{n} \rightarrow \mathbb{R}^{k}
-$$
-输出为 $\mathbb{R}^{k}$, 也就是我们对一个数据预测出其属于 ${1,&hellip;,k}$ 每种类别的“概率”然后选取最大的概率。</p>
-<p>现在我们定义 $ h_{\theta}(x) = \theta^{T}x $, 其中 $\theta \in \mathbb{R}^{n \times k}$, $x \in \mathbb{R}^{n}$, $h_{\theta}(x) \in \mathbb{R}^{k}$ (简单的线性函数)</p>
-<p>在代码中，我们常用batch form的形式来进行训练，也就是每次输入的是一个矩阵，每一行是一个数据，一共batch_size行。所以我们的数据可以表示为</p>
-<p><img loading="lazy" src="/img/dlsystem/dlsystem1/batchform-data.png" alt="batchform-data"  />
+<p>正式介绍pruning and sparsity之前，我们先来聊聊为什么要做model compression这个事情。
+<img loading="lazy" src="/img/tinyml/todays-model-size.png" alt="todays-model-size"  />
 </p>
-<p>hypothsis function $h_{\theta}(x)$ 也可以表示为：
-<img loading="lazy" src="/img/dlsystem/dlsystem1/batchform-hypothesis.png" alt="batchform-hypothesis"  />
-</p>
-<p>再看损失函数的部分，我们先对预测的结果进行一些变换：定义一个预测 $h_{i}(x)$ 的<em>softmax</em> 为</p>
-<p>$$
-z_i = p(label) = \frac{e^{h_{i}(x)}}{\sum_{j=1}^{k}e^{h_{j}(x)}}
-$$</p>
-<p>为什么要这么变化呢，它使得我们的预测结果是一个概率分布：$z_i$ 始终为正且 $\sum_{i = 1}^{k}z_i = 1$
-（注意，我们并未要求我们的hypothesis得到的结果是概率）</p>
-<p>接着，我们定义损失函数为softmax的负对数（取负数是因为我们习惯“最小化”损失函数）：
-$$
-l_{ce}(h_{i}(x), y) = -\log(p(label=i)) = -\log(\frac{e^{h_{i}(x)}}{\sum_{j=1}^{k}e^{h_{j}(x)}})
-$$</p>
-<p>（一个更直观的损失函数是所谓的0-1损失，即：
-$$
-l_{01}(h_{i}(x), y) = \begin{cases} 0 &amp; \text{if } h_{i}(x) = y \ 1 &amp; \text{otherwise} \end{cases}
-$$</p>
-<p>但是他的数学形式不太好优化，所以我们一般不用它）</p>
-<p>现在我们希望寻找一个参数 $\theta$ 使得我们的损失函数最小化，也就是
-$$
-\min_{\theta} \frac{1}{m}\sum_{i=1}^{m}l_{ce}(h_{\theta}(x^{i}), y^{i})
-$$</p>
+<p><strong>Today&rsquo;s Model is Too Big!</strong></p>
+<p>Large language model的出现，如GPT-3，参数量已经达到了175 billion，别说训练，我们甚至无法在一个gpu上对其进行推理。更别提如果我们想要将其部署在其他边缘设备上。</p>
+<p>所以当前在做inference之前，一般都会有个model-compression的过程，包括pruning，quantization，distillation等。这些方法都是为了减少模型的大小，加速推理过程。这些方法也被广泛地集成到了各种加速卡，gpu中。例如nv的A100就支持structured sparsity（[N:M]形式的）等（后面会详细介绍）</p>
+<p>我们再来看看一些 efficiency metrics，主要包括</p>
+<ul>
+<li>Memory-Related Metrics
+<ul>
+<li># parameters</li>
+<li>model size</li>
+</ul>
+</li>
+<li>Computation-Related Metrics
+<ul>
+<li>FLOP, FLOPs</li>
+<li>MACs</li>
+<li>Latency, throughput</li>
+</ul>
+</li>
+</ul>
+<p>下表是一些常见的模型结构的参数量</p>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th>#Parameters</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>linear layer</td>
+<td>$feature_in * feature_out$</td>
+</tr>
+<tr>
+<td>conv layer</td>
+<td>$c_{i} * c_{o} * k_{h} * k_{w} $</td>
+</tr>
+<tr>
+<td>group conv layer</td>
+<td>$c_{i} * c_{o} * k_{h} * k_{w} / g$</td>
+</tr>
+<tr>
+<td>depthwise conv layer</td>
+<td>$c_{o} * k_{h} * k_{w}$</td>
+</tr>
+</tbody>
+</table>
+<h2 id="heading"></h2>
 ]]></content:encoded>
     </item>
     
