@@ -215,25 +215,21 @@ $$
 <p>regression-based pruning对于某一个layer进行操作，希望能够最小化重构误差。
 令输入的feature map的channel数为$c$, 卷积核$W$的权重为 $n× c × k_h×k_w$, 卷积核每次卷积会在一个像素点上生成一个$N×n$的输出矩阵$Y$,其中$N$为batch_num，这里暂时不考虑bias项。要将$c$修剪为$c′$.同时最小化reconstruction error，这个优化问题是
 $$
-\begin{equation}
 \begin{aligned}
 &amp; \underset{\beta, W}{\text{arg min}}
-&amp; &amp; \frac{1}{2N} | Y - \sum_{i=1}^{C} \beta_i X_i W_i^T |<em>F^2 \
+&amp; &amp; \frac{1}{2N} | Y - \sum_{i=1}^{C} \beta_i X_i W_i^T |_F^2 \
 &amp; \text{subject to}
-&amp; &amp; | \beta |<em>0 \leq C'
+&amp; &amp; | \beta |_0 \leq C'
 \end{aligned}
-\end{equation}
-$$
-其中$X</em>{i}$是一个$N \times k_h k_w$的矩阵裁剪自输入$X$。求解这个问题是NP难的,这里首先将问题用l1范数松弛为
-$$
-\begin{equation}
+$$</p>
+<p>其中$X_{i}$是一个$N \times k_h k_w$的矩阵裁剪自输入$X$。求解这个问题是NP难的,这里首先将问题用l1范数松弛为</p>
+<p>$$
 \begin{aligned}
 &amp; \underset{\beta, W}{\text{arg min}}
-&amp; &amp; \frac{1}{2N} \left| Y - \sum</em>{i=1}^{C} \beta_i X_i W_i^T \right|_F^2 + \lambda \left| \beta \right|_1 \
+&amp; &amp; \frac{1}{2N} \left| Y - \sum_{i=1}^{C} \beta_i X_i W_i^T \right|_F^2 + \lambda \left| \beta \right|_1 \
 &amp; \text{subject to}
 &amp; &amp; \left| \beta \right|_0 \leq C&rsquo;, ; \forall i, \left| W_i \right|_F = 1
 \end{aligned}
-\end{equation}
 $$
 同时限制$||Wi||F=1$，然后在以下两个步骤中迭代</p>
 <ul>
