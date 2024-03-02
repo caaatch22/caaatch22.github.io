@@ -218,7 +218,7 @@ Introduction 正式介绍pruning and sparsity之前，我们先来聊聊为什�
 Efficiency Metrics 我们再来看看一些 efficiency metrics，这也是我们在做inference过程中需要考虑的指标：
 Memory-Related Metrics # parameters model size total/peak #activations Computation-Related Metrics MACs FLOP, FLOPs # parameters Model #Parameters Linear Layer(FC) $feature_{in} * feature_{out}$ Conv Layer $c_{i} * c_{o} * k_{h} * k_{w} $ Grouped Conv Layer $c_{i} * c_{o} * k_{h} * k_{w} / g$ Depthwise Conv Layer $c_{o} * k_{h} * k_{w}$ 其中，Grouped Conv指的是将输入在channel维度进行分组，然后分别进行卷积，最后concatenate。Depthwise Conv分组个数g等于输入channel数的情况。...</p>
   </div>
-  <footer class="entry-footer"><span title='2024-02-20 15:35:59 +0000 UTC'>February 20, 2024</span>&nbsp;·&nbsp;1 min</footer>
+  <footer class="entry-footer"><span title='2024-02-20 15:35:59 +0000 UTC'>February 20, 2024</span>&nbsp;·&nbsp;2 min</footer>
   <a class="entry-link" aria-label="post link to TinyMl —— pruning" href="https://caaatch22.github.io/posts/tinyml-pruning/"></a>
 </article>
 

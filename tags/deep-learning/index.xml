@@ -127,8 +127,37 @@ $$</p>
 <p>对于边缘设备，我们还需要考虑能耗的问题。
 <img loading="lazy" src="/img/tinyml/memory-is-expensive.png" alt="energy-consumption"  />
 
-图中可以看出，数据的移动消耗的能量是远大于其运算的。</p>
+图中可以看出，数据的移动消耗的能量是做运算的200倍以上。</p>
 <h2 id="neural-network-pruning">neural network pruning</h2>
+<p>那么，到底什么是模型剪枝（prune）呢？顾名思义，就是将模型中的一些参数去掉，或者更加细粒度的，我们可以把某些参数与参数之间的连接去掉。（但在实际操作中，我们都是直接减去某个参数而非减去参数之间的连接）</p>
+<p><strong>注意：减去某个参数并不意味着单纯将其设置为0。<strong>因为我们剪枝的目的是</strong>减少内存使用</strong>以及<strong>加速推理</strong>，若只是讲某个$W$矩阵中的一些值变成0，并不能达到减少内存的目的。我们需要将剪枝后的参数$W_{p}$用特定的方式存储（例如，稀疏矩阵）以及结合特定的优化后的运算才能减少内存使用并加速。当然，从正确性的角度来说，将某些参数设置为0可以得到一样的结果。所以我们可以在确定 <em>sparsity</em> 时先将一定的参数置为0，然后再通过fine-tuning来确定剪去这么多的参数是否会影响模型最终的效果。</p>
+<p><img loading="lazy" src="/img/tinyml/nnpruning.png" alt="pruning"  />
+</p>
+<p>减去一定的参数后，肯定会对我们的模型效果造成影响。这时候我们需要进行fine-tuning调整参数分布，具体会在后文展开。</p>
+<p>形式化的定义prune：
+<img loading="lazy" src="/img/tinyml/prune-formalized.png" alt="prune-formalized"  />
+</p>
+<h3 id="pruning-granularity">pruning granularity</h3>
+<p>我们有不同的剪枝粒度，from unstructured to structured:
+对于一个FC layer，其实就是将一个2d matrix进行剪枝：
+<img loading="lazy" src="/img/tinyml/fc-prune.png" alt="fc-prune"  />
+
+如图，细粒度的、不规则的剪枝一般能有更高的sparsity，但是却难以加速（就像上文说的，如果只是将一些参数设置为0，不会有任何内存与速度上的收益）。而粗粒度的剪枝，就可以不需要改变原有的矩阵结构获得更少的内存使用以及加速，但一般sparsity会高一些（同等accuracy下）。</p>
+<p>对于卷积层，我们有更多的剪枝粒度：
+<img loading="lazy" src="/img/tinyml/conv-prune.png" alt="conv-prune"  />
+
+也是从完全不规则，到有一定的pattern，到vector-level，kernel-level再到剪去一个通道。优缺点如同上面分析的一般。
+对于最fine-grained的剪枝，许多模型都可以达到剪去90%以上而不影响精度。
+<img loading="lazy" src="/img/tinyml/fine-grained-prune-sparsity.png" alt="fine-grained-prune-sparsity"  />
+</p>
+<p>对于有一定pattern的剪枝，就需要设计特定的存储方式或者运算方式来加速。
+例如下图的[N:M]剪枝（每M个参数剪去N个）就可以通过只存非0权重，以及一个下标数组的方式减少内存占用。nvdia的Ampere系列GPU就在其Tensor core内融合了这种优化，达到了2倍的加速效果
+<img loading="lazy" src="/img/tinyml/pattern-grain-prune.png" alt="pattern-grain-prune"  />
+</p>
+<h3 id="pruning-criterion">pruning criterion</h3>
+<h3 id="pruning-ratio">pruning ratio</h3>
+<h3 id="fine-tuningtraining">fine-tuning/Training</h3>
+<h2 id="system--hardware-support-for-sparsity">System &amp; Hardware Support for Sparsity</h2>
 ]]></content:encoded>
     </item>
     
