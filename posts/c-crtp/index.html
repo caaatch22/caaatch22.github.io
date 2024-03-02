@@ -121,8 +121,8 @@ template &lt;typename ChildType&gt; struct VectorBase { ChildType &amp;underlyin
   "keywords": [
     "C++"
   ],
-  "articleBody": " 原先只是了解这个名词，想着C++20后静态多态直接用 concept来实现就好了就没细看，没必要整这些模板元编程的奇技淫巧。没想到面试某量化C++开发的时候被狠狠拷打…….\nCRTP (curiously recurring template pattern) 一般认为，CRTP可以用来实现静态多态\ntemplate \u003ctypename T\u003e class Base { void func() { static_cast\u003cT*\u003e(this)-\u003efuncImpl(); } }; class Derived : public Base\u003cDerived\u003e { void funcImpl() { // do works here } }; 通过CRTP可以使得类具有类似于虚函数的效果，同时又没有虚函数调用时的开销(虚函数调用需要通过虚函数指针查找虚函数表进行调用)，同时类的对象的体积相比使用虚函数也会减少(不需要存储虚函数指针)，但是缺点是无法动态绑定，感觉有点过于鸡肋。\n有什么用呢？可以用来向纯虚类一样做接口：（以下类似的代码在大量数学库中出现）\ntemplate \u003ctypename ChildType\u003e struct VectorBase { ChildType \u0026underlying() { return static_cast\u003cChildType \u0026\u003e(*this); } inline ChildType \u0026operator+=(const ChildType \u0026rhs) { this-\u003eunderlying() = this-\u003eunderlying() + rhs; return this-\u003eunderlying(); } }; struct Vec3f : public VectorBase\u003cVec3f\u003e { float x{}, y{}, z{}; Vec3f() = default; Vec3f(float x, float y, float z) : x(x), y(y), z(z) {} }; inline Vec3f operator+(const Vec3f \u0026lhs, const Vec3f \u0026rhs) { Vec3f result; result.x = lhs.x + rhs.x; result.y = lhs.y + rhs.y; result.z = lhs.z + rhs.z; return result; } 定义好VectorBase后，Vec3f, Vec4f等直接实现接口就好。相比虚函数的形式，在空间和runtime都有优势。\nenable_shared_from_this ? 另一个常见的用处是与 shared_ptr配套的 std::enable_shared_from_this。若我们有一个用shared_ptr管理的资源，当我们想要接管该资源，返回一个接管 this的 shared_ptr时\n// buggy struct Bad { auto get() -\u003e shared_ptr\u003cBad\u003e { return std::shared_ptr\u003cBad\u003e(this); } }; TEST() { auto p1 = std::make_shared\u003cBad\u003e(); auto p2 = p1-\u003eget(); assert(p2.use_cont() == 1); // Unexpected! } 上述代码错误的原因在于std::make_shared总是创建一个控制块，从而导致p1, p2虽然管理的对象相同，却并不知道彼此的存在。两者的 ref-cnt都是1，在析构的时候该对象会被析构两次。类似的bug还有 effective modern c++ Item19 中的例子：\nstd::vector\u003cstd::shared_ptr\u003cWidge\u003e\u003e processedWidgets; class Widget { public: ... void process() { ... // process processedWidgets.emplace_back(this); // buggy! } }; 正确的做法是\nclass Widget: public std::enable_shared_from_this\u003cWidget\u003e { void process() { ... // process processedWidgets.emplace_back(std::shared_from_this()); } }; 而这里的解决方案就是CRTP。实现大概就是借用一个 weak_ptr，在std::shared_from_this时候利用这个weak_ptr进行新的shared_ptr的拷贝构造，从而增加引用计数。\n",
-  "wordCount" : "201",
+  "articleBody": " 原先只是了解这个名词，想着C++20后静态多态直接用 concept来实现就好了就没细看，没必要整这些模板元编程的奇技淫巧。没想到面试某量化C++开发的时候被狠狠拷打…….\nCRTP (curiously recurring template pattern) 一般认为，CRTP可以用来实现静态多态\ntemplate \u003ctypename T\u003e class Base { void func() { static_cast\u003cT*\u003e(this)-\u003efuncImpl(); } }; class Derived : public Base\u003cDerived\u003e { void funcImpl() { // do works here } }; 通过CRTP可以使得类具有类似于虚函数的效果，同时又没有虚函数调用时的开销(虚函数调用需要通过虚函数指针查找虚函数表进行调用)，同时类的对象的体积相比使用虚函数也会减少(不需要存储虚函数指针)，但是缺点是无法动态绑定，感觉有点过于鸡肋。\n有什么用呢？可以用来向纯虚类一样做接口：（以下类似的代码在大量数学库中出现）\ntemplate \u003ctypename ChildType\u003e struct VectorBase { ChildType \u0026underlying() { return static_cast\u003cChildType \u0026\u003e(*this); } inline ChildType \u0026operator+=(const ChildType \u0026rhs) { this-\u003eunderlying() = this-\u003eunderlying() + rhs; return this-\u003eunderlying(); } }; struct Vec3f : public VectorBase\u003cVec3f\u003e { float x{}, y{}, z{}; Vec3f() = default; Vec3f(float x, float y, float z) : x(x), y(y), z(z) {} }; inline Vec3f operator+(const Vec3f \u0026lhs, const Vec3f \u0026rhs) { Vec3f result; result.x = lhs.x + rhs.x; result.y = lhs.y + rhs.y; result.z = lhs.z + rhs.z; return result; } 定义好VectorBase后，Vec3f, Vec4f等直接实现接口就好。相比虚函数的形式，在空间和runtime都有优势。\nenable_shared_from_this ? 另一个常见的用处是与 shared_ptr 配套的 std::enable_shared_from_this。若我们有一个用shared_ptr管理的资源，当我们想要接管该资源，返回一个接管 this的 shared_ptr时\n// buggy struct Bad { auto get() -\u003e shared_ptr\u003cBad\u003e { return std::shared_ptr\u003cBad\u003e(this); } }; TEST() { auto p1 = std::make_shared\u003cBad\u003e(); auto p2 = p1-\u003eget(); assert(p2.use_cont() == 1); // Unexpected! } 上述代码错误的原因在于std::make_shared总是创建一个控制块，从而导致p1, p2虽然管理的对象相同，却并不知道彼此的存在。两者的 ref-cnt都是1，在析构的时候该对象会被析构两次。类似的bug还有 effective modern c++ Item19 中的例子：\nstd::vector\u003cstd::shared_ptr\u003cWidge\u003e\u003e processedWidgets; class Widget { public: ... void process() { ... // process processedWidgets.emplace_back(this); // buggy! } }; 正确的做法是\nclass Widget: public std::enable_shared_from_this\u003cWidget\u003e { void process() { ... // process processedWidgets.emplace_back(std::shared_from_this()); } }; 而这里的解决方案就是CRTP。实现大概就是借用一个 weak_ptr，在std::shared_from_this时候利用这个weak_ptr进行新的shared_ptr的拷贝构造，从而增加引用计数。\nwith deducing this c++23 引入了deducing this 这可以“简化”我们的CRTP模式，使得我们不需要显式地传递模板参数。\n// C++17 template \u003ctypename Derived\u003e struct add_postfix_increment { Derived operator++(int) { auto\u0026 self = static_cast\u003cDerived\u0026\u003e(*this); Derived tmp(self); ++self; return tmp; } }; struct some_type : add_postfix_increment\u003csome_type\u003e { some_type\u0026 operator++() { ... } }; with deducing this\nstruct add_postfix_increment { template \u003ctypename Self\u003e auto operator++(this Self\u0026\u0026 self, int) { auto tmp = self; ++self; return tmp; } }; struct some_type : add_postfix_increment { some_type\u0026 operator++() { ... } }; 相对来说看起来自然多了。当然，deducing this的主要作用不是为了简化CRTP，具体可以看原始的proposal，结合optional的实现。（另外g++13竟然还不支持deducing this :( ）\n",
+  "wordCount" : "282",
   "inLanguage": "en",
   "datePublished": "2023-05-20T17:33:40Z",
   "dateModified": "2023-05-20T17:33:40Z",
@@ -213,7 +213,7 @@ template &lt;typename ChildType&gt; struct VectorBase { ChildType &amp;underlyin
     <h1 class="post-title">
       C&#43;&#43; CRTP
     </h1>
-    <div class="post-meta"><span title='2023-05-20 17:33:40 +0000 UTC'>May 20, 2023</span>&nbsp;·&nbsp;1 min
+    <div class="post-meta"><span title='2023-05-20 17:33:40 +0000 UTC'>May 20, 2023</span>&nbsp;·&nbsp;2 min
 
 </div>
   </header> <aside id="toc-container" class="toc-container wide">
@@ -225,10 +225,12 @@ template &lt;typename ChildType&gt; struct VectorBase { ChildType &amp;underlyin
 
             <div class="inner"><ul>
                     <li>
-                        <a href="#crtp-curiously-recurring-template-pattern" aria-label="CRTP (curiously recurring template pattern)">CRTP (<strong>curiously recurring template pattern</strong>)</a><ul>
+                        <a href="#crtp-curiously-recurring-template-pattern" aria-label="CRTP (curiously recurring template pattern)">CRTP (<strong>curiously recurring template pattern</strong>)</a></li>
+                    <li>
+                        <a href="#enable_shared_from_this-" aria-label="enable_shared_from_this ?">enable_shared_from_this ?</a><ul>
                             
                     <li>
-                        <a href="#enable_shared_from_this-" aria-label="enable_shared_from_this ?">enable_shared_from_this ?</a>
+                        <a href="#with-deducing-this" aria-label="with deducing this">with <code>deducing this</code></a>
                     </li>
                 </ul>
                 </li>
@@ -338,8 +340,8 @@ template &lt;typename ChildType&gt; struct VectorBase { ChildType &amp;underlyin
 </span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">return</span> result;
 </span></span><span style="display:flex;"><span>}
 </span></span></code></pre></div><p>定义好VectorBase后，Vec3f, Vec4f等直接实现接口就好。相比虚函数的形式，在空间和runtime都有优势。</p>
-<h3 id="enable_shared_from_this-">enable_shared_from_this ?<a hidden class="anchor" aria-hidden="true" href="#enable_shared_from_this-">#</a></h3>
-<p>另一个常见的用处是与 <code>shared_ptr</code>配套的 <code>std::enable_shared_from_this</code>。若我们有一个用shared_ptr管理的资源，当我们想要接管该资源，返回一个接管 <code>this</code>的 <code>shared_ptr</code>时</p>
+<h2 id="enable_shared_from_this-">enable_shared_from_this ?<a hidden class="anchor" aria-hidden="true" href="#enable_shared_from_this-">#</a></h2>
+<p>另一个常见的用处是与 <code>shared_ptr</code> 配套的 <code>std::enable_shared_from_this</code>。若我们有一个用shared_ptr管理的资源，当我们想要接管该资源，返回一个接管 <code>this</code>的 <code>shared_ptr</code>时</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#75715e">// buggy
 </span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span><span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">Bad</span> {
 </span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">auto</span> <span style="color:#a6e22e">get</span>() <span style="color:#f92672">-&gt;</span> shared_ptr<span style="color:#f92672">&lt;</span>Bad<span style="color:#f92672">&gt;</span> {
@@ -371,6 +373,37 @@ template &lt;typename ChildType&gt; struct VectorBase { ChildType &amp;underlyin
 </span></span><span style="display:flex;"><span>  }
 </span></span><span style="display:flex;"><span>};
 </span></span></code></pre></div><p>而这里的解决方案就是CRTP。实现大概就是借用一个 <code>weak_ptr</code>，在std::shared_from_this时候利用这个weak_ptr进行新的shared_ptr的拷贝构造，从而增加引用计数。</p>
+<h3 id="with-deducing-this">with <code>deducing this</code><a hidden class="anchor" aria-hidden="true" href="#with-deducing-this">#</a></h3>
+<p>c++23 引入了<a href="https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p0847r6.html">deducing this</a>
+这可以“简化”我们的CRTP模式，使得我们不需要显式地传递模板参数。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#75715e">// C++17
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span><span style="color:#66d9ef">template</span> <span style="color:#f92672">&lt;</span><span style="color:#66d9ef">typename</span> Derived<span style="color:#f92672">&gt;</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">add_postfix_increment</span> {
+</span></span><span style="display:flex;"><span>  Derived <span style="color:#66d9ef">operator</span><span style="color:#f92672">++</span>(<span style="color:#66d9ef">int</span>) {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">auto</span><span style="color:#f92672">&amp;</span> self <span style="color:#f92672">=</span> <span style="color:#66d9ef">static_cast</span><span style="color:#f92672">&lt;</span>Derived<span style="color:#f92672">&amp;&gt;</span>(<span style="color:#f92672">*</span><span style="color:#66d9ef">this</span>);
+</span></span><span style="display:flex;"><span>      Derived <span style="color:#a6e22e">tmp</span>(self);
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">++</span>self;
+</span></span><span style="display:flex;"><span>      <span style="color:#66d9ef">return</span> tmp;
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>};
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">some_type</span> <span style="color:#f92672">:</span> add_postfix_increment<span style="color:#f92672">&lt;</span>some_type<span style="color:#f92672">&gt;</span> {
+</span></span><span style="display:flex;"><span>  some_type<span style="color:#f92672">&amp;</span> <span style="color:#66d9ef">operator</span><span style="color:#f92672">++</span>() { ... }
+</span></span><span style="display:flex;"><span>};
+</span></span></code></pre></div><p><strong>with deducing this</strong></p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">add_postfix_increment</span> {
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">template</span> <span style="color:#f92672">&lt;</span><span style="color:#66d9ef">typename</span> Self<span style="color:#f92672">&gt;</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">auto</span> <span style="color:#66d9ef">operator</span><span style="color:#f92672">++</span>(<span style="color:#66d9ef">this</span> Self<span style="color:#f92672">&amp;&amp;</span> self, <span style="color:#66d9ef">int</span>) {
+</span></span><span style="display:flex;"><span>      <span style="color:#66d9ef">auto</span> tmp <span style="color:#f92672">=</span> self;
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">++</span>self;
+</span></span><span style="display:flex;"><span>      <span style="color:#66d9ef">return</span> tmp;
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>};
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">some_type</span> <span style="color:#f92672">:</span> add_postfix_increment {
+</span></span><span style="display:flex;"><span>  some_type<span style="color:#f92672">&amp;</span> <span style="color:#66d9ef">operator</span><span style="color:#f92672">++</span>() { ... }
+</span></span><span style="display:flex;"><span>};
+</span></span></code></pre></div><p>相对来说看起来自然多了。当然，deducing this的主要作用不是为了简化CRTP，具体可以看原始的<a href="https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p0847r6.html">proposal</a>，结合<code>optional&lt;T&gt;</code>的实现。（另外g++13竟然还不支持deducing this :( ）</p>
 
 
   </div>

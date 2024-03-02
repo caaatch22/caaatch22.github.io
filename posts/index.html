@@ -263,7 +263,7 @@ template &lt;typename T&gt; class Base { void func() { static_cast&lt;T*&gt;(thi
 有什么用呢？可以用来向纯虚类一样做接口：（以下类似的代码在大量数学库中出现）
 template &lt;typename ChildType&gt; struct VectorBase { ChildType &amp;underlying() { return static_cast&lt;ChildType &amp;&gt;(*this); } inline ChildType &amp;operator&#43;=(const ChildType &amp;rhs) { this-&gt;underlying() = this-&gt;underlying() &#43; rhs; return this-&gt;underlying(); } }; struct Vec3f : public VectorBase&lt;Vec3f&gt; { float x{}, y{}, z{}; Vec3f() = default; Vec3f(float x, float y, float z) : x(x), y(y), z(z) {} }; inline Vec3f operator&#43;(const Vec3f &amp;lhs, const Vec3f &amp;rhs) { Vec3f result; result....</p>
   </div>
-  <footer class="entry-footer"><span title='2023-05-20 17:33:40 +0000 UTC'>May 20, 2023</span>&nbsp;·&nbsp;1 min</footer>
+  <footer class="entry-footer"><span title='2023-05-20 17:33:40 +0000 UTC'>May 20, 2023</span>&nbsp;·&nbsp;2 min</footer>
   <a class="entry-link" aria-label="post link to C&#43;&#43; CRTP" href="https://caaatch22.github.io/posts/c-crtp/"></a>
 </article>
 <footer class="page-footer">

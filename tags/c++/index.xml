@@ -284,8 +284,8 @@ template &amp;lt;typename ChildType&amp;gt; struct VectorBase { ChildType &amp;a
 </span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">return</span> result;
 </span></span><span style="display:flex;"><span>}
 </span></span></code></pre></div><p>定义好VectorBase后，Vec3f, Vec4f等直接实现接口就好。相比虚函数的形式，在空间和runtime都有优势。</p>
-<h3 id="enable_shared_from_this-">enable_shared_from_this ?</h3>
-<p>另一个常见的用处是与 <code>shared_ptr</code>配套的 <code>std::enable_shared_from_this</code>。若我们有一个用shared_ptr管理的资源，当我们想要接管该资源，返回一个接管 <code>this</code>的 <code>shared_ptr</code>时</p>
+<h2 id="enable_shared_from_this-">enable_shared_from_this ?</h2>
+<p>另一个常见的用处是与 <code>shared_ptr</code> 配套的 <code>std::enable_shared_from_this</code>。若我们有一个用shared_ptr管理的资源，当我们想要接管该资源，返回一个接管 <code>this</code>的 <code>shared_ptr</code>时</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#75715e">// buggy
 </span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span><span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">Bad</span> {
 </span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">auto</span> <span style="color:#a6e22e">get</span>() <span style="color:#f92672">-&gt;</span> shared_ptr<span style="color:#f92672">&lt;</span>Bad<span style="color:#f92672">&gt;</span> {
@@ -317,6 +317,37 @@ template &amp;lt;typename ChildType&amp;gt; struct VectorBase { ChildType &amp;a
 </span></span><span style="display:flex;"><span>  }
 </span></span><span style="display:flex;"><span>};
 </span></span></code></pre></div><p>而这里的解决方案就是CRTP。实现大概就是借用一个 <code>weak_ptr</code>，在std::shared_from_this时候利用这个weak_ptr进行新的shared_ptr的拷贝构造，从而增加引用计数。</p>
+<h3 id="with-deducing-this">with <code>deducing this</code></h3>
+<p>c++23 引入了<a href="https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p0847r6.html">deducing this</a>
+这可以“简化”我们的CRTP模式，使得我们不需要显式地传递模板参数。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#75715e">// C++17
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span><span style="color:#66d9ef">template</span> <span style="color:#f92672">&lt;</span><span style="color:#66d9ef">typename</span> Derived<span style="color:#f92672">&gt;</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">add_postfix_increment</span> {
+</span></span><span style="display:flex;"><span>  Derived <span style="color:#66d9ef">operator</span><span style="color:#f92672">++</span>(<span style="color:#66d9ef">int</span>) {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">auto</span><span style="color:#f92672">&amp;</span> self <span style="color:#f92672">=</span> <span style="color:#66d9ef">static_cast</span><span style="color:#f92672">&lt;</span>Derived<span style="color:#f92672">&amp;&gt;</span>(<span style="color:#f92672">*</span><span style="color:#66d9ef">this</span>);
+</span></span><span style="display:flex;"><span>      Derived <span style="color:#a6e22e">tmp</span>(self);
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">++</span>self;
+</span></span><span style="display:flex;"><span>      <span style="color:#66d9ef">return</span> tmp;
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>};
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">some_type</span> <span style="color:#f92672">:</span> add_postfix_increment<span style="color:#f92672">&lt;</span>some_type<span style="color:#f92672">&gt;</span> {
+</span></span><span style="display:flex;"><span>  some_type<span style="color:#f92672">&amp;</span> <span style="color:#66d9ef">operator</span><span style="color:#f92672">++</span>() { ... }
+</span></span><span style="display:flex;"><span>};
+</span></span></code></pre></div><p><strong>with deducing this</strong></p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">add_postfix_increment</span> {
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">template</span> <span style="color:#f92672">&lt;</span><span style="color:#66d9ef">typename</span> Self<span style="color:#f92672">&gt;</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">auto</span> <span style="color:#66d9ef">operator</span><span style="color:#f92672">++</span>(<span style="color:#66d9ef">this</span> Self<span style="color:#f92672">&amp;&amp;</span> self, <span style="color:#66d9ef">int</span>) {
+</span></span><span style="display:flex;"><span>      <span style="color:#66d9ef">auto</span> tmp <span style="color:#f92672">=</span> self;
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">++</span>self;
+</span></span><span style="display:flex;"><span>      <span style="color:#66d9ef">return</span> tmp;
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>};
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">some_type</span> <span style="color:#f92672">:</span> add_postfix_increment {
+</span></span><span style="display:flex;"><span>  some_type<span style="color:#f92672">&amp;</span> <span style="color:#66d9ef">operator</span><span style="color:#f92672">++</span>() { ... }
+</span></span><span style="display:flex;"><span>};
+</span></span></code></pre></div><p>相对来说看起来自然多了。当然，deducing this的主要作用不是为了简化CRTP，具体可以看原始的<a href="https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p0847r6.html">proposal</a>，结合<code>optional&lt;T&gt;</code>的实现。（另外g++13竟然还不支持deducing this :( ）</p>
 ]]></content:encoded>
     </item>
     
