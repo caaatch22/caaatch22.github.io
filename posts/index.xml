@@ -165,6 +165,9 @@ $$</p>
 <h3 id="pruning-criterion">pruning criterion</h3>
 <p>如何确定剪去的权重呢？常见的有<code>magnitude-based pruning</code>，<code>scaling-based pruning</code>等</p>
 <h4 id="magnitude-based-pruning">magnitude-based pruning</h4>
+<blockquote>
+<p>Learning Structured Sparsity in Deep Neural Networks <a href="https://arxiv.org/pdf/1608.03665.pdf">Wen et al., NeurIPS 2016</a></p>
+</blockquote>
 <p>只得就是通过权重的重要程度来进行剪枝。直觉上看，对于一个激活函数$y = ReLU(10x_0 - 8x_1 + 0.1x_2 )$，肯定是$0.1$这个权重对其结果影响最小，可以将其剪去。
 依此定义重要度$Importance = |W|$，直接按照数值的大小进行剪枝。当然，我们也可以将其拓展到任意范数：
 $$
@@ -172,15 +175,72 @@ Importance = |W|<em>p = \sqrt[p]{\sum</em>{i} |W_i|^p}
 $$
 只不过最常用的还是l1范数，因为这引入的额外的计算量较小。</p>
 <h4 id="scaling-based-pruning">scaling-based pruning</h4>
+<blockquote>
+<p>Learning Efficient Convolutional Networks through Network Slimming <a href="https://arxiv.org/pdf/1708.06519.pdf">Liu et al., ICCV 2017</a></p>
+</blockquote>
 <p>scaling是针对卷积的一种剪枝策略，我们对卷积操作后的每个通道都用一个 <em>scaling factor</em> 进行缩放。这个scaling factor就和其他参数一样是一个需要训练的参数。
 <img loading="lazy" src="/img/tinyml/scaling-based-pruning.png" alt="scaling-prune"  />
 
-我们在以scaling factor的大小代表这一channel的重要性，从而图中一样进行剪枝。事实上，我们并不需要额外的scaling factor，因为我们的batchnorm层有自带了一个scaling factor: $\gamma$, $z = \gamma \frac{x - \mu}{\sqrt{\sigma^2 + \epsilon}} + \beta$。我们可以直接用这个$\gamma$来进行剪枝。</p>
+我们在以scaling factor的大小代表这一channel的重要性，从而图中一样进行剪枝。事实上，我们并不需要额外的scaling factor，因为我们的batchnorm层有自带了一个scaling factor: $\gamma$ ($z = \gamma \frac{x - \mu}{\sqrt{\sigma^2 + \epsilon}} + \beta$)。我们可以直接用这个$\gamma$来进行剪枝。</p>
 <h4 id="second-order-based-pruning">second-order-based-pruning</h4>
-<p>前面两种剪枝标准都是启发式的，通过定义参数的重要性进行剪枝。我们还可以通过 <em>最小化剪枝前后的损失函数</em> 来进行剪枝。
+<blockquote>
+<p>Optimal Brain Damage <a href="https://proceedings.neurips.cc/paper_files/paper/1989/file/6c9882bbac1c7093bd25041881277658-Paper.pdf">LeCun et al., NeurIPS 1989</a></p>
+</blockquote>
+<p>前面两种剪枝标准都是启发式的，通过定义参数的重要性进行剪枝。我们还可以通过 <em>最小化剪枝前后的损失函数</em> 来进行剪枝。</p>
+<p>$$
+\delta L = L(\mathbf{x}; \mathbf{W}) - L(\mathbf{x}; \mathbf{W}<em>P = \mathbf{W} - \delta\mathbf{W}) \ = \sum</em>{i} g_{i}\delta w_{i} + \frac{1}{2}\sum_{i} h_{ii}\delta w_{i}^2 + \frac{1}{2}\sum_{i \neq j} h_{ij}\delta w_{i}\delta w_{j} + O(|\delta\mathbf{W}|^3) \
+where\ \ g_i = \frac{\partial L}{\partial w_i}, h_{ij} = \frac{\partial^2 L}{\partial w_i \partial w_j}
+%
 $$
-\delta L = L(\mathbf{x}; \mathbf{W}) - L(\mathbf{x}; \mathbf{W}<em>P = \mathbf{W} - \delta\mathbf{W}) = \sum</em>{i} g_{i}\delta w_{i} + \frac{1}{2}\sum_{i} h_{ii}\delta w_{i}^2 + \frac{1}{2}\sum_{i \neq j} h_{ij}\delta w_{i}\delta w_{j} + O(|\delta\mathbf{W}|^3)</p>
-<p>$$</p>
+这是LeCun在1989年时候的工作，它假设：</p>
+<ul>
+<li>目标函数L是近似二次的，所以最后一项可忽略</li>
+<li>这个神经网络的训练已经收敛了，这表明一阶导数（梯度）接近零，所以第一项 $(\sum_{i}g_{i}\delta w_{i})$ 也可忽略</li>
+<li>删除每个参数引起的误差是独立的：这允许我们忽略混合二阶导数项 ，因为这些项描述的是参数之间的相互作用。</li>
+</ul>
+<p>因此，我们可以得到：
+$$
+\delta L_i = L(x; W) - L(x; W_p| w_i = 0) \approx \frac{1}{2}h_{ii} w_i^2
+$$
+也就是$importance_{w_i} = |\delta L| = \frac{1}{2}h_{ii}w_{i}^2$，这就是一个二阶导数的剪枝标准。但是，由于$h_ii$ 是Hessian matrix，计算量过大，所以一般不会使用。</p>
+<h4 id="percentage-of-zero-based-pruning">percentage-of-Zero-Based pruning</h4>
+<blockquote>
+<p>Network Trimming: A Data-Driven Neuron Pruning Approach towards Efficient Deep Architectures <a href="https://arxiv.org/pdf/1607.03250.pdf">Hu et al.,ArXiv 2017</a></p>
+</blockquote>
+<p>非常简单粗暴的对与Channel-level pruning的方法。由于Relu会产生0，我们直接定义每个通道的重要程度为其 <em>Average Percentage of Zeros(APoZ)</em>。选取最小APoZ的通道进行剪枝。</p>
+<h4 id="regression-based-pruning">Regression-based pruning</h4>
+<blockquote>
+<p>Channel Pruning for Accelerating Very Deep Neural Networks <a href="https://arxiv.org/pdf/1707.06168.pdf">He et al., ICCV 2017</a></p>
+</blockquote>
+<p>regression-based pruning对于某一个layer进行操作，希望能够最小化重构误差。
+令输入的feature map的channel数为$c$, 卷积核$W$的权重为 $n× c × k_h×k_w$, 卷积核每次卷积会在一个像素点上生成一个$N×n$的输出矩阵$Y$,其中$N$为batch_num，这里暂时不考虑bias项。要将$c$修剪为$c′$.同时最小化reconstruction error，这个优化问题是
+$$
+\begin{equation}
+\begin{aligned}
+&amp; \underset{\beta, W}{\text{arg min}}
+&amp; &amp; \frac{1}{2N} | Y - \sum_{i=1}^{C} \beta_i X_i W_i^T |<em>F^2 \
+&amp; \text{subject to}
+&amp; &amp; | \beta |<em>0 \leq C'
+\end{aligned}
+\end{equation}
+$$
+其中$X</em>{i}$是一个$N \times k_h k_w$的矩阵裁剪自输入$X$。求解这个问题是NP难的,这里首先将问题用l1范数松弛为
+$$
+\begin{equation}
+\begin{aligned}
+&amp; \underset{\beta, W}{\text{arg min}}
+&amp; &amp; \frac{1}{2N} \left| Y - \sum</em>{i=1}^{C} \beta_i X_i W_i^T \right|_F^2 + \lambda \left| \beta \right|_1 \
+&amp; \text{subject to}
+&amp; &amp; \left| \beta \right|_0 \leq C&rsquo;, ; \forall i, \left| W_i \right|_F = 1
+\end{aligned}
+\end{equation}
+$$
+同时限制$||Wi||F=1$，然后在以下两个步骤中迭代</p>
+<ul>
+<li>首先锁定$W$ ,求解$\beta$, 作为channel selection问题，这变成了零范数的LASSO regression。代码中可以知道作者是使用sklearn的Lasso regression函数做的</li>
+<li>锁定$\beta$，问题变成了$\underset{W&rsquo;}{\text{arg min}} \left| Y - X&rsquo;(W&rsquo;)^T \right|_F^2
+$本质上是一个线性回归。</li>
+</ul>
 <h3 id="pruning-ratio">pruning ratio</h3>
 <h3 id="fine-tuningtraining">fine-tuning/Training</h3>
 <h2 id="system--hardware-support-for-sparsity">System &amp; Hardware Support for Sparsity</h2>
