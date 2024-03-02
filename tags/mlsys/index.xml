@@ -188,7 +188,7 @@ $$
 </blockquote>
 <p>前面两种剪枝标准都是启发式的，通过定义参数的重要性进行剪枝。我们还可以通过 <em>最小化剪枝前后的损失函数</em> 来进行剪枝。</p>
 <p>$$
-\delta L = L(\mathbf{x}; \mathbf{W}) - L(\mathbf{x}; \mathbf{W}<em>P = \mathbf{W} - \delta\mathbf{W}) \ = \sum</em>{i} g_{i}\delta w_{i} + \frac{1}{2}\sum_{i} h_{ii}\delta w_{i}^2 + \frac{1}{2}\sum_{i \neq j} h_{ij}\delta w_{i}\delta w_{j} + O(|\delta\mathbf{W}|^3) \
+\delta L = L(\mathbf{x}; \mathbf{W}) - L(\mathbf{x}; \mathbf{W}<em>P = \mathbf{W} - \delta\mathbf{W})  = \sum</em>{i} g_{i}\delta w_{i} + \frac{1}{2}\sum_{i} h_{ii}\delta w_{i}^2 + \frac{1}{2}\sum_{i \neq j} h_{ij}\delta w_{i}\delta w_{j} + O(|\delta\mathbf{W}|^3) \
 where\ \ g_i = \frac{\partial L}{\partial w_i}, h_{ij} = \frac{\partial^2 L}{\partial w_i \partial w_j}
 %
 $$
