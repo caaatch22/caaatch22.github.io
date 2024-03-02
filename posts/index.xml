@@ -262,7 +262,7 @@ $本质上是一个线性回归。</li>
 <p>通常我们都会迭代式的再inference阶段进行pruning，例如，先采用50%的sparsity进行推理，得到精度误差后fine-tune一次，训练出新的weights分布，然后不断加大sparsity，不断重新fine-tune。如上图所示</p>
 <h2 id="system--hardware-support-for-sparsity">System &amp; Hardware Support for Sparsity</h2>
 <p>在pruning granularity的时候我们说到，若想要做到细粒度的剪枝，就需要特定的硬件支持。
-韩老师自己的一篇论文[EIE](EIE: Efficient Inference Engine on Compressed Deep Neural Network)就支持对任意粒度的剪枝进行加速。由于我不是做硬件的，暂时没有仔细研究实现。</p>
+韩老师自己的一篇论文[EIE](<a href="https://arxiv.org/pdf/1602.01528.pdfEIE">https://arxiv.org/pdf/1602.01528.pdfEIE</a>: Efficient Inference Engine on Compressed Deep Neural Network)就支持对任意粒度的剪枝进行加速。由于我不是做硬件的，暂时没有仔细研究实现。</p>
 <p>英伟达的Amper系列GPU也支持对于structured sparsity的加速，例如[N:M]剪枝。
 架构图如下：
 <img loading="lazy" src="/img/tinyml/m-n-sparsity.png" alt="m-n-sparsity"  />
