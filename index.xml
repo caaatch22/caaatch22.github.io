@@ -169,11 +169,11 @@ $$</p>
 <p>Learning Structured Sparsity in Deep Neural Networks <a href="https://arxiv.org/pdf/1608.03665.pdf">Wen et al., NeurIPS 2016</a></p>
 </blockquote>
 <p>只得就是通过权重的重要程度来进行剪枝。直觉上看，对于一个激活函数$y = ReLU(10x_0 - 8x_1 + 0.1x_2 )$，肯定是$0.1$这个权重对其结果影响最小，可以将其剪去。
-依此定义重要度$Importance = |W|$，直接按照数值的大小进行剪枝。当然，我们也可以将其拓展到任意范数：</p>
-<p>$$
+依此定义重要度$Importance = |W|$，直接按照数值的大小进行剪枝。当然，我们也可以将其拓展到任意范数：
+$$
 Importance = |W|<em>p = (\sum</em>{i} |W_i|^p)^{\frac{1}{p}}
-$$</p>
-<p>只不过最常用的还是l1范数，因为这引入的额外的计算量较小。</p>
+$$
+只不过最常用的还是l1范数，因为这引入的额外的计算量较小。</p>
 <h4 id="scaling-based-pruning">Scaling-based pruning</h4>
 <blockquote>
 <p>Learning Efficient Convolutional Networks through Network Slimming <a href="https://arxiv.org/pdf/1708.06519.pdf">Liu et al., ICCV 2017</a></p>
@@ -188,8 +188,7 @@ $$</p>
 </blockquote>
 <p>前面两种剪枝标准都是启发式的，通过定义参数的重要性进行剪枝。我们还可以通过 <em>最小化剪枝前后的损失函数</em> 来进行剪枝。
 $$
-\delta L = L(\mathbf{x}; \mathbf{W}) - L(\mathbf{x}; \mathbf{W}<em>P = \mathbf{W} - \delta\mathbf{W})  = \sum</em>{i} g_{i}\delta w_{i} + \frac{1}{2}\sum_{i} h_{ii}\delta w_{i}^2 + \frac{1}{2}\sum_{i \neq j} h_{ij}\delta w_{i}\delta w_{j} + O(|\delta\mathbf{W}|^3) \
-where\ \ g_i = \frac{\partial L}{\partial w_i}, h_{ij} = \frac{\partial^2 L}{\partial w_i \partial w_j}
+\delta L = L(\mathbf{x}; \mathbf{W}) - L(\mathbf{x}; \mathbf{W}<em>P = \mathbf{W} - \delta\mathbf{W})  = \sum</em>{i} g_{i}\delta w_{i} + \frac{1}{2}\sum_{i} h_{ii}\delta w_{i}^2 + \frac{1}{2}\sum_{i \neq j} h_{ij}\delta w_{i}\delta w_{j} + O(|\delta\mathbf{W}|^3) \ where\ \ g_i = \frac{\partial L}{\partial w_i}, h_{ij} = \frac{\partial^2 L}{\partial w_i \partial w_j}
 $$
 这是LeCun在1989年时候的工作，它假设：</p>
 <ul>
@@ -2511,6 +2510,16 @@ View the PDF file <a class="pdf-source" id="pdf-source-noscript-e21a8caf" href="
 <p>github地址 <a href="https://github.com/caaatch22/algorithm-template">https://github.com/caaatch22/algorithm-template</a></p>
 </blockquote>
 ]]></content:encoded>
+    </item>
+    
+    <item>
+      <title></title>
+      <link>https://caaatch22.github.io/posts/tinyml-quantization/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://caaatch22.github.io/posts/tinyml-quantization/</guid>
+      <description></description>
+      <content:encoded><![CDATA[]]></content:encoded>
     </item>
     
     <item>

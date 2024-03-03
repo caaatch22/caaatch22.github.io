@@ -1,17 +1,18 @@
 <!DOCTYPE html>
 <html lang="en" dir="auto">
 
-<head>
-	<meta name="generator" content="Hugo 0.119.0"><meta charset="utf-8">
+<head><meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <meta name="robots" content="index, follow">
 <title>Mingjie&#39;s Home</title>
-
-<meta name="description" content="">
+<meta name="keywords" content="">
+<meta name="description" content=" - Mingjie&#39;s Home">
 <meta name="author" content="">
-<link rel="canonical" href="https://caaatch22.github.io/">
+<link rel="canonical" href="https://caaatch22.github.io/posts/tinyml-quantization/">
 <link crossorigin="anonymous" href="/assets/css/stylesheet.678b5c47efa744d2e0dd0d61101075e6aecdc9a0631e7ad8538f4ec0cca79273.css" integrity="sha256-Z4tcR&#43;&#43;nRNLg3Q1hEBB15q7NyaBjHnrYU49OwMynknM=" rel="preload stylesheet" as="style">
+<script defer crossorigin="anonymous" src="/assets/js/highlight.f413e19d0714851f6474e7ee9632408e58ac146fbdbe62747134bea2fa3415e0.js" integrity="sha256-9BPhnQcUhR9kdOfuljJAjlisFG&#43;9vmJ0cTS&#43;ovo0FeA="
+    onload="hljs.initHighlightingOnLoad();"></script>
 <link rel="icon" href="https://caaatch22.github.io/favicon.ico">
 <link rel="icon" type="image/png" sizes="16x16" href="https://caaatch22.github.io/favicon-16x16.png">
 <link rel="icon" type="image/png" sizes="32x32" href="https://caaatch22.github.io/favicon-32x32.png">
@@ -19,8 +20,6 @@
 <link rel="mask-icon" href="https://caaatch22.github.io/safari-pinned-tab.svg">
 <meta name="theme-color" content="#2e2e33">
 <meta name="msapplication-TileColor" content="#2e2e33">
-<link rel="alternate" type="application/rss+xml" href="https://caaatch22.github.io/index.xml">
-<link rel="alternate" type="application/json" href="https://caaatch22.github.io/index.json">
 <noscript>
     <style>
         #theme-toggle,
@@ -68,31 +67,70 @@ if (!doNotTrack) {
 	gtag('config', 'G-WEG841BBW9', { 'anonymize_ip': false });
 }
 </script>
-<meta property="og:title" content="Mingjie&#39;s Home" />
+<meta property="og:title" content="" />
 <meta property="og:description" content="" />
-<meta property="og:type" content="website" />
-<meta property="og:url" content="https://caaatch22.github.io/" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://caaatch22.github.io/posts/tinyml-quantization/" /><meta property="article:section" content="posts" />
+
+
 
 <meta name="twitter:card" content="summary"/>
-<meta name="twitter:title" content="Mingjie&#39;s Home"/>
+<meta name="twitter:title" content=""/>
 <meta name="twitter:description" content=""/>
+
 
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
-  "@type": "Organization",
-  "name": "Mingjie's Home",
-  "url": "https://caaatch22.github.io",
-  "description": "",
-  "thumbnailUrl": "https://caaatch22.github.io/favicon.ico",
-  "sameAs": [
-      "https://github.com/caaatch22", "mailto:mr.liumingjie@gmail.com", "https://codeforces.com/profile/catch22", "https://zhihu.com/people/lmj-catch22", "index.xml"
+  "@type": "BreadcrumbList",
+  "itemListElement": [, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "Posts",
+      "item": "https://caaatch22.github.io/posts/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  3 ,
+      "name": "",
+      "item": "https://caaatch22.github.io/posts/tinyml-quantization/"
+    }
   ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "",
+  "name": "",
+  "description": "",
+  "keywords": [
+    
+  ],
+  "articleBody": "",
+  "wordCount" : "0",
+  "inLanguage": "en",
+  "datePublished": "0001-01-01T00:00:00Z",
+  "dateModified": "0001-01-01T00:00:00Z",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://caaatch22.github.io/posts/tinyml-quantization/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Mingjie's Home",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://caaatch22.github.io/favicon.ico"
+    }
+  }
 }
 </script>
 </head>
 
-<body class="list" id="top">
+<body class="" id="top">
 <script>
     if (localStorage.getItem("pref-theme") === "dark") {
         document.body.classList.add('dark');
@@ -155,70 +193,33 @@ if (!doNotTrack) {
         </ul>
     </nav>
 </header>
-<main class="main"> 
+<main class="main">
 
-<article class="post-entry"> 
-  <header class="entry-header">
-    <h2>个人常用配置备忘
-    </h2>
-  </header>
-  <div class="entry-content">
-    <p>vscode 插件：
-C/C&#43;&#43;, ~ Extension Pack, Themes, InteliCode CMake Tools, CodeLLDB Vim remote ssh, docker Error Lens, GitLens user的settings.json
-&#34;editor.fontFamily&#34;: &#34;Fira Code&#34;, &#34;workbench.panel.defaultLocation&#34;: &#34;right&#34;, &#34;vim.handleKeys&#34;: { &#34;&lt;C-c&gt;&#34;: false, &#34;&lt;C-f&gt;&#34;: false, &#34;&lt;C-x&gt;&#34;: false, &#34;&lt;C-a&gt;&#34;: false, &#34;&lt;C-p&gt;&#34;: false, }, &#34;C_Cpp.vcFormat.newLine.beforeOpenBrace.block&#34;: &#34;sameLine&#34;, &#34;C_Cpp.vcFormat.newLine.beforeOpenBrace.function&#34;: &#34;sameLine&#34;, &#34;editor.formatOnSave&#34;: true, &#34;C_Cpp.clang_format_fallbackStyle&#34;: &#34;{ BasedOnStyle: LLVM, UseTab: Never, IndentWidth: 2, TabWidth: 2}&#34;, pip, python, pyenv 使用pyenv控制多个python版本
-pyenv versions # 查看所有安装的python脚本 pyenv install 3.8.0 # 安装python 3.8.0 pyenv global 3.8.0 # 将3....</p>
-  </div>
-  <footer class="entry-footer"><span title='2022-12-20 17:33:40 +0000 UTC'>December 20, 2022</span>&nbsp;·&nbsp;1 min</footer>
-  <a class="entry-link" aria-label="post link to 个人常用配置备忘" href="https://caaatch22.github.io/posts/memo/"></a>
-</article>
+<article class="post-single">
+  <header class="post-header">
+    <div class="breadcrumbs"><a href="https://caaatch22.github.io">Home</a>&nbsp;»&nbsp;<a href="https://caaatch22.github.io/posts/">Posts</a></div>
+    <h1 class="post-title">
+      
+    </h1>
+    <div class="post-meta">0 min
 
-<article class="post-entry"> 
-  <header class="entry-header">
-    <h2>cs144-note1
-    </h2>
-  </header>
-  <div class="entry-content">
-    <p>Computer Network introduction dominant model : bidirectional, reliable byte stream connection
-http: hypertext transfer protocol : designed to be a document centric way for programs to communicate. Client —&gt; Server model
-Bit-Torrent: (peer-to-peer model) a client requests document from other clients, a single client can request from many others. these collections of collaborating clients are called swarms when a client wants to downloads a file, it first find torrent, usually using www and download using http....</p>
-  </div>
-  <footer class="entry-footer"><span title='2022-05-09 22:35:22 +0000 UTC'>May 9, 2022</span>&nbsp;·&nbsp;3 min</footer>
-  <a class="entry-link" aria-label="post link to cs144-note1" href="https://caaatch22.github.io/posts/cs144-note1/"></a>
-</article>
+</div>
+  </header> 
 
-<article class="post-entry"> 
-<figure class="entry-cover"><img loading="lazy" src="https://caaatch22.github.io/img/icpc-algorithm-template/icpc-template.png" alt="">
-</figure>
-  <header class="entry-header">
-    <h2>xcpc template
-    </h2>
-  </header>
-  <div class="entry-content">
-    <p>icpc模板 Previous Next     / [pdf] View the PDF file here. algorithm-template Competitive Programming template
-basic algorithm 双指针 离散化，去重 前缀和与差分 二分 单调栈 单调队列 尺取法 归并排序，快速排序，第k小 树的中心 拓扑排序 math 素数，筛素数，素性测试， 反素数 质因数分解，预处理质因数 欧拉函数 组合数 拓展欧几里得，线性同余方程 中国剩余定理 容斥原理 高斯消元，高斯异或 矩阵乘法 博弈论，Nim游戏 莫比乌斯反演 BSGS FFT 生成函数 线性基 date strcture 并查集 Sparse table Trie, 01Trie 树状数组 线段树，扫描线 树链剖分 可持久化线段树，kth number, 主席树 splay 分块 莫队 点分治 kdtree Graph Floyd bellman-ford, spfa，判负环 dijkstra， 拆点 分层图最短路 差分约束 最小生成树 prim, kruskal 瓶颈生成树 kruskal重构树 lca 二分图匹配 欧拉回路欧拉路径 强连通分量 2-sat 网络流相关 string 字符串hash KMP， 前缀函数 Z-algorithm ac自动机 SA SAM dp 01pack, 完全背包，多重背包及优化，分组背包 线性dp, LCS, LIS, 编辑距离 区间dp 字符串压缩 数位dp 状压dp 树形dp 基环树dp 单调队列优化dp 斜率优化dp Geometry 常用模板 二维凸包 github地址 https://github....</p>
-  </div>
-  <footer class="entry-footer"><span title='2022-03-17 23:38:14 +0000 UTC'>March 17, 2022</span>&nbsp;·&nbsp;1 min</footer>
-  <a class="entry-link" aria-label="post link to xcpc template" href="https://caaatch22.github.io/posts/xcpc-template/"></a>
-</article>
 
-<article class="post-entry"> 
-  <header class="entry-header">
-    <h2>
-    </h2>
-  </header>
-  <div class="entry-content">
-    <p></p>
-  </div>
-  <footer class="entry-footer">0 min</footer>
-  <a class="entry-link" aria-label="post link to " href="https://caaatch22.github.io/posts/tinyml-quantization/"></a>
+  <footer class="post-footer">
+    <ul class="post-tags">
+    </ul>
+<nav class="paginav">
+  <a class="prev" href="https://caaatch22.github.io/posts/xcpc-template/">
+    <span class="title">« Prev</span>
+    <br>
+    <span>xcpc template</span>
+  </a>
+</nav>
+
+  </footer>
 </article>
-<footer class="page-footer">
-  <nav class="pagination">
-    <a class="prev" href="https://caaatch22.github.io/page/2/">
-      «&nbsp;Prev&nbsp;
-    </a>
-  </nav>
-</footer>
     </main>
     
 <footer class="footer">
