@@ -18,7 +18,8 @@ Introduction 正式介绍pruning and sparsity之前，我们先来聊聊为什�
 随着Large language model的出现，如GPT-3，如今的模型参数量已经达到了上百billion，别说训练，我们甚至无法在一个gpu上对其进行推理。更别提如果我们想要将其部署在其他边缘设备上。
 所以当前在做inference之前，一般都会有个model-compression的过程，包括pruning（剪枝），quantization（量化），distillation（蒸馏）等。这些方法都是为了减少模型的大小，加速推理过程。这些方法也被广泛地集成到了各种加速卡，gpu中。例如nv的A100就支持structured sparsity（[N:M]形式的，具体含义下文会详细介绍）。
 Efficiency Metrics 我们再来看看一些 efficiency metrics，这也是我们在做inference过程中需要考虑的指标：
-Memory-Related Metrics # parameters model size total/peak #activations Computation-Related Metrics MACs FLOP, FLOPs # parameters Model #Parameters Linear Layer(FC) $feature_{in} * feature_{out}$ Conv Layer $c_{i} * c_{o} * k_{h} * k_{w} $ Grouped Conv Layer $c_{i} * c_{o} * k_{h} * k_{w} / g$ Depthwise Conv Layer $c_{o} * k_{h} * k_{w}$ 其中，Grouped Conv指的是将输入在channel维度进行分组，然后分别进行卷积，最后concatenate。Depthwise Conv分组个数g等于输入channel数的情况。</description>
+Memory-Related Metrics # parameters model size total/peak #activations Computation-Related Metrics MACs FLOP, FLOPs # parameters 下表是一些常见结构的参数数量：
+Model #Parameters Linear Layer(FC) $feature_{in} * feature_{out}$ Conv Layer $c_{i} * c_{o} * k_{h} * k_{w} $ Grouped Conv Layer $c_{i} * c_{o} * k_{h} * k_{w} / g$ Depthwise Conv Layer $c_{o} * k_{h} * k_{w}$ 其中，Grouped Conv指的是将输入在channel维度进行分组，然后分别进行卷积，最后concatenate。Depthwise Conv是分组个数 $g$ 等于输入channel数的情况。</description>
       <content:encoded><![CDATA[<blockquote>
 <p>最近正在学习 <a href="https://hanlab.mit.edu/courses/2023-fall-65940">MIT 6.5940</a>, <a href="https://hanlab.mit.edu/songhan">韩松</a>老师的课，做deep learning compression的应该都只知道。课程分为三个部分，<strong>efficient inference, domain-specific optimization, efficient training</strong>。有完整的课件，视频和实验。最后一个lab是将llama2部署在个人电脑上，非常有意思（谁不想要个自己的大模型呢）。其余lab也都可以白嫖google colab的gpu</p>
 </blockquote>
@@ -47,6 +48,7 @@ Memory-Related Metrics # parameters model size total/peak #activations Computati
 </li>
 </ul>
 <h4 id="-parameters"># parameters</h4>
+<p>下表是一些常见结构的参数数量：</p>
 <table>
 <thead>
 <tr>
@@ -73,7 +75,7 @@ Memory-Related Metrics # parameters model size total/peak #activations Computati
 </tr>
 </tbody>
 </table>
-<p>其中，Grouped Conv指的是将输入在channel维度进行分组，然后分别进行卷积，最后concatenate。Depthwise Conv分组个数g等于输入channel数的情况。</p>
+<p>其中，Grouped Conv指的是将输入在channel维度进行分组，然后分别进行卷积，最后concatenate。Depthwise Conv是分组个数 $g$ 等于输入channel数的情况。</p>
 <p>除了这些weight外，还有bias以及norm相关的参数。
 例如，对于batchnorm层，我们需要两个参数$\gamma,  \beta$以及runing mean和running variance。
 $$
@@ -87,10 +89,10 @@ $$</p>
 <p>举个例子，AlexNet有$61M$个参数，如果我们用32bit的float来表示，那么model size就是$61M * 4byte = 224MB$。但如果我们用8-bit来表示每个weight，那么model size就是$61M * 1byte = 61MB$。</p>
 <p>这就是quantization的一个应用，通过减少bitwidth来减少model size。</p>
 <h4 id="totalpeak-activations">total/peak #activations</h4>
-<p>#activations 是模型在推理时在内存中需要存储的中间结果，这也可能成为内存瓶颈。如下图：
+<p>#activations 是模型在推理时在内存中需要存储的中间结果，这也可能成为内存瓶颈。如下图所示：
 <img loading="lazy" src="/img/tinyml/mcunet-activations.png" alt="activation"  />
 </p>
-<p>图中是MCUNet(一个专门用在IoT设备上的模型)的参数量和activations数量对比resnet的减少。可以看出，参数的减少量十分显著，但是# activations不降反增，和param的占比是一个数量级的。所以我们若想在边缘设备上部署模型，需要考虑activations的数量。</p>
+<p>该图展示了MCUNet(一个专门用在IoT设备上的模型)的参数量和activations数量对比resnet的减少。可以看出，参数的减少量十分显著，但是# activations不降反增，和param的占比是一个数量级的。所以我们若想在边缘设备上部署模型，需要考虑activations的数量。</p>
 <h4 id="mac">MAC</h4>
 <p><code>MAC</code>的含义是 <strong>Multiply-Accumulate operation</strong>。例如，一个gemm(genearl matrix multiplication)的$MACs = m * n * k$（对于m * k的矩阵和k * n的矩阵相乘）。深度学习中几乎90%的时间都在做gemm，一个conv2d操作也可以由im2col转换为gemm操作。</p>
 <p>以下是常见的一些layer的MACs计算：</p>
@@ -127,14 +129,14 @@ $$</p>
 <p>对于边缘设备，我们还需要考虑能耗的问题。
 <img loading="lazy" src="/img/tinyml/memory-is-expensive.png" alt="energy-consumption"  />
 
-图中可以看出，数据的移动消耗的能量是做运算的200倍以上。</p>
+图中可以看出，从内存中取数操作的能耗是运算的200倍以上。</p>
 <h2 id="neural-network-pruning">neural network pruning</h2>
-<p>那么，到底什么是<em>模型剪枝（model pruning）<em>呢？顾名思义，就是将模型中的一些参数去掉，或者更加细粒度的，我们可以把某些参数与参数之间的连接去掉。还有一个常用的概念是</em>稀疏度（sparsity）</em>，指的是剪枝后的参数占原有参数的比例。例如，如果我们剪去了90%的参数，那么sparsity就是0.1。</p>
+<p>那么，到底什么是 <em>模型剪枝（model pruning）</em> 呢？顾名思义，就是将模型中的一些参数去掉，或者更加细粒度的，我们可以把某些参数与参数之间的连接去掉。还有一个常用的概念是 <em>稀疏度（sparsity）</em> ，指的是剪枝后的参数占原有参数的比例。例如，如果我们剪去了90%的参数，那么sparsity就是0.1。</p>
+<p><img loading="lazy" src="/img/tinyml/nnpruning.png" alt="pruning"  />
+</p>
 <blockquote>
 <p><strong>注意：剪去某个参数并不意味着单纯将其设置为0。<strong>因为我们剪枝的目的是</strong>减少内存使用</strong>以及<strong>加速推理</strong>，若只是讲某个$W$矩阵中的一些值变成0，并不能达到减少内存的目的。我们需要将剪枝后的参数$W_{p}$用特定的方式存储（例如，稀疏矩阵）以及结合特定的优化后的运算才能减少内存使用并加速。当然，从正确性的角度来说，将某些参数设置为0可以得到一样的结果。所以我们可以在确定 <em>sparsity</em> 时先将一定的参数置为0，然后再通过fine-tuning来确定剪去这么多的参数是否会影响模型最终的效果。</p>
 </blockquote>
-<p><img loading="lazy" src="/img/tinyml/nnpruning.png" alt="pruning"  />
-</p>
 <p>减去一定的参数后，肯定会对我们的模型效果造成影响。这时候我们需要进行fine-tuning调整参数分布，具体会在后文展开。</p>
 <p>形式化的定义prune：
 <img loading="lazy" src="/img/tinyml/prune-formalized.png" alt="prune-formalized"  />
@@ -200,7 +202,7 @@ $$
 $$
 \delta L_i = L(x; W) - L(x; W_p| w_i = 0) \approx \frac{1}{2}h_{ii} w_i^2
 $$
-也就是$importance_{w_i} = |\delta L| = \frac{1}{2}h_{ii}w_{i}^2$，这就是一个二阶导数的剪枝标准。但是，由于$h_ii$ 是Hessian matrix，计算量过大，所以一般不会使用。</p>
+也就是$importance_{w_i} = |\delta L| = \frac{1}{2}h_{ii}w_{i}^2$，这就是一个二阶导数的剪枝标准。但是，由于$h_{ii}$ 是Hessian matrix，计算量过大，所以一般不会使用。</p>
 <h4 id="percentage-of-zero-based-pruning">percentage-of-Zero-Based pruning</h4>
 <blockquote>
 <p>Network Trimming: A Data-Driven Neuron Pruning Approach towards Efficient Deep Architectures <a href="https://arxiv.org/pdf/1607.03250.pdf">Hu et al.,ArXiv 2017</a></p>
@@ -252,7 +254,7 @@ $本质上是一个线性回归。</li>
 
 图中是VGG-11在CIFAR-10数据集上的不同层的pruning ratio对精度的影响。选定一个threshold后就可以依据这个对不同layer选取不同的pruning ratio。</p>
 <h4 id="automatic-pruning">automatic pruning</h4>
-<p>上面的方法是一种手动的方法，并且并没有考虑不同层之间的相互影响。
+<p>上面的方法是一种手动的方法，并且没有考虑不同层之间的相互影响。
 一个有意思的工作来自ECCV 2018, <a href="https://arxiv.org/pdf/1802.03494.pdf">AMC: AutoML for Model Compression and Acceleration on Mobile Devices</a>, 用了强化学习的方法来选取不同的pruning-ratio，效果很好。不过目前没看懂，后面有机会再补充。</p>
 <h3 id="fine-tuningtraining">Fine-tuning/Training</h3>
 <p>说了这么多pruing方法，具体的操作流程如下：
