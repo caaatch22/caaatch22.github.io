@@ -122,6 +122,7 @@ $$</p>
 </tr>
 </tbody>
 </table>
+<p>（简单解释一下conv2d的MACs：对于每个输出特征图上的每个像素点，都需要进行 $c_i \times k_h \times k_w $ 次乘法运算和累加操作（假设每个卷积核和输入通道的对应部分做完整个卷积运算）。因为输出特征图有 $c_o$ 个通道，每个通道有 $h_o \times w_o$ 个像素点，所以总共的MACs数就是上面公式中的乘积。）</p>
 <h4 id="flop-and-flops">FLOP and FLOPs</h4>
 <p>FLOP的意思是 <strong>Floating Point Operations</strong>，是指浮点运算的次数。FLOPs是指每秒的FLOP数量。
 一般一个MAC对应两个FLOP，一乘一加。</p>
@@ -2516,10 +2517,10 @@ View the PDF file <a class="pdf-source" id="pdf-source-noscript-e21a8caf" href="
     
     <item>
       <title></title>
-      <link>https://caaatch22.github.io/posts/tinyml-quantization/</link>
+      <link>https://caaatch22.github.io/posts/dlsystem-hardware-acceleration/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
-      <guid>https://caaatch22.github.io/posts/tinyml-quantization/</guid>
+      <guid>https://caaatch22.github.io/posts/dlsystem-hardware-acceleration/</guid>
       <description></description>
       <content:encoded><![CDATA[]]></content:encoded>
     </item>
