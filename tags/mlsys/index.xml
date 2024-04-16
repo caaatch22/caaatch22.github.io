@@ -64,14 +64,12 @@ $$
 <p>进一步的，当我们进行推理的过程中，对于一个全连接层，设$Y = WX$（暂不考虑bias），对左右两边都进行量化得到：</p>
 <p>$$
 \begin{align*}
-S_{Y}(q_{Y} - z_{Y}) &amp;= S_{W}(q_{W} - z_{W})\cdot S_{X}(q_{X} - z_{x}) \
-q_{Y} &amp;= \frac{S_{W}S_{X}}{S_{Y}}(q_{W} - z_{W})(q_{x} - z_{x}) + z_{Y} \
-q_{Y} &amp;= \frac{S_{W}S_{X}}{S_{Y}}(q_{W}q_{x} - q_{W}z_{x} - z_{W}q_{x} + z_{W}z_{x}) + z_{Y} \
-q_{Y} &amp;= \frac{S_{W}S_{X}}{S_{Y}}(q_{W}q_{X} - z_{X}q_{W}) + z_{Y}\ \ (assume\ z_{W} = 0)
+S_{Y}(q_{Y} - z_{Y}) &amp;= S_{W}(q_{W} - z_{W})\cdot S_{X}(q_{X} - z_{x}) \newline
+q_{Y} &amp;= \frac{S_{W}S_{X}}{S_{Y}}(q_{W} - z_{W})(q_{x} - z_{x}) + z_{Y} \newline
+q_{Y} &amp;= \frac{S_{W}S_{X}}{S_{Y}}(q_{W}q_{x} - q_{W}z_{x} - z_{W}q_{x} + z_{W}z_{x}) + z_{Y} \newline
+q_{Y} &amp;= \frac{S_{W}S_{X}}{S_{Y}}(q_{W}q_{X} - z_{X}q_{W}) + z_{Y}\ \ (assume\ z_{W} = 0) \newline
 \end{align*}
 $$</p>
-<!-- raw HTML omitted -->
-<!-- raw HTML omitted -->
 <p>类似的，有bias的时候可以得到：
 $$
 q_{Y} = \frac{S_{W}S_{X}}{S_{Y}}(q_{W}q_{X} - Q_{bias}) + z_{Y} \ \ \ (Q_{bias} = q_{b} - z_{X}q_{W})
@@ -86,10 +84,8 @@ $$
 <li>$\frac{S_{W}S_{X}}{S_{Y}}$是一个浮点数，我们不能让它参与计算。根据<em>经验</em>，这个结果一般都在(0, 1)之间，所以可以表示成$2^{-n}M_{0}$， 其中$M_{0}$是一个整数，$n$是一个非负整数。这样我们就可以记录两个整数来代替浮点数。可以参见<a href="https://github.com/google/gemmlowp/blob/master/doc/quantization_example.cc#L210">gemmlowp的实现</a></li>
 <li>$q_{W} \cdot q_{X}$ 是很可能溢出 8bit的，所以其结果一般也会用32bit int表示（具体可能有不同的实现），所以我们一般也先将$Q_{bias}$量化为32bit int，便于与其结果相乘。最后需要对结果在量化为8bit int。</li>
 </ol>
+<p>minmax量化（$s = \frac{r_{max}-r_{min}}{q_{max} - q_{min}}$）有一个问题，</p>
 <h2 id="post-training-quantizationptq">Post-training quantization(PTQ)</h2>
-<p>$$
-q_{output} = (linear(q_{input}, q_{weight}) + Q_{bias}) * (s_{input} * s_{weight} / s_{output})
-$$</p>
 <h2 id="qauntization-aware-trainingqat">Qauntization-aware training(QAT)</h2>
 ]]></content:encoded>
     </item>
