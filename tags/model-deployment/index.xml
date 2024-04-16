@@ -94,7 +94,9 @@ $$</p>
 那么如何确定这个阈值呢？我们肯定希望<strong>最小化量化前后数据分布的信息损失</strong>，这也是KL散度的思想。操作过程如下图
 <img loading="lazy" src="/img/tinyml/quantization/tensorrt_quantization.png" alt="tensorrt quantization"  />
 </p>
-<p>也就是对每模型层都选取多个阈值，得到量化后的模型分布与原分布计算KL-divergence，选取最小的KL-divergence对应的阈值。</p>
+<p>也就是对每模型层都选取多个阈值，得到量化后的模型分布与原分布计算KL-divergence，选取最小的KL-divergence对应的阈值。一些选取的threshold结果如下：
+<img loading="lazy" src="/img/tinyml/quantization/tensorrt_quantization_threshold.png" alt="tensorrt threshold"  />
+</p>
 <h2 id="post-training-quantizationptq">Post-training quantization(PTQ)</h2>
 <h2 id="qauntization-aware-trainingqat">Qauntization-aware training(QAT)</h2>
 <h2 id="reference">reference</h2>
