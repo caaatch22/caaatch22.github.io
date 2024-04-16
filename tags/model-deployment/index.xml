@@ -92,13 +92,22 @@ $$</p>
 <p>TensorRT对activations的量化其实也是通过minmax方法，但是这个minmax是在一定阈值之内的minmax。
 <img loading="lazy" src="/img/tinyml/quantization/tensorrt_threshold.png" alt=""  />
 
-那么如何确定这个阈值呢？我们肯定希望<strong>最小化量化前后数据分布的信息损失</strong>，这也是KL散度的思想。操作过程如下图
-<img loading="lazy" src="/img/tinyml/quantization/tensorrt_quantization.png" alt="tensorrt quantization"  />
-</p>
-<p>也就是对每模型层都选取多个阈值，得到量化后的模型分布与原分布计算KL-divergence，选取最小的KL-divergence对应的阈值。一些选取的threshold结果如下：
+那么如何确定这个阈值呢？我们肯定希望<strong>最小化量化前后数据分布的信息损失</strong>，这也是KL散度的思想。操作过程如下：</p>
+<p>对于模型的每一层：</p>
+<ol>
+<li>计算activations的直方图</li>
+<li>选取多种threshold计算梁化后的分布与原分布的KL散度</li>
+<li>选取最小KL散度对应的threshold
+整个过程在典型的工作负载下大概需要几分钟。</li>
+</ol>
+<p>一些选取的threshold结果如下：
 <img loading="lazy" src="/img/tinyml/quantization/tensorrt_quantization_threshold.png" alt="tensorrt threshold"  />
 </p>
 <h3 id="量化粒度">量化粒度</h3>
+<p>我们可以对每个tensor进行量化，也即对每个tensor都有一个scale和zero point。但人们发现，同一个tensor的不同channel的分布是很不一样的：
+<img loading="lazy" src="/img/tinyml/quantization/channel_distribution.png" alt="channel distribution"  />
+
+所以一个更细粒度的选择是进行per-channel量化，即对每个channel都有一个scale和zero point。</p>
 <h2 id="post-training-quantizationptq">Post-training quantization(PTQ)</h2>
 <h2 id="qauntization-aware-trainingqat">Qauntization-aware training(QAT)</h2>
 <h2 id="reference">reference</h2>
