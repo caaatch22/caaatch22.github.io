@@ -64,10 +64,10 @@ $$
 <p>进一步的，当我们进行推理的过程中，对于一个全连接层，设$Y = WX$（暂不考虑bias），对左右两边都进行量化得到：</p>
 <p>$$
 \begin{align*}
-S_{Y}(q_{Y} - z_{Y}) $= S_{W}(q_{W} - z_{W})\cdot S_{X}(q_{X} - z_{x}) \
-q_{Y} $= \frac{S_{W}S_{X}}{S_{Y}}(q_{W} - z_{W})(q_{x} - z_{x}) + z_{Y} \
-q_{Y} $= \frac{S_{W}S_{X}}{S_{Y}}(q_{W}q_{x} - q_{W}z_{x} - z_{W}q_{x} + z_{W}z_{x}) + z_{Y} \
-q_{Y} $= \frac{S_{W}S_{X}}{S_{Y}}(q_{W}q_{X} - z_{X}q_{W}) + z_{Y}\ \ (assume\ z_{W} = 0)
+S_{Y}(q_{Y} - z_{Y}) &amp;= S_{W}(q_{W} - z_{W})\cdot S_{X}(q_{X} - z_{x}) \
+q_{Y} &amp;= \frac{S_{W}S_{X}}{S_{Y}}(q_{W} - z_{W})(q_{x} - z_{x}) + z_{Y} \
+q_{Y} &amp;= \frac{S_{W}S_{X}}{S_{Y}}(q_{W}q_{x} - q_{W}z_{x} - z_{W}q_{x} + z_{W}z_{x}) + z_{Y} \
+q_{Y} &amp;= \frac{S_{W}S_{X}}{S_{Y}}(q_{W}q_{X} - z_{X}q_{W}) + z_{Y}\ \ (assume\ z_{W} = 0)
 \end{align*}
 $$</p>
 <!-- raw HTML omitted -->
