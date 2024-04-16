@@ -61,7 +61,62 @@ s = \frac{|r_{max}|}{q_{max}} \ z = 0 \
 q = clip(round(\frac{r}{s}), -q_{max}, q_{max}), q_{max} = 2^{bitwidth - 1} - 1
 $$
 这也是TensorRT等框架中常用的量化方式。</p>
-<p>进一步的，当我们进行推理的过程中，设$Y = WX + b$</p>
+<p>进一步的，当我们进行推理的过程中，对于一个全连接层，设$Y = WX + b$，对左右两边都进行量化得到：
+$$
+S_{Y}(q_{Y} - z_{Y}) = S_{W}(q_{W} - z_{W})\cdot S_{X}(q_{X} - z_{x}) + S_{b}(q_{b} - z_{b})
+$$</p>
+<p>After quantization, the inference of convolution and fully-connected layers also change.</p>
+<p>Recall that $r = S(q-Z)$, and we have</p>
+<blockquote>
+<p>$r_{\mathrm{input}} = S_{\mathrm{input}}(q_{\mathrm{input}}-Z_{\mathrm{input}})$</p>
+<p>$r_{\mathrm{weight}} = S_{\mathrm{weight}}(q_{\mathrm{weight}}-Z_{\mathrm{weight}})$</p>
+<p>$r_{\mathrm{bias}} = S_{\mathrm{bias}}(q_{\mathrm{bias}}-Z_{\mathrm{bias}})$</p>
+</blockquote>
+<p>Since $Z_{\mathrm{weight}}=0$, $r_{\mathrm{weight}} = S_{\mathrm{weight}}q_{\mathrm{weight}}$.</p>
+<p>The floating point convolution can be written as,</p>
+<blockquote>
+<p>$r_{\mathrm{output}} = \mathrm{CONV}[r_{\mathrm{input}}, r_{\mathrm{weight}}] + r_{\mathrm{bias}}\
+;;;;;;;;= \mathrm{CONV}[S_{\mathrm{input}}(q_{\mathrm{input}}-Z_{\mathrm{input}}), S_{\mathrm{weight}}q_{\mathrm{weight}}] + S_{\mathrm{bias}}(q_{\mathrm{bias}}-Z_{\mathrm{bias}})\
+;;;;;;;;= \mathrm{CONV}[q_{\mathrm{input}}-Z_{\mathrm{input}}, q_{\mathrm{weight}}]\cdot (S_{\mathrm{input}} \cdot S_{\mathrm{weight}}) + S_{\mathrm{bias}}(q_{\mathrm{bias}}-Z_{\mathrm{bias}})$</p>
+</blockquote>
+<p>To further simplify the computation, we could let</p>
+<blockquote>
+<p>$Z_{\mathrm{bias}} = 0$</p>
+<p>$S_{\mathrm{bias}} = S_{\mathrm{input}} \cdot S_{\mathrm{weight}}$</p>
+</blockquote>
+<p>so that</p>
+<blockquote>
+<p>$r_{\mathrm{output}} = (\mathrm{CONV}[q_{\mathrm{input}}-Z_{\mathrm{input}}, q_{\mathrm{weight}}] + q_{\mathrm{bias}})\cdot (S_{\mathrm{input}} \cdot S_{\mathrm{weight}})$
+$;;;;;;;;= (\mathrm{CONV}[q_{\mathrm{input}}, q_{\mathrm{weight}}] - \mathrm{CONV}[Z_{\mathrm{input}}, q_{\mathrm{weight}}] + q_{\mathrm{bias}})\cdot (S_{\mathrm{input}}S_{\mathrm{weight}})$</p>
+</blockquote>
+<p>Since</p>
+<blockquote>
+<p>$r_{\mathrm{output}} = S_{\mathrm{output}}(q_{\mathrm{output}}-Z_{\mathrm{output}})$</p>
+</blockquote>
+<p>we have</p>
+<blockquote>
+<p>$S_{\mathrm{output}}(q_{\mathrm{output}}-Z_{\mathrm{output}}) = (\mathrm{CONV}[q_{\mathrm{input}}, q_{\mathrm{weight}}] - \mathrm{CONV}[Z_{\mathrm{input}}, q_{\mathrm{weight}}] + q_{\mathrm{bias}})\cdot (S_{\mathrm{input}} S_{\mathrm{weight}})$</p>
+</blockquote>
+<p>and thus</p>
+<blockquote>
+<p>$q_{\mathrm{output}} = (\mathrm{CONV}[q_{\mathrm{input}}, q_{\mathrm{weight}}] - \mathrm{CONV}[Z_{\mathrm{input}}, q_{\mathrm{weight}}] + q_{\mathrm{bias}})\cdot (S_{\mathrm{input}}S_{\mathrm{weight}} / S_{\mathrm{output}}) + Z_{\mathrm{output}}$</p>
+</blockquote>
+<p>Since $Z_{\mathrm{input}}$, $q_{\mathrm{weight}}$, $q_{\mathrm{bias}}$ are determined before inference, let</p>
+<blockquote>
+<p>$Q_{\mathrm{bias}} = q_{\mathrm{bias}} - \mathrm{CONV}[Z_{\mathrm{input}}, q_{\mathrm{weight}}]$</p>
+</blockquote>
+<p>we have</p>
+<blockquote>
+<p>$q_{\mathrm{output}} = (\mathrm{CONV}[q_{\mathrm{input}}, q_{\mathrm{weight}}] + Q_{\mathrm{bias}}) \cdot (S_{\mathrm{input}}S_{\mathrm{weight}} / S_{\mathrm{output}}) + Z_{\mathrm{output}}$</p>
+</blockquote>
+<p>Similarily, for fully-connected layer, we have</p>
+<blockquote>
+<p>$q_{\mathrm{output}} = (\mathrm{Linear}[q_{\mathrm{input}}, q_{\mathrm{weight}}] + Q_{\mathrm{bias}})\cdot (S_{\mathrm{input}} \cdot S_{\mathrm{weight}} / S_{\mathrm{output}}) + Z_{\mathrm{output}}$</p>
+</blockquote>
+<p>where</p>
+<blockquote>
+<p>$Q_{\mathrm{bias}} = q_{\mathrm{bias}} - \mathrm{Linear}[Z_{\mathrm{input}}, q_{\mathrm{weight}}]$</p>
+</blockquote>
 <h2 id="post-training-quantizationptq">Post-training quantization(PTQ)</h2>
 <p>$$
 q_{output} = (linear(q_{input}, q_{weight}) + Q_{bias}) * (s_{input} * s_{weight} / s_{output})
