@@ -173,7 +173,7 @@ if (!doNotTrack) {
 如何求出$s$和$z$呢？一种简单且常见的方式是通过最大最小值来估计，即：
 $$ s = \frac{r_{max} - r_{min}}{q_{max} - q_{min}} $$ $r_{max}$就是这个tensor的最大值，$r_{min}$是最小值，$q_{max}$和$q_{min}$是我们指定的量化后的最大最小值。如下图所示： 有了scale, 容易得到 $z = q_{min} - \frac{r_{min}}{s}$。在实际操作中，z一般会被round到最近的整数$z = round(q_{min} - \frac{r_{min}}{s})$（有很多不同的round规则，这个有具体实现决定）。
 得到量化方程： $$ q = clip(round(\frac{r}{s}) &#43; z, q_{min}, q_{max}) $$
-代码示意如下：（实际并不会这么操作，而是利用pytorch已有的quantize api）
+代码示意如下：（实际会用pytorch已有的quantize api或者其他推理框架）
 def get_quantized_range(bitwidth): quantized_max = (1 &lt;&lt; (bitwidth - 1)) - 1 quantized_min = -(1 &lt;&lt; (bitwidth - 1)) return quantized_min, quantized_max def linear_quantize(fp_tensor, bitwidth, scale, zero_point, dtype=torch....</p>
   </div>
   <footer class="entry-footer"><span title='2024-02-27 22:19:21 +0000 UTC'>February 27, 2024</span>&nbsp;·&nbsp;1 min</footer>
