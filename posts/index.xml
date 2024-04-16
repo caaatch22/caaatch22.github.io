@@ -84,9 +84,10 @@ $$
 <li>$\frac{S_{W}S_{X}}{S_{Y}}$是一个浮点数，我们不能让它参与计算。根据<em>经验</em>，这个结果一般都在(0, 1)之间，所以可以表示成$2^{-n}M_{0}$， 其中$M_{0}$是一个整数，$n$是一个非负整数。这样我们就可以记录两个整数来代替浮点数。可以参见<a href="https://github.com/google/gemmlowp/blob/master/doc/quantization_example.cc#L210">gemmlowp的实现</a></li>
 <li>$q_{W} \cdot q_{X}$ 是很可能溢出 8bit的，所以其结果一般也会用32bit int表示（具体可能有不同的实现），所以我们一般也先将$Q_{bias}$量化为32bit int，便于与其结果相乘。最后需要对结果在量化为8bit int。</li>
 </ol>
+<h3 id="其他量化方法">其他量化方法</h3>
 <p>minmax量化（$s = \frac{r_{max}-r_{min}}{q_{max} - q_{min}}$）有一个问题，也就是它容易受outlier的点的影响，这对模型参数的量化其实影响还好，因为参数的分布基本是对称的。但是对activations的结果就不一样了，所以又衍生出了几种量化方式。还记得上文说过，为了在模型真正部署之前得到对input, activations的量化参数，我们会在一个cablibration dataset进行训练。在这个过程中，我们可以通过取平均或者*指数移动平均(exponential moving averages)*的方式获取r_{max}, r_{min}，从而减少outlier的影响。
 $$
-\hat{r}^{(t)}<em>{\max, \min} = \alpha \cdot r^{(t)}</em>{\max, \min} + (1 - \alpha) \cdot \hat{r}^{(t-1)}_{\max, \min}
+\hat{r}^{(t)}<em>{max, min} = \alpha \cdot r^{(t)}</em>{max, min} + (1 - \alpha) \cdot \hat{r}^{(t-1)}_{max, min}
 $$</p>
 <p>TensorRT对activations的量化其实也是通过minmax方法，但是这个minmax是在一定阈值之内的minmax。
 <img loading="lazy" src="/img/tinyml/quantization/tensorrt_threshold.png" alt=""  />
@@ -97,10 +98,12 @@ $$</p>
 <p>也就是对每模型层都选取多个阈值，得到量化后的模型分布与原分布计算KL-divergence，选取最小的KL-divergence对应的阈值。一些选取的threshold结果如下：
 <img loading="lazy" src="/img/tinyml/quantization/tensorrt_quantization_threshold.png" alt="tensorrt threshold"  />
 </p>
+<h3 id="量化粒度">量化粒度</h3>
 <h2 id="post-training-quantizationptq">Post-training quantization(PTQ)</h2>
 <h2 id="qauntization-aware-trainingqat">Qauntization-aware training(QAT)</h2>
 <h2 id="reference">reference</h2>
 <ul>
+<li><a href="https://hanlab.mit.edu/courses/2023-fall-65940">tinyml quantization</a></li>
 <li><a href="https://arxiv.org/abs/1806.08342">Quantizing deep convolutional networks for efficient inference: A whitepaper</a></li>
 <li><a href="https://github.com/google/gemmlowp/blob/master/doc/quantization_example.cc">gemmlowp</a>关于量化的示例</li>
 <li><a href="https://on-demand.gputechconf.com/gtc/2017/presentation/s7310-8-bit-inference-with-tensorrt.pdf">8-bit inference with TensorRT</a></li>
