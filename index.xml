@@ -52,12 +52,14 @@ $$</p>
 </span></span><span style="display:flex;"><span>    quantized_tensor <span style="color:#f92672">=</span> shifted_tensor<span style="color:#f92672">.</span>clamp_(quantized_min, quantized_max)
 </span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> quantized_tensor
 </span></span></code></pre></div><p>上述过程被称为非对称量化(asymmetric quantization)。下图是一个训练好的vgg的模型参数分布：</p>
-<p><img loading="lazy" src="/img/tinyml/quantization/weight-distribution.png" alt="weight distribution"  />
+<p><img loading="lazy" src="/img/tinyml/quantization/weight_distribution.png" alt="weight distribution"  />
 </p>
 <p>我们发现，几乎所有卷积层的参数都关于0对称，基于这个观察，在量化的过程中，我们常用对称量化(symmetric quantization)。即，我们将zero point设置为0，并让q_{min} = -q_{max}。这样，我们就可以简化量化公式为：
 $$
-q = clip(round(\frac{r}{s}), -q_{max}, q_{max})
-$$</p>
+s = \frac{|r_{max}|}{q_{max}} \ z = 0 \
+q = clip(round(\frac{r}{s}), -q_{max}, q_{max}), q_{max} = 2^{bitwidth - 1} - 1
+$$
+这也是TensorRT等框架中常用的量化方式。</p>
 <p>进一步的，当我们进行推理的过程中，设$Y = WX + b$</p>
 <h2 id="post-training-quantizationptq">Post-training quantization(PTQ)</h2>
 <p>$$
