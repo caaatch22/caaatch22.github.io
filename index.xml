@@ -17,9 +17,9 @@
 一种常见的量化方式是线性量化(linear quantization)，也叫仿射量化(affine quantization)。其实就是按比例将tensor（一般为fp32）放缩到 $2^{bitwidth}$ 的范围内，比如8bit等。我们很容易给出量化公式： $$ r = s(q - z) $$ 其中，r(real value)值得是量化前的值，q(quantized value)是量化后的值，s(scale)是放缩比例，z(zero point)相当于是一个偏移量。
 如何求出$s$和$z$呢？一种简单且常见的方式是通过最大最小值来估计，即：
 $$ s = \frac{r_{max} - r_{min}}{q_{max} - q_{min}} $$ $r_{max}$就是这个tensor的最大值，$r_{min}$是最小值，$q_{max}$和$q_{min}$是我们指定的量化后的最大最小值。如下图所示： 有了scale, 容易得到 $z = q_{min} - \frac{r_{min}}{s}$。在实际操作中，z一般会被round到最近的整数$z = round(q_{min} - \frac{r_{min}}{s})$（有很多不同的round规则，这个有具体实现决定）。
-得到量化方程： $$ q = clip(round(\frac{r}{s} + z), q_{min}, q_{max}) $$
-Post-training quantization(PTQ) $$ q_{output} = (linear(q_{input}, q_{weight}) + Q_{bias}) * (s_{input} * s_{weight} / s_{output}) $$
-Qauntization-aware training(QAT) </description>
+得到量化方程： $$ q = clip(round(\frac{r}{s}) + z, q_{min}, q_{max}) $$
+代码示意如下：（实际并不会这么操作，而是利用pytorch已有的quantize api）
+def get_quantized_range(bitwidth): quantized_max = (1 &amp;lt;&amp;lt; (bitwidth - 1)) - 1 quantized_min = -(1 &amp;lt;&amp;lt; (bitwidth - 1)) return quantized_min, quantized_max def linear_quantize(fp_tensor, bitwidth, scale, zero_point, dtype=torch.</description>
       <content:encoded><![CDATA[<h2 id="quantization">Quantization</h2>
 <p>模型量化（quantization）指的是用更少的bit表示模型参数，从而减少模型的大小，加速推理过程的技术。</p>
 <p>一种常见的量化方式是线性量化(linear quantization)，也叫仿射量化(affine quantization)。其实就是按比例将tensor（一般为fp32）放缩到 $2^{bitwidth}$ 的范围内，比如8bit等。我们很容易给出量化公式：
@@ -37,9 +37,21 @@ $r_{max}$就是这个tensor的最大值，$r_{min}$是最小值，$q_{max}$和$q
 <p>有了scale, 容易得到 $z = q_{min} - \frac{r_{min}}{s}$。在实际操作中，z一般会被round到最近的整数$z = round(q_{min} - \frac{r_{min}}{s})$（有很多不同的round规则，这个有具体实现决定）。</p>
 <p>得到量化方程：
 $$
-q = clip(round(\frac{r}{s} + z), q_{min}, q_{max})
+q = clip(round(\frac{r}{s}) + z, q_{min}, q_{max})
 $$</p>
-<h2 id="post-training-quantizationptq">Post-training quantization(PTQ)</h2>
+<p>代码示意如下：（实际并不会这么操作，而是利用pytorch已有的quantize api）</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">get_quantized_range</span>(bitwidth):
+</span></span><span style="display:flex;"><span>    quantized_max <span style="color:#f92672">=</span> (<span style="color:#ae81ff">1</span> <span style="color:#f92672">&lt;&lt;</span> (bitwidth <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>)) <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>
+</span></span><span style="display:flex;"><span>    quantized_min <span style="color:#f92672">=</span> <span style="color:#f92672">-</span>(<span style="color:#ae81ff">1</span> <span style="color:#f92672">&lt;&lt;</span> (bitwidth <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>))
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> quantized_min, quantized_max
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">linear_quantize</span>(fp_tensor, bitwidth, scale, zero_point, dtype<span style="color:#f92672">=</span>torch<span style="color:#f92672">.</span>int8) <span style="color:#f92672">-&gt;</span> torch<span style="color:#f92672">.</span>Tensor:
+</span></span><span style="display:flex;"><span>    rounded_tensor <span style="color:#f92672">=</span> torch<span style="color:#f92672">.</span>round(fp_tensor <span style="color:#f92672">/</span> scale)<span style="color:#f92672">.</span>to(dtype)
+</span></span><span style="display:flex;"><span>    shifted_tensor <span style="color:#f92672">=</span> rounded_tensor <span style="color:#f92672">+</span> zero_point
+</span></span><span style="display:flex;"><span>    quantized_min, quantized_max <span style="color:#f92672">=</span> get_quantized_range(bitwidth)
+</span></span><span style="display:flex;"><span>    quantized_tensor <span style="color:#f92672">=</span> shifted_tensor<span style="color:#f92672">.</span>clamp_(quantized_min, quantized_max)
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> quantized_tensor
+</span></span></code></pre></div><h2 id="post-training-quantizationptq">Post-training quantization(PTQ)</h2>
 <p>$$
 q_{output} = (linear(q_{input}, q_{weight}) + Q_{bias}) * (s_{input} * s_{weight} / s_{output})
 $$</p>
