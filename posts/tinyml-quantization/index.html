@@ -7,7 +7,7 @@
 <meta name="robots" content="index, follow">
 <title>TinyMl —— quantization | Mingjie&#39;s Home</title>
 <meta name="keywords" content="deep-learning, mlsys, model-deployment">
-<meta name="description" content="Quantization 模型量化（quantization）指的是用更少的bit表示模型参数，从而减少模型的大小，加速推理过程的技术。
+<meta name="description" content="Introduction 模型量化（quantization）指的是用更少的bit表示模型参数，从而减少模型的大小，加速推理过程的技术。
 一种常见的量化方式是线性量化(linear quantization)，也叫仿射量化(affine quantization)。其实就是按比例将tensor（一般为fp32）放缩到 $2^{bitwidth}$ 的范围内，比如8bit等。我们很容易给出量化公式： $$ r = s(q - z) $$ 其中，r(real value)值得是量化前的值，q(quantized value)是量化后的值，s(scale)是放缩比例，z(zero point)相当于是一个偏移量。
 如何求出$s$和$z$呢？一种简单且常见的方式是通过最大最小值来估计，即：
 $$ s = \frac{r_{max} - r_{min}}{q_{max} - q_{min}} $$ $r_{max}$就是这个tensor的最大值，$r_{min}$是最小值，$q_{max}$和$q_{min}$是我们指定的量化后的最大最小值。如下图所示： 有了scale, 容易得到 $z = q_{min} - \frac{r_{min}}{s}$。在实际操作中，z一般会被round到最近的整数$z = round(q_{min} - \frac{r_{min}}{s})$（有很多不同的round规则，这个有具体实现决定）。
@@ -95,7 +95,7 @@ if (!doNotTrack) {
 }
 </script>
 <meta property="og:title" content="TinyMl —— quantization" />
-<meta property="og:description" content="Quantization 模型量化（quantization）指的是用更少的bit表示模型参数，从而减少模型的大小，加速推理过程的技术。
+<meta property="og:description" content="Introduction 模型量化（quantization）指的是用更少的bit表示模型参数，从而减少模型的大小，加速推理过程的技术。
 一种常见的量化方式是线性量化(linear quantization)，也叫仿射量化(affine quantization)。其实就是按比例将tensor（一般为fp32）放缩到 $2^{bitwidth}$ 的范围内，比如8bit等。我们很容易给出量化公式： $$ r = s(q - z) $$ 其中，r(real value)值得是量化前的值，q(quantized value)是量化后的值，s(scale)是放缩比例，z(zero point)相当于是一个偏移量。
 如何求出$s$和$z$呢？一种简单且常见的方式是通过最大最小值来估计，即：
 $$ s = \frac{r_{max} - r_{min}}{q_{max} - q_{min}} $$ $r_{max}$就是这个tensor的最大值，$r_{min}$是最小值，$q_{max}$和$q_{min}$是我们指定的量化后的最大最小值。如下图所示： 有了scale, 容易得到 $z = q_{min} - \frac{r_{min}}{s}$。在实际操作中，z一般会被round到最近的整数$z = round(q_{min} - \frac{r_{min}}{s})$（有很多不同的round规则，这个有具体实现决定）。
@@ -109,7 +109,7 @@ def get_quantized_range(bitwidth): quantized_max = (1 &lt;&lt; (bitwidth - 1)) -
 
 <meta name="twitter:card" content="summary"/>
 <meta name="twitter:title" content="TinyMl —— quantization"/>
-<meta name="twitter:description" content="Quantization 模型量化（quantization）指的是用更少的bit表示模型参数，从而减少模型的大小，加速推理过程的技术。
+<meta name="twitter:description" content="Introduction 模型量化（quantization）指的是用更少的bit表示模型参数，从而减少模型的大小，加速推理过程的技术。
 一种常见的量化方式是线性量化(linear quantization)，也叫仿射量化(affine quantization)。其实就是按比例将tensor（一般为fp32）放缩到 $2^{bitwidth}$ 的范围内，比如8bit等。我们很容易给出量化公式： $$ r = s(q - z) $$ 其中，r(real value)值得是量化前的值，q(quantized value)是量化后的值，s(scale)是放缩比例，z(zero point)相当于是一个偏移量。
 如何求出$s$和$z$呢？一种简单且常见的方式是通过最大最小值来估计，即：
 $$ s = \frac{r_{max} - r_{min}}{q_{max} - q_{min}} $$ $r_{max}$就是这个tensor的最大值，$r_{min}$是最小值，$q_{max}$和$q_{min}$是我们指定的量化后的最大最小值。如下图所示： 有了scale, 容易得到 $z = q_{min} - \frac{r_{min}}{s}$。在实际操作中，z一般会被round到最近的整数$z = round(q_{min} - \frac{r_{min}}{s})$（有很多不同的round规则，这个有具体实现决定）。
@@ -144,12 +144,12 @@ def get_quantized_range(bitwidth): quantized_max = (1 &lt;&lt; (bitwidth - 1)) -
   "@type": "BlogPosting",
   "headline": "TinyMl —— quantization",
   "name": "TinyMl —— quantization",
-  "description": "Quantization 模型量化（quantization）指的是用更少的bit表示模型参数，从而减少模型的大小，加速推理过程的技术。\n一种常见的量化方式是线性量化(linear quantization)，也叫仿射量化(affine quantization)。其实就是按比例将tensor（一般为fp32）放缩到 $2^{bitwidth}$ 的范围内，比如8bit等。我们很容易给出量化公式： $$ r = s(q - z) $$ 其中，r(real value)值得是量化前的值，q(quantized value)是量化后的值，s(scale)是放缩比例，z(zero point)相当于是一个偏移量。\n如何求出$s$和$z$呢？一种简单且常见的方式是通过最大最小值来估计，即：\n$$ s = \\frac{r_{max} - r_{min}}{q_{max} - q_{min}} $$ $r_{max}$就是这个tensor的最大值，$r_{min}$是最小值，$q_{max}$和$q_{min}$是我们指定的量化后的最大最小值。如下图所示： 有了scale, 容易得到 $z = q_{min} - \\frac{r_{min}}{s}$。在实际操作中，z一般会被round到最近的整数$z = round(q_{min} - \\frac{r_{min}}{s})$（有很多不同的round规则，这个有具体实现决定）。\n得到量化方程： $$ q = clip(round(\\frac{r}{s}) + z, q_{min}, q_{max}) $$\n代码示意如下：（实际会用pytorch已有的quantize api或者其他推理框架）\ndef get_quantized_range(bitwidth): quantized_max = (1 \u0026lt;\u0026lt; (bitwidth - 1)) - 1 quantized_min = -(1 \u0026lt;\u0026lt; (bitwidth - 1)) return quantized_min, quantized_max def linear_quantize(fp_tensor, bitwidth, scale, zero_point, dtype=torch.",
+  "description": "Introduction 模型量化（quantization）指的是用更少的bit表示模型参数，从而减少模型的大小，加速推理过程的技术。\n一种常见的量化方式是线性量化(linear quantization)，也叫仿射量化(affine quantization)。其实就是按比例将tensor（一般为fp32）放缩到 $2^{bitwidth}$ 的范围内，比如8bit等。我们很容易给出量化公式： $$ r = s(q - z) $$ 其中，r(real value)值得是量化前的值，q(quantized value)是量化后的值，s(scale)是放缩比例，z(zero point)相当于是一个偏移量。\n如何求出$s$和$z$呢？一种简单且常见的方式是通过最大最小值来估计，即：\n$$ s = \\frac{r_{max} - r_{min}}{q_{max} - q_{min}} $$ $r_{max}$就是这个tensor的最大值，$r_{min}$是最小值，$q_{max}$和$q_{min}$是我们指定的量化后的最大最小值。如下图所示： 有了scale, 容易得到 $z = q_{min} - \\frac{r_{min}}{s}$。在实际操作中，z一般会被round到最近的整数$z = round(q_{min} - \\frac{r_{min}}{s})$（有很多不同的round规则，这个有具体实现决定）。\n得到量化方程： $$ q = clip(round(\\frac{r}{s}) + z, q_{min}, q_{max}) $$\n代码示意如下：（实际会用pytorch已有的quantize api或者其他推理框架）\ndef get_quantized_range(bitwidth): quantized_max = (1 \u0026lt;\u0026lt; (bitwidth - 1)) - 1 quantized_min = -(1 \u0026lt;\u0026lt; (bitwidth - 1)) return quantized_min, quantized_max def linear_quantize(fp_tensor, bitwidth, scale, zero_point, dtype=torch.",
   "keywords": [
     "deep-learning", "mlsys", "model-deployment"
   ],
-  "articleBody": "Quantization 模型量化（quantization）指的是用更少的bit表示模型参数，从而减少模型的大小，加速推理过程的技术。\n一种常见的量化方式是线性量化(linear quantization)，也叫仿射量化(affine quantization)。其实就是按比例将tensor（一般为fp32）放缩到 $2^{bitwidth}$ 的范围内，比如8bit等。我们很容易给出量化公式： $$ r = s(q - z) $$ 其中，r(real value)值得是量化前的值，q(quantized value)是量化后的值，s(scale)是放缩比例，z(zero point)相当于是一个偏移量。\n如何求出$s$和$z$呢？一种简单且常见的方式是通过最大最小值来估计，即：\n$$ s = \\frac{r_{max} - r_{min}}{q_{max} - q_{min}} $$ $r_{max}$就是这个tensor的最大值，$r_{min}$是最小值，$q_{max}$和$q_{min}$是我们指定的量化后的最大最小值。如下图所示： 有了scale, 容易得到 $z = q_{min} - \\frac{r_{min}}{s}$。在实际操作中，z一般会被round到最近的整数$z = round(q_{min} - \\frac{r_{min}}{s})$（有很多不同的round规则，这个有具体实现决定）。\n得到量化方程： $$ q = clip(round(\\frac{r}{s}) + z, q_{min}, q_{max}) $$\n代码示意如下：（实际会用pytorch已有的quantize api或者其他推理框架）\ndef get_quantized_range(bitwidth): quantized_max = (1 \u003c\u003c (bitwidth - 1)) - 1 quantized_min = -(1 \u003c\u003c (bitwidth - 1)) return quantized_min, quantized_max def linear_quantize(fp_tensor, bitwidth, scale, zero_point, dtype=torch.int8) -\u003e torch.Tensor: rounded_tensor = torch.round(fp_tensor / scale).to(dtype) shifted_tensor = rounded_tensor + zero_point quantized_min, quantized_max = get_quantized_range(bitwidth) quantized_tensor = shifted_tensor.clamp_(quantized_min, quantized_max) return quantized_tensor 上述过程被称为非对称量化(asymmetric quantization)。\n还有一种对称量化(symmetric quantization)，它基于以下事实：常见的训练好的模型参数几乎总是关于0对称的。如下图所示：\n基于这个观察，我们常将zero point设置为0，并让q_{min} = -q_{max}。这样，我们就可以简化量化公式为： $$ s = \\frac{|r_{max}|}{q_{max}} \\ z = 0 \\ q = clip(round(\\frac{r}{s}), -q_{max}, q_{max}), q_{max} = 2^{bitwidth - 1} - 1 $$ 这也是TensorRT等框架中常用的量化方式。\n进一步的，当我们进行推理的过程中，对于一个全连接层，设$Y = WX + b$，对左右两边都进行量化得到： $$ S_{Y}(q_{Y} - z_{Y}) = S_{W}(q_{W} - z_{W})\\cdot S_{X}(q_{X} - z_{x}) + S_{b}(q_{b} - z_{b}) $$\nAfter quantization, the inference of convolution and fully-connected layers also change.\nRecall that $r = S(q-Z)$, and we have\n$r_{\\mathrm{input}} = S_{\\mathrm{input}}(q_{\\mathrm{input}}-Z_{\\mathrm{input}})$\n$r_{\\mathrm{weight}} = S_{\\mathrm{weight}}(q_{\\mathrm{weight}}-Z_{\\mathrm{weight}})$\n$r_{\\mathrm{bias}} = S_{\\mathrm{bias}}(q_{\\mathrm{bias}}-Z_{\\mathrm{bias}})$\nSince $Z_{\\mathrm{weight}}=0$, $r_{\\mathrm{weight}} = S_{\\mathrm{weight}}q_{\\mathrm{weight}}$.\nThe floating point convolution can be written as,\n$r_{\\mathrm{output}} = \\mathrm{CONV}[r_{\\mathrm{input}}, r_{\\mathrm{weight}}] + r_{\\mathrm{bias}}\\ ;;;;;;;;= \\mathrm{CONV}[S_{\\mathrm{input}}(q_{\\mathrm{input}}-Z_{\\mathrm{input}}), S_{\\mathrm{weight}}q_{\\mathrm{weight}}] + S_{\\mathrm{bias}}(q_{\\mathrm{bias}}-Z_{\\mathrm{bias}})\\ ;;;;;;;;= \\mathrm{CONV}[q_{\\mathrm{input}}-Z_{\\mathrm{input}}, q_{\\mathrm{weight}}]\\cdot (S_{\\mathrm{input}} \\cdot S_{\\mathrm{weight}}) + S_{\\mathrm{bias}}(q_{\\mathrm{bias}}-Z_{\\mathrm{bias}})$\nTo further simplify the computation, we could let\n$Z_{\\mathrm{bias}} = 0$\n$S_{\\mathrm{bias}} = S_{\\mathrm{input}} \\cdot S_{\\mathrm{weight}}$\nso that\n$r_{\\mathrm{output}} = (\\mathrm{CONV}[q_{\\mathrm{input}}-Z_{\\mathrm{input}}, q_{\\mathrm{weight}}] + q_{\\mathrm{bias}})\\cdot (S_{\\mathrm{input}} \\cdot S_{\\mathrm{weight}})$ $;;;;;;;;= (\\mathrm{CONV}[q_{\\mathrm{input}}, q_{\\mathrm{weight}}] - \\mathrm{CONV}[Z_{\\mathrm{input}}, q_{\\mathrm{weight}}] + q_{\\mathrm{bias}})\\cdot (S_{\\mathrm{input}}S_{\\mathrm{weight}})$\nSince\n$r_{\\mathrm{output}} = S_{\\mathrm{output}}(q_{\\mathrm{output}}-Z_{\\mathrm{output}})$\nwe have\n$S_{\\mathrm{output}}(q_{\\mathrm{output}}-Z_{\\mathrm{output}}) = (\\mathrm{CONV}[q_{\\mathrm{input}}, q_{\\mathrm{weight}}] - \\mathrm{CONV}[Z_{\\mathrm{input}}, q_{\\mathrm{weight}}] + q_{\\mathrm{bias}})\\cdot (S_{\\mathrm{input}} S_{\\mathrm{weight}})$\nand thus\n$q_{\\mathrm{output}} = (\\mathrm{CONV}[q_{\\mathrm{input}}, q_{\\mathrm{weight}}] - \\mathrm{CONV}[Z_{\\mathrm{input}}, q_{\\mathrm{weight}}] + q_{\\mathrm{bias}})\\cdot (S_{\\mathrm{input}}S_{\\mathrm{weight}} / S_{\\mathrm{output}}) + Z_{\\mathrm{output}}$\nSince $Z_{\\mathrm{input}}$, $q_{\\mathrm{weight}}$, $q_{\\mathrm{bias}}$ are determined before inference, let\n$Q_{\\mathrm{bias}} = q_{\\mathrm{bias}} - \\mathrm{CONV}[Z_{\\mathrm{input}}, q_{\\mathrm{weight}}]$\nwe have\n$q_{\\mathrm{output}} = (\\mathrm{CONV}[q_{\\mathrm{input}}, q_{\\mathrm{weight}}] + Q_{\\mathrm{bias}}) \\cdot (S_{\\mathrm{input}}S_{\\mathrm{weight}} / S_{\\mathrm{output}}) + Z_{\\mathrm{output}}$\nSimilarily, for fully-connected layer, we have\n$q_{\\mathrm{output}} = (\\mathrm{Linear}[q_{\\mathrm{input}}, q_{\\mathrm{weight}}] + Q_{\\mathrm{bias}})\\cdot (S_{\\mathrm{input}} \\cdot S_{\\mathrm{weight}} / S_{\\mathrm{output}}) + Z_{\\mathrm{output}}$\nwhere\n$Q_{\\mathrm{bias}} = q_{\\mathrm{bias}} - \\mathrm{Linear}[Z_{\\mathrm{input}}, q_{\\mathrm{weight}}]$\nPost-training quantization(PTQ) $$ q_{output} = (linear(q_{input}, q_{weight}) + Q_{bias}) * (s_{input} * s_{weight} / s_{output}) $$\nQauntization-aware training(QAT) ",
-  "wordCount" : "355",
+  "articleBody": "Introduction 模型量化（quantization）指的是用更少的bit表示模型参数，从而减少模型的大小，加速推理过程的技术。\n一种常见的量化方式是线性量化(linear quantization)，也叫仿射量化(affine quantization)。其实就是按比例将tensor（一般为fp32）放缩到 $2^{bitwidth}$ 的范围内，比如8bit等。我们很容易给出量化公式： $$ r = s(q - z) $$ 其中，r(real value)值得是量化前的值，q(quantized value)是量化后的值，s(scale)是放缩比例，z(zero point)相当于是一个偏移量。\n如何求出$s$和$z$呢？一种简单且常见的方式是通过最大最小值来估计，即：\n$$ s = \\frac{r_{max} - r_{min}}{q_{max} - q_{min}} $$ $r_{max}$就是这个tensor的最大值，$r_{min}$是最小值，$q_{max}$和$q_{min}$是我们指定的量化后的最大最小值。如下图所示： 有了scale, 容易得到 $z = q_{min} - \\frac{r_{min}}{s}$。在实际操作中，z一般会被round到最近的整数$z = round(q_{min} - \\frac{r_{min}}{s})$（有很多不同的round规则，这个有具体实现决定）。\n得到量化方程： $$ q = clip(round(\\frac{r}{s}) + z, q_{min}, q_{max}) $$\n代码示意如下：（实际会用pytorch已有的quantize api或者其他推理框架）\ndef get_quantized_range(bitwidth): quantized_max = (1 \u003c\u003c (bitwidth - 1)) - 1 quantized_min = -(1 \u003c\u003c (bitwidth - 1)) return quantized_min, quantized_max def linear_quantize(fp_tensor, bitwidth, scale, zero_point, dtype=torch.int8) -\u003e torch.Tensor: rounded_tensor = torch.round(fp_tensor / scale).to(dtype) shifted_tensor = rounded_tensor + zero_point quantized_min, quantized_max = get_quantized_range(bitwidth) quantized_tensor = shifted_tensor.clamp_(quantized_min, quantized_max) return quantized_tensor 上述过程被称为非对称量化(asymmetric quantization)。\n还有一种对称量化(symmetric quantization)，它基于以下事实：常见的训练好的模型参数几乎总是关于0对称的。如下图所示：\n基于这个观察，我们常将zero point设置为0，并让q_{min} = -q_{max}。这样，我们就可以简化量化公式为： $$ s = \\frac{r_{max}}{q_{max}},\\ \\ z = 0 \\ q = clip(round(\\frac{r}{s}), -q_{max}, q_{max}), q_{max} = 2^{bitwidth - 1} - 1 $$ 这也是TensorRT等框架中常用的量化方式。\n进一步的，当我们进行推理的过程中，对于一个全连接层，设$Y = WX$（暂不考虑bias），对左右两边都进行量化得到： $$ S_{Y}(q_{Y} - z_{Y}) = S_{W}(q_{W} - z_{W})\\cdot S_{X}(q_{X} - z_{x}) \\ q_{Y} = \\frac{S_{W}S_{X}}{S_{Y}}(q_{W} - z_{W})(q_{x} - z_{x}) + z_{Y} \\ q_{Y} = \\frac{S_{W}S_{X}}{S_{Y}}(q_{W}q_{x} - q_{W}z_{x} - z_{W}q_{x} + z_{W}z_{x}) + z_{Y} \\ q_{Y} = \\frac{S_{W}S_{X}}{S_{Y}}(q_{W}q_{X} - z_{X}q_{W}) + z_{Y}\\ \\ (assume\\ z_{W} = 0) $$\n类似的，有bias的时候可以得到： $$ q_{Y} = \\frac{S_{W}S_{X}}{S_{Y}}(q_{W}q_{X} - Q_{bias}) + z_{Y} \\ \\ \\ (Q_{bias} = q_{b} - z_{X}q_{W}) $$ 对于conv，我们也能有类似的结论： 推理过程和全连接层类似，也可参见tinyml课程的lab2作业。\n上式中，和 $W, b$ 相关的量化参数都可以容易被提前计算（训练好后对整个网络进行量化，记录所有weight, bias的量化值）。但对于$q_{X}， z_{X}$这种和输入相关的值，理论上来说是需要真正在设备上做推理的时候在能知道。但是如果我们每次做推理来一个input我们都对其做一个量化，这个开销是没法接受的。所以人们会用一个cablibration dataset，在做推理之前，在这个数据集上对所有的输入进行量化并得到一些量化参数，比如，cablibration dataset上的最大最小值，scale, zero point， 以及$S_{Y}$等（具体过程见下文中的PTQ和QAT），以此当作推理时input的量化参数。\n上述式子还存在两个问题\n$\\frac{S_{W}S_{X}}{S_{Y}}$是一个浮点数，我们不能让它参与计算。根据经验，这个结果一般都在(0, 1)之间，所以可以表示成$2^{-n}M_{0}$， 其中$M_{0}$是一个整数，$n$是一个非负整数。这样我们就可以记录两个整数来代替浮点数。可以参见gemmlowp的实现 $q_{W} \\cdot q_{X}$ 是很可能溢出 8bit的，所以其结果一般也会用32bit int表示（具体可能有不同的实现），所以我们一般也先将$Q_{bias}$量化为32bit int，便于与其结果相乘。最后需要对结果在量化为8bit int。 Post-training quantization(PTQ) $$ q_{output} = (linear(q_{input}, q_{weight}) + Q_{bias}) * (s_{input} * s_{weight} / s_{output}) $$\nQauntization-aware training(QAT) ",
+  "wordCount" : "243",
   "inLanguage": "en",
   "datePublished": "2024-02-27T22:19:21Z",
   "dateModified": "2024-02-27T22:19:21Z",
@@ -252,7 +252,7 @@ def get_quantized_range(bitwidth): quantized_max = (1 &lt;&lt; (bitwidth - 1)) -
 
             <div class="inner"><ul>
                     <li>
-                        <a href="#quantization" aria-label="Quantization">Quantization</a></li>
+                        <a href="#introduction" aria-label="Introduction">Introduction</a></li>
                     <li>
                         <a href="#post-training-quantizationptq" aria-label="Post-training quantization(PTQ)">Post-training quantization(PTQ)</a></li>
                     <li>
@@ -323,7 +323,7 @@ def get_quantized_range(bitwidth): quantized_max = (1 &lt;&lt; (bitwidth - 1)) -
     }
 </script>
 
-  <div class="post-content"><h2 id="quantization">Quantization<a hidden class="anchor" aria-hidden="true" href="#quantization">#</a></h2>
+  <div class="post-content"><h2 id="introduction">Introduction<a hidden class="anchor" aria-hidden="true" href="#introduction">#</a></h2>
 <p>模型量化（quantization）指的是用更少的bit表示模型参数，从而减少模型的大小，加速推理过程的技术。</p>
 <p>一种常见的量化方式是线性量化(linear quantization)，也叫仿射量化(affine quantization)。其实就是按比例将tensor（一般为fp32）放缩到 $2^{bitwidth}$ 的范围内，比如8bit等。我们很容易给出量化公式：
 $$
@@ -360,66 +360,31 @@ $$</p>
 </p>
 <p>基于这个观察，我们常将zero point设置为0，并让q_{min} = -q_{max}。这样，我们就可以简化量化公式为：
 $$
-s = \frac{|r_{max}|}{q_{max}} \ z = 0 \
+s = \frac{r_{max}}{q_{max}},\ \ z = 0 \
 q = clip(round(\frac{r}{s}), -q_{max}, q_{max}), q_{max} = 2^{bitwidth - 1} - 1
 $$
 这也是TensorRT等框架中常用的量化方式。</p>
-<p>进一步的，当我们进行推理的过程中，对于一个全连接层，设$Y = WX + b$，对左右两边都进行量化得到：
+<p>进一步的，当我们进行推理的过程中，对于一个全连接层，设$Y = WX$（暂不考虑bias），对左右两边都进行量化得到：
 $$
-S_{Y}(q_{Y} - z_{Y}) = S_{W}(q_{W} - z_{W})\cdot S_{X}(q_{X} - z_{x}) + S_{b}(q_{b} - z_{b})
+S_{Y}(q_{Y} - z_{Y}) = S_{W}(q_{W} - z_{W})\cdot S_{X}(q_{X} - z_{x}) \
+q_{Y} = \frac{S_{W}S_{X}}{S_{Y}}(q_{W} - z_{W})(q_{x} - z_{x}) + z_{Y} \
+q_{Y} = \frac{S_{W}S_{X}}{S_{Y}}(q_{W}q_{x} - q_{W}z_{x} - z_{W}q_{x} + z_{W}z_{x}) + z_{Y} \
+q_{Y} = \frac{S_{W}S_{X}}{S_{Y}}(q_{W}q_{X} - z_{X}q_{W}) + z_{Y}\ \ (assume\ z_{W} = 0)
 $$</p>
-<p>After quantization, the inference of convolution and fully-connected layers also change.</p>
-<p>Recall that $r = S(q-Z)$, and we have</p>
-<blockquote>
-<p>$r_{\mathrm{input}} = S_{\mathrm{input}}(q_{\mathrm{input}}-Z_{\mathrm{input}})$</p>
-<p>$r_{\mathrm{weight}} = S_{\mathrm{weight}}(q_{\mathrm{weight}}-Z_{\mathrm{weight}})$</p>
-<p>$r_{\mathrm{bias}} = S_{\mathrm{bias}}(q_{\mathrm{bias}}-Z_{\mathrm{bias}})$</p>
-</blockquote>
-<p>Since $Z_{\mathrm{weight}}=0$, $r_{\mathrm{weight}} = S_{\mathrm{weight}}q_{\mathrm{weight}}$.</p>
-<p>The floating point convolution can be written as,</p>
-<blockquote>
-<p>$r_{\mathrm{output}} = \mathrm{CONV}[r_{\mathrm{input}}, r_{\mathrm{weight}}] + r_{\mathrm{bias}}\
-;;;;;;;;= \mathrm{CONV}[S_{\mathrm{input}}(q_{\mathrm{input}}-Z_{\mathrm{input}}), S_{\mathrm{weight}}q_{\mathrm{weight}}] + S_{\mathrm{bias}}(q_{\mathrm{bias}}-Z_{\mathrm{bias}})\
-;;;;;;;;= \mathrm{CONV}[q_{\mathrm{input}}-Z_{\mathrm{input}}, q_{\mathrm{weight}}]\cdot (S_{\mathrm{input}} \cdot S_{\mathrm{weight}}) + S_{\mathrm{bias}}(q_{\mathrm{bias}}-Z_{\mathrm{bias}})$</p>
-</blockquote>
-<p>To further simplify the computation, we could let</p>
-<blockquote>
-<p>$Z_{\mathrm{bias}} = 0$</p>
-<p>$S_{\mathrm{bias}} = S_{\mathrm{input}} \cdot S_{\mathrm{weight}}$</p>
-</blockquote>
-<p>so that</p>
-<blockquote>
-<p>$r_{\mathrm{output}} = (\mathrm{CONV}[q_{\mathrm{input}}-Z_{\mathrm{input}}, q_{\mathrm{weight}}] + q_{\mathrm{bias}})\cdot (S_{\mathrm{input}} \cdot S_{\mathrm{weight}})$
-$;;;;;;;;= (\mathrm{CONV}[q_{\mathrm{input}}, q_{\mathrm{weight}}] - \mathrm{CONV}[Z_{\mathrm{input}}, q_{\mathrm{weight}}] + q_{\mathrm{bias}})\cdot (S_{\mathrm{input}}S_{\mathrm{weight}})$</p>
-</blockquote>
-<p>Since</p>
-<blockquote>
-<p>$r_{\mathrm{output}} = S_{\mathrm{output}}(q_{\mathrm{output}}-Z_{\mathrm{output}})$</p>
-</blockquote>
-<p>we have</p>
-<blockquote>
-<p>$S_{\mathrm{output}}(q_{\mathrm{output}}-Z_{\mathrm{output}}) = (\mathrm{CONV}[q_{\mathrm{input}}, q_{\mathrm{weight}}] - \mathrm{CONV}[Z_{\mathrm{input}}, q_{\mathrm{weight}}] + q_{\mathrm{bias}})\cdot (S_{\mathrm{input}} S_{\mathrm{weight}})$</p>
-</blockquote>
-<p>and thus</p>
-<blockquote>
-<p>$q_{\mathrm{output}} = (\mathrm{CONV}[q_{\mathrm{input}}, q_{\mathrm{weight}}] - \mathrm{CONV}[Z_{\mathrm{input}}, q_{\mathrm{weight}}] + q_{\mathrm{bias}})\cdot (S_{\mathrm{input}}S_{\mathrm{weight}} / S_{\mathrm{output}}) + Z_{\mathrm{output}}$</p>
-</blockquote>
-<p>Since $Z_{\mathrm{input}}$, $q_{\mathrm{weight}}$, $q_{\mathrm{bias}}$ are determined before inference, let</p>
-<blockquote>
-<p>$Q_{\mathrm{bias}} = q_{\mathrm{bias}} - \mathrm{CONV}[Z_{\mathrm{input}}, q_{\mathrm{weight}}]$</p>
-</blockquote>
-<p>we have</p>
-<blockquote>
-<p>$q_{\mathrm{output}} = (\mathrm{CONV}[q_{\mathrm{input}}, q_{\mathrm{weight}}] + Q_{\mathrm{bias}}) \cdot (S_{\mathrm{input}}S_{\mathrm{weight}} / S_{\mathrm{output}}) + Z_{\mathrm{output}}$</p>
-</blockquote>
-<p>Similarily, for fully-connected layer, we have</p>
-<blockquote>
-<p>$q_{\mathrm{output}} = (\mathrm{Linear}[q_{\mathrm{input}}, q_{\mathrm{weight}}] + Q_{\mathrm{bias}})\cdot (S_{\mathrm{input}} \cdot S_{\mathrm{weight}} / S_{\mathrm{output}}) + Z_{\mathrm{output}}$</p>
-</blockquote>
-<p>where</p>
-<blockquote>
-<p>$Q_{\mathrm{bias}} = q_{\mathrm{bias}} - \mathrm{Linear}[Z_{\mathrm{input}}, q_{\mathrm{weight}}]$</p>
-</blockquote>
+<p>类似的，有bias的时候可以得到：
+$$
+q_{Y} = \frac{S_{W}S_{X}}{S_{Y}}(q_{W}q_{X} - Q_{bias}) + z_{Y} \ \ \ (Q_{bias} = q_{b} - z_{X}q_{W})
+$$
+对于conv，我们也能有类似的结论：
+<img loading="lazy" src="/img/tinyml/quantization/conv_quantization.png" alt="conv quantization"  />
+
+推理过程和全连接层类似，也可参见tinyml课程的lab2作业。</p>
+<p>上式中，和 $W, b$ 相关的量化参数都可以容易被提前计算（训练好后对整个网络进行量化，记录所有weight, bias的量化值）。但对于$q_{X}， z_{X}$这种和输入相关的值，理论上来说是需要真正在设备上做推理的时候在能知道。但是如果我们每次做推理来一个input我们都对其做一个量化，这个开销是没法接受的。所以人们会用一个<strong>cablibration dataset</strong>，在做推理之前，在这个数据集上对所有的输入进行量化并得到一些量化参数，比如，cablibration dataset上的最大最小值，scale, zero point， 以及$S_{Y}$等（具体过程见下文中的PTQ和QAT），以此当作推理时input的量化参数。</p>
+<p>上述式子还存在两个问题</p>
+<ol>
+<li>$\frac{S_{W}S_{X}}{S_{Y}}$是一个浮点数，我们不能让它参与计算。根据<em>经验</em>，这个结果一般都在(0, 1)之间，所以可以表示成$2^{-n}M_{0}$， 其中$M_{0}$是一个整数，$n$是一个非负整数。这样我们就可以记录两个整数来代替浮点数。可以参见<a href="https://github.com/google/gemmlowp/blob/master/doc/quantization_example.cc#L210">gemmlowp的实现</a></li>
+<li>$q_{W} \cdot q_{X}$ 是很可能溢出 8bit的，所以其结果一般也会用32bit int表示（具体可能有不同的实现），所以我们一般也先将$Q_{bias}$量化为32bit int，便于与其结果相乘。最后需要对结果在量化为8bit int。</li>
+</ol>
 <h2 id="post-training-quantizationptq">Post-training quantization(PTQ)<a hidden class="anchor" aria-hidden="true" href="#post-training-quantizationptq">#</a></h2>
 <p>$$
 q_{output} = (linear(q_{input}, q_{weight}) + Q_{bias}) * (s_{input} * s_{weight} / s_{output})
