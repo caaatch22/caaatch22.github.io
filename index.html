@@ -207,6 +207,22 @@ if (!doNotTrack) {
 
 <article class="post-entry"> 
   <header class="entry-header">
+    <h2>TinyMl —— quantization
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>模型量化（quantization）指的是用更少的bit表示模型参数，从而减少模型的大小，加速推理过程的技术。
+一种常见的量化方式是线性量化(linear quantization)，也叫仿射量化(affine quantization)。其实就是按比例将tensor（一般为fp32）放缩到 $2^{bitwidth}$ 的范围内，比如8bit等。我们很容易给出量化公式： $$ r = s(q - z) $$ 其中，r(real value)值得是量化前的值，q(quantized value)是量化后的值，s(scale)是放缩比例，z(zero point)相当于是一个偏移量。
+如何求出$s$和$z$呢？一种简单且常见的方式是通过最大最小值来估计，即：
+$$ s = \frac{r_{max} - r_{min}}{q_{max} - q_{min}} $$ $r_{max}$就是这个tensor的最大值，$r_{min}$是最小值，$q_{max}$和$q_{min}$是我们指定的量化后的最大最小值。如下图所示： $$ q_{output} = (linear(q_{input}, q_{weight}) &#43; Q_{bias}) * (s_{input} * s_{weight} / s_{output}) $$
+Post-training quantization(PTQ) Qauntization-aware training(QAT) </p>
+  </div>
+  <footer class="entry-footer"><span title='2024-02-27 22:19:21 +0000 UTC'>February 27, 2024</span>&nbsp;·&nbsp;1 min</footer>
+  <a class="entry-link" aria-label="post link to TinyMl —— quantization" href="https://caaatch22.github.io/posts/tinyml-quantization/"></a>
+</article>
+
+<article class="post-entry"> 
+  <header class="entry-header">
     <h2>TinyMl —— pruning
     </h2>
   </header>
@@ -297,19 +313,6 @@ node之间的内存是连续的(虽然可能中间存在空node)，遍历的时�
   </div>
   <footer class="entry-footer"><span title='2023-07-23 21:23:15 +0000 UTC'>July 23, 2023</span>&nbsp;·&nbsp;3 min</footer>
   <a class="entry-link" aria-label="post link to phmap —— 缓存友好的高效hashtable" href="https://caaatch22.github.io/posts/phmap/"></a>
-</article>
-
-<article class="post-entry"> 
-  <header class="entry-header">
-    <h2>ICPC西安游记
-    </h2>
-  </header>
-  <div class="entry-content">
-    <p>没写记录，学弟写了，直接用
-ICPC西安邀请赛</p>
-  </div>
-  <footer class="entry-footer"><span title='2023-05-29 13:35:22 +0000 UTC'>May 29, 2023</span>&nbsp;·&nbsp;1 min</footer>
-  <a class="entry-link" aria-label="post link to ICPC西安游记" href="https://caaatch22.github.io/posts/icpc%E8%A5%BF%E5%AE%89%E6%B8%B8%E8%AE%B0/"></a>
 </article>
 <footer class="page-footer">
   <nav class="pagination">

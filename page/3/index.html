@@ -158,6 +158,24 @@ if (!doNotTrack) {
 <main class="main"> 
 
 <article class="post-entry"> 
+<figure class="entry-cover"><img loading="lazy" src="https://caaatch22.github.io/img/busTub/bustub.png" alt="">
+</figure>
+  <header class="entry-header">
+    <h2>CMU15445-project1 Buffer Pool Manager
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>Buffer Pool Manager cmu15445 是一门关于数据库管理系统（DBMS）设计与实现的经典公开课，是很多dba和内核开发人员的入门课程。开课教授Andy Pavlo 非常风趣幽默，他有自己上课的DJ，他曾在浴缸里录课，且时常语出惊人。这门课的实验项目BusTub非常有挑战性，并对所有人开放评测资源。
+Overview BusTub是一个面向磁盘的 DBMS(Database Management System)。由于磁盘上的数据不支持字节粒度的访问，这就需要一个管理页的中间层，而 Andy 坚持“The OS is not your friend”， 反对使用 mmap 进行页操作，因此实验一的目标便在于通过实现 Buffer Pool Manager 主动管理磁盘中的页（page）在内存中的缓存，从而，最小化磁盘访问次数（时间上）、最大化相关数据连续（空间上）。
+这次实验有三个子任务，分别是
+Task #1: Extendible Hash Table Task #2: LRU-K Replacer Task #3: Buffer Pool Manager Instance 可拓展哈希表是这个是实验中相对独立的模块。这里不会讲它的细节，后面的两个任务中需要用到哈希表的地方我直接用std::unordered_map替代，而且效率还更高。应该是因为 Extendible Hash Table 要求线程安全，为了方便在我在每个函数入口都加了大锁。 想要 Extendible Hash Table 具体细节的可以看这个b站视频。关于它的优化，我想可以进行更细粒度的锁管理甚至写一个无锁(lockfree)的哈希表。
+Buffer Pool Manager 在后两个实验开始之前，我建议先将Task #2和Task #3的实验材料完整的看完在开始写代码。因为 replacer 和 buffer pool manager 有较大程度的耦合。很多API设计需要对照两个组件才能知道自己应该维护的数据与功能的边界。为了更符合直觉，我会先阐述 buffer pool manager 的设计，同时会穿插着 LRU-k 的API什么时候，在哪用。...</p>
+  </div>
+  <footer class="entry-footer"><span title='2022-12-22 15:37:34 +0000 UTC'>December 22, 2022</span>&nbsp;·&nbsp;3 min</footer>
+  <a class="entry-link" aria-label="post link to CMU15445-project1 Buffer Pool Manager" href="https://caaatch22.github.io/posts/cmu15445-project1-buffer-pool-manager/"></a>
+</article>
+
+<article class="post-entry"> 
   <header class="entry-header">
     <h2>个人常用配置备忘
     </h2>
@@ -199,18 +217,6 @@ basic algorithm 双指针 离散化，去重 前缀和与差分 二分 单调栈
   </div>
   <footer class="entry-footer"><span title='2022-03-17 23:38:14 +0000 UTC'>March 17, 2022</span>&nbsp;·&nbsp;1 min</footer>
   <a class="entry-link" aria-label="post link to xcpc template" href="https://caaatch22.github.io/posts/xcpc-template/"></a>
-</article>
-
-<article class="post-entry"> 
-  <header class="entry-header">
-    <h2>
-    </h2>
-  </header>
-  <div class="entry-content">
-    <p></p>
-  </div>
-  <footer class="entry-footer">0 min</footer>
-  <a class="entry-link" aria-label="post link to " href="https://caaatch22.github.io/posts/dlsystem-hardware-acceleration/"></a>
 </article>
 <footer class="page-footer">
   <nav class="pagination">

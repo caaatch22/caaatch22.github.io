@@ -6,7 +6,39 @@
     <description>Recent content in deep-learning on Mingjie&#39;s Home</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>zh-cn</language>
-    <lastBuildDate>Tue, 20 Feb 2024 15:35:59 +0000</lastBuildDate><atom:link href="https://caaatch22.github.io/tags/deep-learning/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Tue, 27 Feb 2024 22:19:21 +0000</lastBuildDate><atom:link href="https://caaatch22.github.io/tags/deep-learning/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>TinyMl —— quantization</title>
+      <link>https://caaatch22.github.io/posts/tinyml-quantization/</link>
+      <pubDate>Tue, 27 Feb 2024 22:19:21 +0000</pubDate>
+      
+      <guid>https://caaatch22.github.io/posts/tinyml-quantization/</guid>
+      <description>模型量化（quantization）指的是用更少的bit表示模型参数，从而减少模型的大小，加速推理过程的技术。
+一种常见的量化方式是线性量化(linear quantization)，也叫仿射量化(affine quantization)。其实就是按比例将tensor（一般为fp32）放缩到 $2^{bitwidth}$ 的范围内，比如8bit等。我们很容易给出量化公式： $$ r = s(q - z) $$ 其中，r(real value)值得是量化前的值，q(quantized value)是量化后的值，s(scale)是放缩比例，z(zero point)相当于是一个偏移量。
+如何求出$s$和$z$呢？一种简单且常见的方式是通过最大最小值来估计，即：
+$$ s = \frac{r_{max} - r_{min}}{q_{max} - q_{min}} $$ $r_{max}$就是这个tensor的最大值，$r_{min}$是最小值，$q_{max}$和$q_{min}$是我们指定的量化后的最大最小值。如下图所示： $$ q_{output} = (linear(q_{input}, q_{weight}) + Q_{bias}) * (s_{input} * s_{weight} / s_{output}) $$
+Post-training quantization(PTQ) Qauntization-aware training(QAT) </description>
+      <content:encoded><![CDATA[<p>模型量化（quantization）指的是用更少的bit表示模型参数，从而减少模型的大小，加速推理过程的技术。</p>
+<p>一种常见的量化方式是线性量化(linear quantization)，也叫仿射量化(affine quantization)。其实就是按比例将tensor（一般为fp32）放缩到 $2^{bitwidth}$ 的范围内，比如8bit等。我们很容易给出量化公式：
+$$
+r = s(q - z)
+$$
+其中，r(real value)值得是量化前的值，q(quantized value)是量化后的值，s(scale)是放缩比例，z(zero point)相当于是一个偏移量。</p>
+<p>如何求出$s$和$z$呢？一种简单且常见的方式是通过最大最小值来估计，即：</p>
+<p>$$
+s = \frac{r_{max} - r_{min}}{q_{max} - q_{min}}
+$$
+$r_{max}$就是这个tensor的最大值，$r_{min}$是最小值，$q_{max}$和$q_{min}$是我们指定的量化后的最大最小值。如下图所示：
+<img loading="lazy" src="/img/tinyml/quantization/quantization.png" alt="image"  />
+</p>
+<p>$$
+q_{output} = (linear(q_{input}, q_{weight}) + Q_{bias}) * (s_{input} * s_{weight} / s_{output})
+$$</p>
+<h2 id="post-training-quantizationptq">Post-training quantization(PTQ)</h2>
+<h2 id="qauntization-aware-trainingqat">Qauntization-aware training(QAT)</h2>
+]]></content:encoded>
+    </item>
+    
     <item>
       <title>TinyMl —— pruning</title>
       <link>https://caaatch22.github.io/posts/tinyml-pruning/</link>

@@ -3,19 +3,25 @@
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
     <loc>https://caaatch22.github.io/tags/deep-learning/</loc>
-    <lastmod>2024-02-20T15:35:59+00:00</lastmod>
+    <lastmod>2024-02-27T22:19:21+00:00</lastmod>
   </url><url>
     <loc>https://caaatch22.github.io/</loc>
-    <lastmod>2024-02-20T15:35:59+00:00</lastmod>
+    <lastmod>2024-02-27T22:19:21+00:00</lastmod>
   </url><url>
     <loc>https://caaatch22.github.io/tags/mlsys/</loc>
-    <lastmod>2024-02-20T15:35:59+00:00</lastmod>
+    <lastmod>2024-02-27T22:19:21+00:00</lastmod>
+  </url><url>
+    <loc>https://caaatch22.github.io/tags/model-deployment/</loc>
+    <lastmod>2024-02-27T22:19:21+00:00</lastmod>
   </url><url>
     <loc>https://caaatch22.github.io/posts/</loc>
-    <lastmod>2024-02-20T15:35:59+00:00</lastmod>
+    <lastmod>2024-02-27T22:19:21+00:00</lastmod>
   </url><url>
     <loc>https://caaatch22.github.io/tags/</loc>
-    <lastmod>2024-02-20T15:35:59+00:00</lastmod>
+    <lastmod>2024-02-27T22:19:21+00:00</lastmod>
+  </url><url>
+    <loc>https://caaatch22.github.io/posts/tinyml-quantization/</loc>
+    <lastmod>2024-02-27T22:19:21+00:00</lastmod>
   </url><url>
     <loc>https://caaatch22.github.io/posts/tinyml-pruning/</loc>
     <lastmod>2024-02-20T15:35:59+00:00</lastmod>
@@ -91,8 +97,6 @@
   </url><url>
     <loc>https://caaatch22.github.io/posts/xcpc-template/</loc>
     <lastmod>2022-03-17T23:38:14+00:00</lastmod>
-  </url><url>
-    <loc>https://caaatch22.github.io/posts/dlsystem-hardware-acceleration/</loc>
   </url><url>
     <loc>https://caaatch22.github.io/about/</loc>
   </url><url>
