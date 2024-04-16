@@ -51,10 +51,11 @@ $$</p>
 </span></span><span style="display:flex;"><span>    quantized_min, quantized_max <span style="color:#f92672">=</span> get_quantized_range(bitwidth)
 </span></span><span style="display:flex;"><span>    quantized_tensor <span style="color:#f92672">=</span> shifted_tensor<span style="color:#f92672">.</span>clamp_(quantized_min, quantized_max)
 </span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> quantized_tensor
-</span></span></code></pre></div><p>上述过程被称为非对称量化(asymmetric quantization)。下图是一个训练好的vgg的模型参数分布：</p>
+</span></span></code></pre></div><p>上述过程被称为非对称量化(asymmetric quantization)。</p>
+<p>还有一种对称量化(symmetric quantization)，它基于以下事实：常见的训练好的模型参数几乎总是关于0对称的。如下图所示：</p>
 <p><img loading="lazy" src="/img/tinyml/quantization/weight_distribution.png" alt="weight distribution"  />
 </p>
-<p>我们发现，几乎所有卷积层的参数都关于0对称，基于这个观察，在量化的过程中，我们常用对称量化(symmetric quantization)。即，我们将zero point设置为0，并让q_{min} = -q_{max}。这样，我们就可以简化量化公式为：
+<p>基于这个观察，我们常将zero point设置为0，并让q_{min} = -q_{max}。这样，我们就可以简化量化公式为：
 $$
 s = \frac{|r_{max}|}{q_{max}} \ z = 0 \
 q = clip(round(\frac{r}{s}), -q_{max}, q_{max}), q_{max} = 2^{bitwidth - 1} - 1
