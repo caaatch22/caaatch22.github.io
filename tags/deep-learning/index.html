@@ -153,7 +153,7 @@ if (!doNotTrack) {
     </h2>
   </header>
   <div class="entry-content">
-    <p>Introduction 模型量化（quantization）指的是用更少的bit表示模型参数，从而减少模型的大小，加速推理过程的技术。
+    <p>Overview 模型量化（quantization）指的是用更少的bit表示模型参数，从而减少模型的大小，加速推理过程的技术。
 一种常见的量化方式是线性量化(linear quantization)，也叫仿射量化(affine quantization)。其实就是按比例将tensor（一般为fp32）放缩到 $2^{bitwidth}$ 的范围内，比如8bit等。我们很容易给出量化公式： $$ r = s(q - z) $$ 其中，r(real value)值得是量化前的值，q(quantized value)是量化后的值，s(scale)是放缩比例，z(zero point)相当于是一个偏移量。
 如何求出$s$和$z$呢？一种简单且常见的方式是通过最大最小值来估计，即：
 $$ s = \frac{r_{max} - r_{min}}{q_{max} - q_{min}} $$ $r_{max}$就是这个tensor的最大值，$r_{min}$是最小值，$q_{max}$和$q_{min}$是我们指定的量化后的最大最小值。如下图所示： 有了scale, 容易得到 $z = q_{min} - \frac{r_{min}}{s}$。在实际操作中，z一般会被round到最近的整数$z = round(q_{min} - \frac{r_{min}}{s})$（有很多不同的round规则，这个有具体实现决定）。
