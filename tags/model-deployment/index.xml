@@ -8,7 +8,7 @@
     <language>zh-cn</language>
     <lastBuildDate>Tue, 27 Feb 2024 22:19:21 +0000</lastBuildDate><atom:link href="https://caaatch22.github.io/tags/model-deployment/index.xml" rel="self" type="application/rss+xml" />
     <item>
-      <title>TinyMl —— quantization</title>
+      <title>TinyMl —— 模型量化(quantization)</title>
       <link>https://caaatch22.github.io/posts/tinyml-quantization/</link>
       <pubDate>Tue, 27 Feb 2024 22:19:21 +0000</pubDate>
       

@@ -149,7 +149,7 @@ if (!doNotTrack) {
 
 <article class="post-entry tag-entry"> 
   <header class="entry-header">
-    <h2>TinyMl —— quantization
+    <h2>TinyMl —— 模型量化(quantization)
     </h2>
   </header>
   <div class="entry-content">
@@ -162,12 +162,12 @@ $$ s = \frac{r_{max} - r_{min}}{q_{max} - q_{min}} $$ $r_{max}$就是这个tenso
 def get_quantized_range(bitwidth): quantized_max = (1 &lt;&lt; (bitwidth - 1)) - 1 quantized_min = -(1 &lt;&lt; (bitwidth - 1)) return quantized_min, quantized_max def linear_quantize(fp_tensor, bitwidth, scale, zero_point, dtype=torch....</p>
   </div>
   <footer class="entry-footer"><span title='2024-02-27 22:19:21 +0000 UTC'>February 27, 2024</span>&nbsp;·&nbsp;3 min</footer>
-  <a class="entry-link" aria-label="post link to TinyMl —— quantization" href="https://caaatch22.github.io/posts/tinyml-quantization/"></a>
+  <a class="entry-link" aria-label="post link to TinyMl —— 模型量化(quantization)" href="https://caaatch22.github.io/posts/tinyml-quantization/"></a>
 </article>
 
 <article class="post-entry tag-entry"> 
   <header class="entry-header">
-    <h2>TinyMl —— pruning
+    <h2>TinyMl —— 模型剪枝(pruning)
     </h2>
   </header>
   <div class="entry-content">
@@ -180,7 +180,7 @@ Memory-Related Metrics # parameters model size total/peak #activations Computati
 Model #Parameters Linear Layer(FC) $feature_{in} * feature_{out}$ Conv Layer $c_{i} * c_{o} * k_{h} * k_{w} $ Grouped Conv Layer $c_{i} * c_{o} * k_{h} * k_{w} / g$ Depthwise Conv Layer $c_{o} * k_{h} * k_{w}$ 其中，Grouped Conv指的是将输入在channel维度进行分组，然后分别进行卷积，最后concatenate。Depthwise Conv是分组个数 $g$ 等于输入channel数的情况。...</p>
   </div>
   <footer class="entry-footer"><span title='2024-02-20 15:35:59 +0000 UTC'>February 20, 2024</span>&nbsp;·&nbsp;3 min</footer>
-  <a class="entry-link" aria-label="post link to TinyMl —— pruning" href="https://caaatch22.github.io/posts/tinyml-pruning/"></a>
+  <a class="entry-link" aria-label="post link to TinyMl —— 模型剪枝(pruning)" href="https://caaatch22.github.io/posts/tinyml-pruning/"></a>
 </article>
     </main>
     

@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <meta name="robots" content="index, follow">
-<title>TinyMl —— pruning | Mingjie&#39;s Home</title>
+<title>TinyMl —— 模型剪枝(pruning) | Mingjie&#39;s Home</title>
 <meta name="keywords" content="deep-learning, mlsys">
 <meta name="description" content="最近正在学习 MIT 6.5940, 韩松老师的课，做deep learning compression的应该都只知道。课程分为三个部分，efficient inference, domain-specific optimization, efficient training。有完整的课件，视频和实验。最后一个lab是将llama2部署在个人电脑上，非常有意思（谁不想要个自己的大模型呢）。其余lab也都可以白嫖google colab的gpu
 Introduction 正式介绍pruning and sparsity之前，我们先来聊聊为什么要做model compression这个事情。 Today&rsquo;s Model is Too Big!
@@ -94,7 +94,7 @@ if (!doNotTrack) {
 	gtag('config', 'G-WEG841BBW9', { 'anonymize_ip': false });
 }
 </script>
-<meta property="og:title" content="TinyMl —— pruning" />
+<meta property="og:title" content="TinyMl —— 模型剪枝(pruning)" />
 <meta property="og:description" content="最近正在学习 MIT 6.5940, 韩松老师的课，做deep learning compression的应该都只知道。课程分为三个部分，efficient inference, domain-specific optimization, efficient training。有完整的课件，视频和实验。最后一个lab是将llama2部署在个人电脑上，非常有意思（谁不想要个自己的大模型呢）。其余lab也都可以白嫖google colab的gpu
 Introduction 正式介绍pruning and sparsity之前，我们先来聊聊为什么要做model compression这个事情。 Today&rsquo;s Model is Too Big!
 随着Large language model的出现，如GPT-3，如今的模型参数量已经达到了上百billion，别说训练，我们甚至无法在一个gpu上对其进行推理。更别提如果我们想要将其部署在其他边缘设备上。
@@ -108,7 +108,7 @@ Model #Parameters Linear Layer(FC) $feature_{in} * feature_{out}$ Conv Layer $c_
 <meta property="article:modified_time" content="2024-02-20T15:35:59+00:00" />
 
 <meta name="twitter:card" content="summary"/>
-<meta name="twitter:title" content="TinyMl —— pruning"/>
+<meta name="twitter:title" content="TinyMl —— 模型剪枝(pruning)"/>
 <meta name="twitter:description" content="最近正在学习 MIT 6.5940, 韩松老师的课，做deep learning compression的应该都只知道。课程分为三个部分，efficient inference, domain-specific optimization, efficient training。有完整的课件，视频和实验。最后一个lab是将llama2部署在个人电脑上，非常有意思（谁不想要个自己的大模型呢）。其余lab也都可以白嫖google colab的gpu
 Introduction 正式介绍pruning and sparsity之前，我们先来聊聊为什么要做model compression这个事情。 Today&rsquo;s Model is Too Big!
 随着Large language model的出现，如GPT-3，如今的模型参数量已经达到了上百billion，别说训练，我们甚至无法在一个gpu上对其进行推理。更别提如果我们想要将其部署在其他边缘设备上。
@@ -132,7 +132,7 @@ Model #Parameters Linear Layer(FC) $feature_{in} * feature_{out}$ Conv Layer $c_
     {
       "@type": "ListItem",
       "position":  3 ,
-      "name": "TinyMl —— pruning",
+      "name": "TinyMl —— 模型剪枝(pruning)",
       "item": "https://caaatch22.github.io/posts/tinyml-pruning/"
     }
   ]
@@ -142,8 +142,8 @@ Model #Parameters Linear Layer(FC) $feature_{in} * feature_{out}$ Conv Layer $c_
 {
   "@context": "https://schema.org",
   "@type": "BlogPosting",
-  "headline": "TinyMl —— pruning",
-  "name": "TinyMl —— pruning",
+  "headline": "TinyMl —— 模型剪枝(pruning)",
+  "name": "TinyMl —— 模型剪枝(pruning)",
   "description": "最近正在学习 MIT 6.5940, 韩松老师的课，做deep learning compression的应该都只知道。课程分为三个部分，efficient inference, domain-specific optimization, efficient training。有完整的课件，视频和实验。最后一个lab是将llama2部署在个人电脑上，非常有意思（谁不想要个自己的大模型呢）。其余lab也都可以白嫖google colab的gpu\nIntroduction 正式介绍pruning and sparsity之前，我们先来聊聊为什么要做model compression这个事情。 Today\u0026rsquo;s Model is Too Big!\n随着Large language model的出现，如GPT-3，如今的模型参数量已经达到了上百billion，别说训练，我们甚至无法在一个gpu上对其进行推理。更别提如果我们想要将其部署在其他边缘设备上。\n所以当前在做inference之前，一般都会有个model-compression的过程，包括pruning（剪枝），quantization（量化），distillation（蒸馏）等。这些方法都是为了减少模型的大小，加速推理过程。这些方法也被广泛地集成到了各种加速卡，gpu中。例如nv的A100就支持structured sparsity（[N:M]形式的，具体含义下文会详细介绍）。\nEfficiency Metrics 我们再来看看一些 efficiency metrics，这也是我们在做inference过程中需要考虑的指标：\nMemory-Related Metrics # parameters model size total/peak #activations Computation-Related Metrics MACs FLOP, FLOPs # parameters 下表是一些常见结构的参数数量：\nModel #Parameters Linear Layer(FC) $feature_{in} * feature_{out}$ Conv Layer $c_{i} * c_{o} * k_{h} * k_{w} $ Grouped Conv Layer $c_{i} * c_{o} * k_{h} * k_{w} / g$ Depthwise Conv Layer $c_{o} * k_{h} * k_{w}$ 其中，Grouped Conv指的是将输入在channel维度进行分组，然后分别进行卷积，最后concatenate。Depthwise Conv是分组个数 $g$ 等于输入channel数的情况。",
   "keywords": [
     "deep-learning", "mlsys"
@@ -238,7 +238,7 @@ Model #Parameters Linear Layer(FC) $feature_{in} * feature_{out}$ Conv Layer $c_
   <header class="post-header">
     <div class="breadcrumbs"><a href="https://caaatch22.github.io">Home</a>&nbsp;»&nbsp;<a href="https://caaatch22.github.io/posts/">Posts</a></div>
     <h1 class="post-title">
-      TinyMl —— pruning
+      TinyMl —— 模型剪枝(pruning)
     </h1>
     <div class="post-meta"><span title='2024-02-20 15:35:59 +0000 UTC'>February 20, 2024</span>&nbsp;·&nbsp;3 min
 
@@ -631,7 +631,7 @@ $本质上是一个线性回归。</li>
   <a class="prev" href="https://caaatch22.github.io/posts/tinyml-quantization/">
     <span class="title">« Prev</span>
     <br>
-    <span>TinyMl —— quantization</span>
+    <span>TinyMl —— 模型量化(quantization)</span>
   </a>
   <a class="next" href="https://caaatch22.github.io/posts/branch-prediction/">
     <span class="title">Next »</span>

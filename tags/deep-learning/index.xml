@@ -8,7 +8,7 @@
     <language>zh-cn</language>
     <lastBuildDate>Tue, 27 Feb 2024 22:19:21 +0000</lastBuildDate><atom:link href="https://caaatch22.github.io/tags/deep-learning/index.xml" rel="self" type="application/rss+xml" />
     <item>
-      <title>TinyMl —— quantization</title>
+      <title>TinyMl —— 模型量化(quantization)</title>
       <link>https://caaatch22.github.io/posts/tinyml-quantization/</link>
       <pubDate>Tue, 27 Feb 2024 22:19:21 +0000</pubDate>
       
@@ -217,7 +217,7 @@ $$</p>
     </item>
     
     <item>
-      <title>TinyMl —— pruning</title>
+      <title>TinyMl —— 模型剪枝(pruning)</title>
       <link>https://caaatch22.github.io/posts/tinyml-pruning/</link>
       <pubDate>Tue, 20 Feb 2024 15:35:59 +0000</pubDate>
       
