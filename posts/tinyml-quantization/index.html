@@ -510,7 +510,7 @@ $$</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span>net<span style="color:#f92672">.</span>train()
 </span></span><span style="display:flex;"><span>net_quantized <span style="color:#f92672">=</span> torch<span style="color:#f92672">.</span>ao<span style="color:#f92672">.</span>quantization<span style="color:#f92672">.</span>prepare_qat(net) <span style="color:#75715e"># Insert observers</span>
 </span></span></code></pre></div><p>但是其原理不同，因为涉及到了反向传播的过程。QAT的过程如下：
-<img loading="lazy" src="img/tinyml/quantization/QAT.png" alt="quantization aware training"  />
+<img loading="lazy" src="/img/tinyml/quantization/QAT.png" alt="quantization aware training"  />
 </p>
 <h2 id="reference">reference<a hidden class="anchor" aria-hidden="true" href="#reference">#</a></h2>
 <ul>
