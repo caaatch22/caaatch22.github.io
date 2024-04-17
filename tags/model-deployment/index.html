@@ -161,7 +161,7 @@ $$ s = \frac{r_{max} - r_{min}}{q_{max} - q_{min}} $$ $r_{max}$就是这个tenso
 代码示意如下：（实际会用pytorch已有的quantize api或者其他推理框架）
 def get_quantized_range(bitwidth): quantized_max = (1 &lt;&lt; (bitwidth - 1)) - 1 quantized_min = -(1 &lt;&lt; (bitwidth - 1)) return quantized_min, quantized_max def linear_quantize(fp_tensor, bitwidth, scale, zero_point, dtype=torch....</p>
   </div>
-  <footer class="entry-footer"><span title='2024-02-27 22:19:21 +0000 UTC'>February 27, 2024</span>&nbsp;·&nbsp;2 min</footer>
+  <footer class="entry-footer"><span title='2024-02-27 22:19:21 +0000 UTC'>February 27, 2024</span>&nbsp;·&nbsp;3 min</footer>
   <a class="entry-link" aria-label="post link to TinyMl —— quantization" href="https://caaatch22.github.io/posts/tinyml-quantization/"></a>
 </article>
     </main>

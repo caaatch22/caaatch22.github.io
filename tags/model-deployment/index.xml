@@ -74,7 +74,7 @@ $$</p>
 $$
 q_{Y} = \frac{S_{W}S_{X}}{S_{Y}}(q_{W}q_{X} - Q_{bias}) + z_{Y} \ \ \ (Q_{bias} = q_{b} - z_{X}q_{W})
 $$
-对于conv，我们也能有类似的结论：
+根据卷积的线性可加性，我们也能有类似的结论：
 <img loading="lazy" src="/img/tinyml/quantization/conv_quantization.png" alt="conv quantization"  />
 
 推理过程和全连接层类似，也可参见tinyml课程的lab2作业。</p>
@@ -109,7 +109,92 @@ $$</p>
 
 所以一个更细粒度的选择是进行per-channel量化，即对每个channel都有一个scale和zero point。</p>
 <h2 id="post-training-quantizationptq">Post-training quantization(PTQ)</h2>
+<p>PTQ的过程比较简单，就是在训练后对模型进行量化。在这个过程前，我们还会用cablibration dataset来估计一些量化参数。流程如下：
+<img loading="lazy" src="/img/tinyml/quantization/PTQ.png" alt="ptq"  />
+</p>
+<p>简单的pytorch代码如下：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#66d9ef">class</span> <span style="color:#a6e22e">QuantizedSimpleNet</span>(nn<span style="color:#f92672">.</span>Module):
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">def</span> __init__(self, hidden_size_1<span style="color:#f92672">=</span><span style="color:#ae81ff">100</span>, hidden_size_2<span style="color:#f92672">=</span><span style="color:#ae81ff">100</span>):
+</span></span><span style="display:flex;"><span>        super(QuantizedSimpleNet,self)<span style="color:#f92672">.</span>__init__()
+</span></span><span style="display:flex;"><span>        self<span style="color:#f92672">.</span>quant <span style="color:#f92672">=</span> torch<span style="color:#f92672">.</span>quantization<span style="color:#f92672">.</span>QuantStub()
+</span></span><span style="display:flex;"><span>        self<span style="color:#f92672">.</span>linear1 <span style="color:#f92672">=</span> nn<span style="color:#f92672">.</span>Linear(<span style="color:#ae81ff">28</span><span style="color:#f92672">*</span><span style="color:#ae81ff">28</span>, hidden_size_1) 
+</span></span><span style="display:flex;"><span>        self<span style="color:#f92672">.</span>linear2 <span style="color:#f92672">=</span> nn<span style="color:#f92672">.</span>Linear(hidden_size_1, hidden_size_2) 
+</span></span><span style="display:flex;"><span>        self<span style="color:#f92672">.</span>linear3 <span style="color:#f92672">=</span> nn<span style="color:#f92672">.</span>Linear(hidden_size_2, <span style="color:#ae81ff">10</span>)
+</span></span><span style="display:flex;"><span>        self<span style="color:#f92672">.</span>relu <span style="color:#f92672">=</span> nn<span style="color:#f92672">.</span>ReLU()
+</span></span><span style="display:flex;"><span>        self<span style="color:#f92672">.</span>dequant <span style="color:#f92672">=</span> torch<span style="color:#f92672">.</span>quantization<span style="color:#f92672">.</span>DeQuantStub()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">forward</span>(self, img):
+</span></span><span style="display:flex;"><span>        x <span style="color:#f92672">=</span> img<span style="color:#f92672">.</span>view(<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">28</span><span style="color:#f92672">*</span><span style="color:#ae81ff">28</span>)
+</span></span><span style="display:flex;"><span>        x <span style="color:#f92672">=</span> self<span style="color:#f92672">.</span>quant(x)
+</span></span><span style="display:flex;"><span>        x <span style="color:#f92672">=</span> self<span style="color:#f92672">.</span>relu(self<span style="color:#f92672">.</span>linear1(x))
+</span></span><span style="display:flex;"><span>        x <span style="color:#f92672">=</span> self<span style="color:#f92672">.</span>relu(self<span style="color:#f92672">.</span>linear2(x))
+</span></span><span style="display:flex;"><span>        x <span style="color:#f92672">=</span> self<span style="color:#f92672">.</span>linear3(x)
+</span></span><span style="display:flex;"><span>        x <span style="color:#f92672">=</span> self<span style="color:#f92672">.</span>dequant(x)
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> x
+</span></span><span style="display:flex;"><span>        
+</span></span><span style="display:flex;"><span>net_quantized <span style="color:#f92672">=</span> QuantizedSimpleNet()<span style="color:#f92672">.</span>to(device)
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># Copy weights from unquantized model</span>
+</span></span><span style="display:flex;"><span>net_quantized<span style="color:#f92672">.</span>load_state_dict(net<span style="color:#f92672">.</span>state_dict())
+</span></span><span style="display:flex;"><span>net_quantized<span style="color:#f92672">.</span>eval()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>net_quantized<span style="color:#f92672">.</span>qconfig <span style="color:#f92672">=</span> torch<span style="color:#f92672">.</span>ao<span style="color:#f92672">.</span>quantization<span style="color:#f92672">.</span>default_qconfig
+</span></span><span style="display:flex;"><span>net_quantized <span style="color:#f92672">=</span> torch<span style="color:#f92672">.</span>ao<span style="color:#f92672">.</span>quantization<span style="color:#f92672">.</span>prepare(net_quantized) <span style="color:#75715e"># Insert observers</span>
+</span></span><span style="display:flex;"><span>print(net_quantized)
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># QuantizedVerySimpleNet(</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#   (quant): QuantStub(</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#     (activation_post_process): MinMaxObserver(min_val=inf, max_val=-inf)</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#   )</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#   (linear1): Linear(</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#     in_features=784, out_features=100, bias=True</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#     (activation_post_process): MinMaxObserver(min_val=inf, max_val=-inf)</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#   )</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#   (linear2): Linear(</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#     in_features=100, out_features=100, bias=True</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#     (activation_post_process): MinMaxObserver(min_val=inf, max_val=-inf)</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#   )</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#   (linear3): Linear(</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#     in_features=100, out_features=10, bias=True</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#     (activation_post_process): MinMaxObserver(min_val=inf, max_val=-inf)</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#   )</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#   (relu): ReLU()</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#   (dequant): DeQuantStub()</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># )</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 这次的测试实际上是做cablibration</span>
+</span></span><span style="display:flex;"><span>test(net_quantized)
+</span></span><span style="display:flex;"><span>print(net_quantized)
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># QuantizedVerySimpleNet(</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#   (quant): QuantStub(</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#     (activation_post_process): MinMaxObserver(min_val=-0.4242129623889923, max_val=2.821486711502075)</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#   )</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#   (linear1): Linear(</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#     in_features=784, out_features=100, bias=True</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#     (activation_post_process): MinMaxObserver(min_val=-53.58397674560547, max_val=34.898128509521484)</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#   )</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#   (linear2): Linear(</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#     in_features=100, out_features=100, bias=True</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#     (activation_post_process): MinMaxObserver(min_val=-24.331275939941406, max_val=26.62542152404785)</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#   )</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#   (linear3): Linear(</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#     in_features=100, out_features=10, bias=True</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#     (activation_post_process): MinMaxObserver(min_val=-28.273700714111328, max_val=20.937761306762695)</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#   )</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#   (relu): ReLU()</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#   (dequant): DeQuantStub()</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># )</span>
+</span></span><span style="display:flex;"><span>net_quantized <span style="color:#f92672">=</span> torch<span style="color:#f92672">.</span>ao<span style="color:#f92672">.</span>quantization<span style="color:#f92672">.</span>convert(net_quantized)
+</span></span><span style="display:flex;"><span>print(net_quantized)
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># QuantizedVerySimpleNet(</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#   (quant): Quantize(scale=tensor([0.0256]), zero_point=tensor([17]), dtype=torch.quint8)</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#   (linear1): QuantizedLinear(in_features=784, out_features=100, scale=0.6967094540596008, zero_point=77, qscheme=torch.per_tensor_affine)</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#   (linear2): QuantizedLinear(in_features=100, out_features=100, scale=0.40123382210731506, zero_point=61, qscheme=torch.per_tensor_affine)</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#   (linear3): QuantizedLinear(in_features=100, out_features=10, scale=0.3874918520450592, zero_point=73, qscheme=torch.per_tensor_affine)</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#   (relu): ReLU()</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#   (dequant): DeQuantize()</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># )</span>
+</span></span></code></pre></div><p>在实际的部署中，一般不会用pytorch的量化模块。根据你所需要的后端，选择tensorrt, onnxruntime, openvino, ncnn等框架的量化模块。</p>
 <h2 id="qauntization-aware-trainingqat">Qauntization-aware training(QAT)</h2>
+<p>qat顾名思义，指的是开模型训练的前就将模型进行量化，从而训练出来的误差更接近“量化误差”。但人们经过广泛的时间发现，将一个训练好的模型在量化后进行微调，要比量化模型在从零训练的准确率更高。所以现在的qat的training一般指的是微调量化模型。</p>
 <h2 id="reference">reference</h2>
 <ul>
 <li><a href="https://hanlab.mit.edu/courses/2023-fall-65940">tinyml quantization</a></li>
