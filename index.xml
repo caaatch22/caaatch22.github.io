@@ -194,7 +194,13 @@ $$</p>
 </span></span><span style="display:flex;"><span><span style="color:#75715e"># )</span>
 </span></span></code></pre></div><p>在实际的部署中，一般不会用pytorch的量化模块。根据你所需要的后端，选择tensorrt, onnxruntime, openvino, ncnn等框架的量化模块。</p>
 <h2 id="qauntization-aware-trainingqat">Qauntization-aware training(QAT)</h2>
-<p>qat顾名思义，指的是开模型训练的前就将模型进行量化，从而训练出来的误差更接近“量化误差”。但人们经过广泛的时间发现，将一个训练好的模型在量化后进行微调，要比量化模型在从零训练的准确率更高。所以现在的qat的training一般指的是微调量化模型。</p>
+<p>qat顾名思义，指的是开模型训练的前就将模型进行量化，从而训练出来的误差更接近“量化误差”。但人们经过广泛的时间发现，将一个训练好的模型在量化后进行微调，要比量化模型在从零训练的准确率更高。所以现在的qat的training一般指的是微调量化模型。
+在pytorch中的流程基本和PTQ差不多，就是训练时改成</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span>net<span style="color:#f92672">.</span>train()
+</span></span><span style="display:flex;"><span>net_quantized <span style="color:#f92672">=</span> torch<span style="color:#f92672">.</span>ao<span style="color:#f92672">.</span>quantization<span style="color:#f92672">.</span>prepare_qat(net) <span style="color:#75715e"># Insert observers</span>
+</span></span></code></pre></div><p>但是其原理不同，因为涉及到了反向传播的过程。QAT的过程如下：
+<img loading="lazy" src="img/tinyml/quantization/QAT.png" alt="quantization aware training"  />
+</p>
 <h2 id="reference">reference</h2>
 <ul>
 <li><a href="https://hanlab.mit.edu/courses/2023-fall-65940">tinyml quantization</a></li>
