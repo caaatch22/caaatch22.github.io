@@ -198,8 +198,13 @@ $$</p>
 在pytorch中的流程基本和PTQ差不多，就是训练时改成</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span>net<span style="color:#f92672">.</span>train()
 </span></span><span style="display:flex;"><span>net_quantized <span style="color:#f92672">=</span> torch<span style="color:#f92672">.</span>ao<span style="color:#f92672">.</span>quantization<span style="color:#f92672">.</span>prepare_qat(net) <span style="color:#75715e"># Insert observers</span>
-</span></span></code></pre></div><p>但是其原理不同，因为涉及到了反向传播的过程。QAT的过程如下：
+</span></span></code></pre></div><p>但是其原理不同，因为涉及到了反向传播的过程。QAT的流程如下：
 <img loading="lazy" src="/img/tinyml/quantization/QAT.png" alt="quantization aware training"  />
+</p>
+<p>在qat的过程中，我们会保存一份fp32的weight副本，这是用来更新梯度的（若只有梁化后的int8 weight，我们每次的梯度变化会在round的时候被归零，例如，weight是3.2， quantized weight是3，这次反向传播的时候需要剪去0.1，如果quantized weight - 0.1在round之后还是3，所以我们需要保留原来的fp32 weight, 不断累积梯度更新，当累计一定值后，quantized weight就会被更新了）。</p>
+<p>在反向传播过程中，模型需要对每个权重和输入计算损失函数的梯度。这里出现了一个问题：我们之前定义的量化操作的导数是什么？实际上量化得到的结果是离散值，所以导数应该在任何地方都是0， $\frac{\partial Q(W)}{\partial W} = 0$，如果我们这个设置，网络什么也学不到因为梯度得不到更新。
+一个典型的解决方案是使用<strong>Straight-through Estimator</strong>，简称STE，来近似这个梯度。STE简单的将量化操作的导数设置为1，即$\frac{\partial Q(W)}{\partial W} = 1$。这样，我们就可以在反向传播的过程中更新梯度了。为什么能设置成1呢，因为实际上这是一个阶梯函数，如下图所示：
+<img loading="lazy" src="/img/tinyml/quantization/STE.png" alt="ste"  />
 </p>
 <h2 id="reference">reference</h2>
 <ul>
