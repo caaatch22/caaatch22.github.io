@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>ParallelComputing on Mingjie&#39;s Home</title>
+    <link>https://caaatch22.github.io/tags/parallelcomputing/</link>
+    <description>Recent content in ParallelComputing on Mingjie&#39;s Home</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh-cn</language>
+    <lastBuildDate>Fri, 26 Jan 2024 22:35:22 +0000</lastBuildDate><atom:link href="https://caaatch22.github.io/tags/parallelcomputing/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>CUDA编程模型</title>
+      <link>https://caaatch22.github.io/posts/cuda/</link>
+      <pubDate>Fri, 26 Jan 2024 22:35:22 +0000</pubDate>
+      
+      <guid>https://caaatch22.github.io/posts/cuda/</guid>
+      <description>本系列笔记主要参考了 &amp;ldquo;Programming massively parallel processors&amp;quot;这本书，以及网上相关资料，面经；不会特别详细，当作个人整理的面经
+reduce, gemm, transpose, softmax, layernorm
+CUDA(Compute Unified Device Architecture)编程模型 CUDA软件线程组织形式 CUDA从软件层面上提供了三层结构包括grid, block和thread。每个kernal内启动的所有线程在一个grid内。启动kernel时指定&amp;laquo;&amp;lt;dimGrid, dimBlock&amp;raquo;&amp;gt;，都是三维的结构。
+gridDim的最大值范围： (x,y,z): (2^31 - 1, 65535, 65535) blockDim的最大值范围：(x,y,z): (1024, 1024, 64) 但是同时满足，一个block内的threads数量不能超过1024(从kepler开始)。即：$ blockDim.x * blockDim.y * blockDim.z &amp;lt;= 1024 $ CUDA内存架构 变量声明 所在内存 作用域 生命周期 kernel内除了array的变量 register thread grid kernel内的array 变量 local thread grid __shared__ 修饰的kernel内的变量 shared block grid __device__ 修饰的全局变量 global grid application __device__ __constant__ 修饰的全局变量 constant grid application 其中 寄存器是GPU上运行速度最快的内存空间，延迟为1个时钟周期。 接下来是共享内存，共享内存是GPU上可受用户控制的一级缓存 。共享内存类似于CPU的缓存，不过与CPU的缓存不同，GPU的共享内存可以有CUDA内核直接编程控制。延迟为1～32个时钟周期。 local memory实际上就在global memory上，只是通过编译器处理成私有的、每个线程独立的一块内存区域。一般一个kernal内的数组会被处理成local memory。延迟和global memory类似。</description>
+      <content:encoded><![CDATA[<blockquote>
+<p>本系列笔记主要参考了 &ldquo;Programming massively parallel processors&quot;这本书，以及网上相关资料，面经；不会特别详细，当作个人整理的面经</p>
+</blockquote>
+<p>reduce, gemm, transpose, softmax, layernorm</p>
+<h1 id="cudacompute-unified-device-architecture编程模型">CUDA(Compute Unified Device Architecture)编程模型</h1>
+<h2 id="cuda软件线程组织形式">CUDA软件线程组织形式</h2>
+<p>CUDA从软件层面上提供了三层结构包括grid, block和thread。每个kernal内启动的所有线程在一个grid内。启动kernel时指定&laquo;&lt;dimGrid, dimBlock&raquo;&gt;，都是三维的结构。</p>
+<p>gridDim的最大值范围： (x,y,z): (2^31 - 1, 65535, 65535)
+blockDim的最大值范围：(x,y,z): (1024, 1024, 64)
+但是同时满足，一个block内的threads数量不能超过1024(从kepler开始)。即：$ blockDim.x * blockDim.y * blockDim.z &lt;= 1024 $
+<img loading="lazy" src="/img/CUDA/CUDA-software-arch.png" alt="CUDA software architecture"  />
+</p>
+<h2 id="cuda内存架构">CUDA内存架构</h2>
+<table>
+<thead>
+<tr>
+<th>变量声明</th>
+<th>所在内存</th>
+<th>作用域</th>
+<th>生命周期</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>kernel内除了array的变量</td>
+<td>register</td>
+<td>thread</td>
+<td>grid</td>
+</tr>
+<tr>
+<td>kernel内的array 变量</td>
+<td>local</td>
+<td>thread</td>
+<td>grid</td>
+</tr>
+<tr>
+<td><code>__shared__</code> 修饰的kernel内的变量</td>
+<td>shared</td>
+<td>block</td>
+<td>grid</td>
+</tr>
+<tr>
+<td><code>__device__</code> 修饰的全局变量</td>
+<td>global</td>
+<td>grid</td>
+<td>application</td>
+</tr>
+<tr>
+<td><code>__device__ __constant__</code> 修饰的全局变量</td>
+<td>constant</td>
+<td>grid</td>
+<td>application</td>
+</tr>
+</tbody>
+</table>
+<p>其中 <strong>寄存器是GPU上运行速度最快的内存空间</strong>，延迟为1个时钟周期。
+接下来是共享内存，<strong>共享内存是GPU上可受用户控制的一级缓存</strong> 。共享内存类似于CPU的缓存，不过与CPU的缓存不同，GPU的共享内存可以有CUDA内核直接编程控制。延迟为1～32个时钟周期。
+local memory实际上就在global memory上，只是通过编译器处理成私有的、每个线程独立的一块内存区域。一般一个kernal内的数组会被处理成local memory。延迟和global memory类似。</p>
+<p>还有texture memeory，但是和科学计算相关不大。</p>
+<h2 id="cuda硬件结构">CUDA硬件结构</h2>
+<p>一个GPU可以看作是SM(streaming multiprocessor)的集合，每个SM包含多个SP(streaming processor，或者现在一般叫cuda cores)。
+<img loading="lazy" src="/img/CUDA/CUDA-GPU.png" alt="CUDA GPU"  />
+</p>
+<h3 id="function-declarations">function declarations</h3>
+<ul>
+<li><strong>global</strong>: CPU/GPU都可以call, 运行在GPU上</li>
+<li><strong>device</strong>: 运行在GPU上，可以被其他__device__或__global__ call</li>
+<li><strong>host</strong>: 运行在CPU上，可以被其他CPU call（可省略）</li>
+</ul>
+<p>可以同时<code>__host__ __device__</code>修饰一个函数表示在CPU or GPU上运行</p>
+<h3 id="kernel-call-and-grid-launch">kernel call and grid launch</h3>
+<p>it&rsquo;s recommand that the number of threads in each dimension of a thread block be a multiple of 32
+一个block内的总的thread不能超过1024</p>
+<h3 id="builtins">builtins:</h3>
+<p>int i = blockDim.x * blockDim.Idx + threadIdx.x;
+gridDim.x, grid</p>
+<h3 id="heading"></h3>
+<p>SM(streaming multiprocessors)
+A100有108个SM，each with 64 cores
+一个block内的threads一定被分配到同一个SM中
+有可能多个block都被分配到同一个SM中
+(但是可能同时分给一个SM超出cores的线程，A100为例子 2048 threads == 32warps，只是真正同时运行某些warp，其余的可以用作hidding latency)
+A100 support a maximum of 32 blocks per SM, 64 warps(2048 threads) per SM, and 1024 threads per block.也就是可能一个SM内最多有两个blocks（block内有1024个线程的情况下）</p>
+<p>每个SM上都有一个control，一个shared_memory
+__syncthreads() sync一个block内的所有线程</p>
+<p>每个block内的线程在SM内是以warp的形式调度的，每个warp一般是32个线程
+他们的threadIdx是连续的，共享stack and PC（但是Volta以及之后的架构中，每个线程都有独立的PC）
+<img loading="lazy" src="/img/CUDA/warp_pascal_volta.png" alt=""  />
+</p>
+<p>不足32个的会补足32个</p>
+<p>control divergence
+<a href="https://developer.nvidia.com/blog/inside-volta/">https://developer.nvidia.com/blog/inside-volta/</a></p>
+<p>resource occupancy
+<a href="https://xmartlabs.github.io/cuda-calculator/">https://xmartlabs.github.io/cuda-calculator/</a></p>
+<p>computational intensity(FLOP/B)
+roofiline-model</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span><span style="color:#75715e">#define TILE_WIDTH 16
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>__global__ <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">matrixMulKernel</span>(<span style="color:#66d9ef">float</span><span style="color:#f92672">*</span> M, <span style="color:#66d9ef">float</span><span style="color:#f92672">*</span> N, <span style="color:#66d9ef">float</span><span style="color:#f92672">*</span> P, <span style="color:#66d9ef">int</span> Width) {
+</span></span><span style="display:flex;"><span>    __shared__ <span style="color:#66d9ef">float</span> Mds[TILE_WIDTH][TILE_WIDTH];
+</span></span><span style="display:flex;"><span>    __shared__ <span style="color:#66d9ef">float</span> Nds[TILE_WIDTH][TILE_WIDTH];
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int</span> bx <span style="color:#f92672">=</span> blockIdx.x, by <span style="color:#f92672">=</span> blockIdx.y;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int</span> tx <span style="color:#f92672">=</span> threadIdx.x, ty <span style="color:#f92672">=</span> threadIdx.y;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int</span> row <span style="color:#f92672">=</span> by <span style="color:#f92672">*</span> TILE_WIDTH <span style="color:#f92672">+</span> ty;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int</span> col <span style="color:#f92672">=</span> bx <span style="color:#f92672">*</span> TILE_WIDTH <span style="color:#f92672">+</span> tx;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">float</span> value <span style="color:#f92672">=</span> <span style="color:#ae81ff">0.0f</span>;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">size_t</span> i <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>; i <span style="color:#f92672">&lt;</span> Width <span style="color:#f92672">/</span> TILE_WIDTH; i <span style="color:#f92672">++</span>) {
+</span></span><span style="display:flex;"><span>        Mds[ty][tx] <span style="color:#f92672">=</span> M[row <span style="color:#f92672">*</span> Width <span style="color:#f92672">+</span> i <span style="color:#f92672">*</span> TILE_WIDTH <span style="color:#f92672">+</span> tx];
+</span></span><span style="display:flex;"><span>        Nds[ty][tx] <span style="color:#f92672">=</span> M[(i <span style="color:#f92672">*</span> TILE_WIDTH <span style="color:#f92672">+</span> ty) <span style="color:#f92672">*</span> Width <span style="color:#f92672">+</span> col];
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">__syncthreads</span>();
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">size_t</span> k <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>; k <span style="color:#f92672">&lt;</span> TILE_WIDTH; k <span style="color:#f92672">++</span>) {
+</span></span><span style="display:flex;"><span>            value <span style="color:#f92672">+=</span> Mds[ty][k] <span style="color:#f92672">*</span> Nds[k][tx];
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">__syncthreads</span>();
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    P[row <span style="color:#f92672">*</span> Width <span style="color:#f92672">+</span> col] <span style="color:#f92672">=</span> value;
+</span></span><span style="display:flex;"><span>} 
+</span></span></code></pre></div>]]></content:encoded>
+    </item>
+    
+  </channel>
+</rss>

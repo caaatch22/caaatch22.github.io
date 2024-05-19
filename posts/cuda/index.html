@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>CUDA编程模型 | Mingjie&#39;s Home</title>
+<meta name="keywords" content="cuda, ParallelComputing">
+<meta name="description" content="本系列笔记主要参考了 &ldquo;Programming massively parallel processors&quot;这本书，以及网上相关资料，面经；不会特别详细，当作个人整理的面经
+reduce, gemm, transpose, softmax, layernorm
+CUDA(Compute Unified Device Architecture)编程模型 CUDA软件线程组织形式 CUDA从软件层面上提供了三层结构包括grid, block和thread。每个kernal内启动的所有线程在一个grid内。启动kernel时指定&laquo;&lt;dimGrid, dimBlock&raquo;&gt;，都是三维的结构。
+gridDim的最大值范围： (x,y,z): (2^31 - 1, 65535, 65535) blockDim的最大值范围：(x,y,z): (1024, 1024, 64) 但是同时满足，一个block内的threads数量不能超过1024(从kepler开始)。即：$ blockDim.x * blockDim.y * blockDim.z &lt;= 1024 $ CUDA内存架构 变量声明 所在内存 作用域 生命周期 kernel内除了array的变量 register thread grid kernel内的array 变量 local thread grid __shared__ 修饰的kernel内的变量 shared block grid __device__ 修饰的全局变量 global grid application __device__ __constant__ 修饰的全局变量 constant grid application 其中 寄存器是GPU上运行速度最快的内存空间，延迟为1个时钟周期。 接下来是共享内存，共享内存是GPU上可受用户控制的一级缓存 。共享内存类似于CPU的缓存，不过与CPU的缓存不同，GPU的共享内存可以有CUDA内核直接编程控制。延迟为1～32个时钟周期。 local memory实际上就在global memory上，只是通过编译器处理成私有的、每个线程独立的一块内存区域。一般一个kernal内的数组会被处理成local memory。延迟和global memory类似。">
+<meta name="author" content="">
+<link rel="canonical" href="https://caaatch22.github.io/posts/cuda/">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.678b5c47efa744d2e0dd0d61101075e6aecdc9a0631e7ad8538f4ec0cca79273.css" integrity="sha256-Z4tcR&#43;&#43;nRNLg3Q1hEBB15q7NyaBjHnrYU49OwMynknM=" rel="preload stylesheet" as="style">
+<script defer crossorigin="anonymous" src="/assets/js/highlight.f413e19d0714851f6474e7ee9632408e58ac146fbdbe62747134bea2fa3415e0.js" integrity="sha256-9BPhnQcUhR9kdOfuljJAjlisFG&#43;9vmJ0cTS&#43;ovo0FeA="
+    onload="hljs.initHighlightingOnLoad();"></script>
+<link rel="icon" href="https://caaatch22.github.io/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://caaatch22.github.io/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://caaatch22.github.io/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://caaatch22.github.io/apple-touch-icon.png">
+<link rel="mask-icon" href="https://caaatch22.github.io/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --hljs-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.2/dist/katex.min.css" integrity="sha384-bYdxxUwYipFNohQlHt0bjN/LCpueqWz13HufFEV1SUatKs1cm4L6fFgCi1jT643X" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.2/dist/katex.min.js" integrity="sha384-Qsn9KnoKISj6dI8g7p1HBlNpVx0I8p1SvlwOldgi3IorMle61nQy4zEahWYtljaz" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.2/dist/contrib/auto-render.min.js" integrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+          
+          
+          delimiters: [
+              {left: '$$', right: '$$', display: true},
+              {left: '$', right: '$', display: false},
+              {left: '\\(', right: '\\)', display: false},
+              {left: '\\[', right: '\\]', display: true}
+          ],
+          
+          throwOnError : false
+        });
+    });
+</script>
+
+
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-WEG841BBW9"></script>
+<script>
+var doNotTrack = false;
+if (!doNotTrack) {
+	window.dataLayer = window.dataLayer || [];
+	function gtag(){dataLayer.push(arguments);}
+	gtag('js', new Date());
+	gtag('config', 'G-WEG841BBW9', { 'anonymize_ip': false });
+}
+</script>
+<meta property="og:title" content="CUDA编程模型" />
+<meta property="og:description" content="本系列笔记主要参考了 &ldquo;Programming massively parallel processors&quot;这本书，以及网上相关资料，面经；不会特别详细，当作个人整理的面经
+reduce, gemm, transpose, softmax, layernorm
+CUDA(Compute Unified Device Architecture)编程模型 CUDA软件线程组织形式 CUDA从软件层面上提供了三层结构包括grid, block和thread。每个kernal内启动的所有线程在一个grid内。启动kernel时指定&laquo;&lt;dimGrid, dimBlock&raquo;&gt;，都是三维的结构。
+gridDim的最大值范围： (x,y,z): (2^31 - 1, 65535, 65535) blockDim的最大值范围：(x,y,z): (1024, 1024, 64) 但是同时满足，一个block内的threads数量不能超过1024(从kepler开始)。即：$ blockDim.x * blockDim.y * blockDim.z &lt;= 1024 $ CUDA内存架构 变量声明 所在内存 作用域 生命周期 kernel内除了array的变量 register thread grid kernel内的array 变量 local thread grid __shared__ 修饰的kernel内的变量 shared block grid __device__ 修饰的全局变量 global grid application __device__ __constant__ 修饰的全局变量 constant grid application 其中 寄存器是GPU上运行速度最快的内存空间，延迟为1个时钟周期。 接下来是共享内存，共享内存是GPU上可受用户控制的一级缓存 。共享内存类似于CPU的缓存，不过与CPU的缓存不同，GPU的共享内存可以有CUDA内核直接编程控制。延迟为1～32个时钟周期。 local memory实际上就在global memory上，只是通过编译器处理成私有的、每个线程独立的一块内存区域。一般一个kernal内的数组会被处理成local memory。延迟和global memory类似。" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://caaatch22.github.io/posts/cuda/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2024-01-26T22:35:22+00:00" />
+<meta property="article:modified_time" content="2024-01-26T22:35:22+00:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="CUDA编程模型"/>
+<meta name="twitter:description" content="本系列笔记主要参考了 &ldquo;Programming massively parallel processors&quot;这本书，以及网上相关资料，面经；不会特别详细，当作个人整理的面经
+reduce, gemm, transpose, softmax, layernorm
+CUDA(Compute Unified Device Architecture)编程模型 CUDA软件线程组织形式 CUDA从软件层面上提供了三层结构包括grid, block和thread。每个kernal内启动的所有线程在一个grid内。启动kernel时指定&laquo;&lt;dimGrid, dimBlock&raquo;&gt;，都是三维的结构。
+gridDim的最大值范围： (x,y,z): (2^31 - 1, 65535, 65535) blockDim的最大值范围：(x,y,z): (1024, 1024, 64) 但是同时满足，一个block内的threads数量不能超过1024(从kepler开始)。即：$ blockDim.x * blockDim.y * blockDim.z &lt;= 1024 $ CUDA内存架构 变量声明 所在内存 作用域 生命周期 kernel内除了array的变量 register thread grid kernel内的array 变量 local thread grid __shared__ 修饰的kernel内的变量 shared block grid __device__ 修饰的全局变量 global grid application __device__ __constant__ 修饰的全局变量 constant grid application 其中 寄存器是GPU上运行速度最快的内存空间，延迟为1个时钟周期。 接下来是共享内存，共享内存是GPU上可受用户控制的一级缓存 。共享内存类似于CPU的缓存，不过与CPU的缓存不同，GPU的共享内存可以有CUDA内核直接编程控制。延迟为1～32个时钟周期。 local memory实际上就在global memory上，只是通过编译器处理成私有的、每个线程独立的一块内存区域。一般一个kernal内的数组会被处理成local memory。延迟和global memory类似。"/>
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "Posts",
+      "item": "https://caaatch22.github.io/posts/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  3 ,
+      "name": "CUDA编程模型",
+      "item": "https://caaatch22.github.io/posts/cuda/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "CUDA编程模型",
+  "name": "CUDA编程模型",
+  "description": "本系列笔记主要参考了 \u0026ldquo;Programming massively parallel processors\u0026quot;这本书，以及网上相关资料，面经；不会特别详细，当作个人整理的面经\nreduce, gemm, transpose, softmax, layernorm\nCUDA(Compute Unified Device Architecture)编程模型 CUDA软件线程组织形式 CUDA从软件层面上提供了三层结构包括grid, block和thread。每个kernal内启动的所有线程在一个grid内。启动kernel时指定\u0026laquo;\u0026lt;dimGrid, dimBlock\u0026raquo;\u0026gt;，都是三维的结构。\ngridDim的最大值范围： (x,y,z): (2^31 - 1, 65535, 65535) blockDim的最大值范围：(x,y,z): (1024, 1024, 64) 但是同时满足，一个block内的threads数量不能超过1024(从kepler开始)。即：$ blockDim.x * blockDim.y * blockDim.z \u0026lt;= 1024 $ CUDA内存架构 变量声明 所在内存 作用域 生命周期 kernel内除了array的变量 register thread grid kernel内的array 变量 local thread grid __shared__ 修饰的kernel内的变量 shared block grid __device__ 修饰的全局变量 global grid application __device__ __constant__ 修饰的全局变量 constant grid application 其中 寄存器是GPU上运行速度最快的内存空间，延迟为1个时钟周期。 接下来是共享内存，共享内存是GPU上可受用户控制的一级缓存 。共享内存类似于CPU的缓存，不过与CPU的缓存不同，GPU的共享内存可以有CUDA内核直接编程控制。延迟为1～32个时钟周期。 local memory实际上就在global memory上，只是通过编译器处理成私有的、每个线程独立的一块内存区域。一般一个kernal内的数组会被处理成local memory。延迟和global memory类似。",
+  "keywords": [
+    "cuda", "ParallelComputing"
+  ],
+  "articleBody": " 本系列笔记主要参考了 “Programming massively parallel processors\"这本书，以及网上相关资料，面经；不会特别详细，当作个人整理的面经\nreduce, gemm, transpose, softmax, layernorm\nCUDA(Compute Unified Device Architecture)编程模型 CUDA软件线程组织形式 CUDA从软件层面上提供了三层结构包括grid, block和thread。每个kernal内启动的所有线程在一个grid内。启动kernel时指定«，都是三维的结构。\ngridDim的最大值范围： (x,y,z): (2^31 - 1, 65535, 65535) blockDim的最大值范围：(x,y,z): (1024, 1024, 64) 但是同时满足，一个block内的threads数量不能超过1024(从kepler开始)。即：$ blockDim.x * blockDim.y * blockDim.z \u003c= 1024 $ CUDA内存架构 变量声明 所在内存 作用域 生命周期 kernel内除了array的变量 register thread grid kernel内的array 变量 local thread grid __shared__ 修饰的kernel内的变量 shared block grid __device__ 修饰的全局变量 global grid application __device__ __constant__ 修饰的全局变量 constant grid application 其中 寄存器是GPU上运行速度最快的内存空间，延迟为1个时钟周期。 接下来是共享内存，共享内存是GPU上可受用户控制的一级缓存 。共享内存类似于CPU的缓存，不过与CPU的缓存不同，GPU的共享内存可以有CUDA内核直接编程控制。延迟为1～32个时钟周期。 local memory实际上就在global memory上，只是通过编译器处理成私有的、每个线程独立的一块内存区域。一般一个kernal内的数组会被处理成local memory。延迟和global memory类似。\n还有texture memeory，但是和科学计算相关不大。\nCUDA硬件结构 一个GPU可以看作是SM(streaming multiprocessor)的集合，每个SM包含多个SP(streaming processor，或者现在一般叫cuda cores)。 function declarations global: CPU/GPU都可以call, 运行在GPU上 device: 运行在GPU上，可以被其他__device__或__global__ call host: 运行在CPU上，可以被其他CPU call（可省略） 可以同时__host__ __device__修饰一个函数表示在CPU or GPU上运行\nkernel call and grid launch it’s recommand that the number of threads in each dimension of a thread block be a multiple of 32 一个block内的总的thread不能超过1024\nbuiltins: int i = blockDim.x * blockDim.Idx + threadIdx.x; gridDim.x, grid\nSM(streaming multiprocessors) A100有108个SM，each with 64 cores 一个block内的threads一定被分配到同一个SM中 有可能多个block都被分配到同一个SM中 (但是可能同时分给一个SM超出cores的线程，A100为例子 2048 threads == 32warps，只是真正同时运行某些warp，其余的可以用作hidding latency) A100 support a maximum of 32 blocks per SM, 64 warps(2048 threads) per SM, and 1024 threads per block.也就是可能一个SM内最多有两个blocks（block内有1024个线程的情况下）\n每个SM上都有一个control，一个shared_memory __syncthreads() sync一个block内的所有线程\n每个block内的线程在SM内是以warp的形式调度的，每个warp一般是32个线程 他们的threadIdx是连续的，共享stack and PC（但是Volta以及之后的架构中，每个线程都有独立的PC） 不足32个的会补足32个\ncontrol divergence https://developer.nvidia.com/blog/inside-volta/\nresource occupancy https://xmartlabs.github.io/cuda-calculator/\ncomputational intensity(FLOP/B) roofiline-model\n#define TILE_WIDTH 16 __global__ void matrixMulKernel(float* M, float* N, float* P, int Width) { __shared__ float Mds[TILE_WIDTH][TILE_WIDTH]; __shared__ float Nds[TILE_WIDTH][TILE_WIDTH]; int bx = blockIdx.x, by = blockIdx.y; int tx = threadIdx.x, ty = threadIdx.y; int row = by * TILE_WIDTH + ty; int col = bx * TILE_WIDTH + tx; float value = 0.0f; for (size_t i = 0; i \u003c Width / TILE_WIDTH; i ++) { Mds[ty][tx] = M[row * Width + i * TILE_WIDTH + tx]; Nds[ty][tx] = M[(i * TILE_WIDTH + ty) * Width + col]; __syncthreads(); for (size_t k = 0; k \u003c TILE_WIDTH; k ++) { value += Mds[ty][k] * Nds[k][tx]; } __syncthreads(); } P[row * Width + col] = value; } ",
+  "wordCount" : "302",
+  "inLanguage": "en",
+  "datePublished": "2024-01-26T22:35:22Z",
+  "dateModified": "2024-01-26T22:35:22Z",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://caaatch22.github.io/posts/cuda/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Mingjie's Home",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://caaatch22.github.io/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+
+<body class="" id="top">
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    } else if (localStorage.getItem("pref-theme") === "light") {
+        document.body.classList.remove('dark')
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+    }
+
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://caaatch22.github.io" accesskey="h" title="Mingjie&#39;s Home (Alt + H)">Mingjie&#39;s Home</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://caaatch22.github.io/about/" title="About">
+                    <span>About</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://caaatch22.github.io/cv/" title="CV">
+                    <span>CV</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://caaatch22.github.io/archives/" title="Archives">
+                    <span>Archives</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://caaatch22.github.io/search/" title="Search (Alt &#43; /)" accesskey=/>
+                    <span>Search</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    <div class="breadcrumbs"><a href="https://caaatch22.github.io">Home</a>&nbsp;»&nbsp;<a href="https://caaatch22.github.io/posts/">Posts</a></div>
+    <h1 class="post-title">
+      CUDA编程模型
+    </h1>
+    <div class="post-meta"><span title='2024-01-26 22:35:22 +0000 UTC'>January 26, 2024</span>&nbsp;·&nbsp;2 min
+
+</div>
+  </header> <aside id="toc-container" class="toc-container wide">
+    <div class="toc">
+        <details  open>
+            <summary accesskey="c" title="(Alt + C)">
+                <span class="details">Table of Contents</span>
+            </summary>
+
+            <div class="inner"><ul>
+                    <li>
+                        <a href="#cudacompute-unified-device-architecture%e7%bc%96%e7%a8%8b%e6%a8%a1%e5%9e%8b" aria-label="CUDA(Compute Unified Device Architecture)编程模型">CUDA(Compute Unified Device Architecture)编程模型</a><ul>
+                            
+                    <li>
+                        <a href="#cuda%e8%bd%af%e4%bb%b6%e7%ba%bf%e7%a8%8b%e7%bb%84%e7%bb%87%e5%bd%a2%e5%bc%8f" aria-label="CUDA软件线程组织形式">CUDA软件线程组织形式</a></li>
+                    <li>
+                        <a href="#cuda%e5%86%85%e5%ad%98%e6%9e%b6%e6%9e%84" aria-label="CUDA内存架构">CUDA内存架构</a></li>
+                    <li>
+                        <a href="#cuda%e7%a1%ac%e4%bb%b6%e7%bb%93%e6%9e%84" aria-label="CUDA硬件结构">CUDA硬件结构</a><ul>
+                            
+                    <li>
+                        <a href="#function-declarations" aria-label="function declarations">function declarations</a></li>
+                    <li>
+                        <a href="#kernel-call-and-grid-launch" aria-label="kernel call and grid launch">kernel call and grid launch</a></li>
+                    <li>
+                        <a href="#builtins" aria-label="builtins:">builtins:</a>
+                    </li>
+                </ul>
+                </li>
+                </ul>
+                </li>
+                </ul>
+            </div>
+        </details>
+    </div>
+</aside>
+<script>
+    let activeElement;
+    let elements;
+    window.addEventListener('DOMContentLoaded', function (event) {
+        checkTocPosition();
+
+        elements = document.querySelectorAll('h1[id],h2[id],h3[id],h4[id],h5[id],h6[id]');
+         
+         activeElement = elements[0];
+         const id = encodeURI(activeElement.getAttribute('id')).toLowerCase();
+         document.querySelector(`.inner ul li a[href="#${id}"]`).classList.add('active');
+     }, false);
+
+    window.addEventListener('resize', function(event) {
+        checkTocPosition();
+    }, false);
+
+    window.addEventListener('scroll', () => {
+        
+        activeElement = Array.from(elements).find((element) => {
+            if ((getOffsetTop(element) - window.pageYOffset) > 0 && 
+                (getOffsetTop(element) - window.pageYOffset) < window.innerHeight/2) {
+                return element;
+            }
+        }) || activeElement
+
+        elements.forEach(element => {
+             const id = encodeURI(element.getAttribute('id')).toLowerCase();
+             if (element === activeElement){
+                 document.querySelector(`.inner ul li a[href="#${id}"]`).classList.add('active');
+             } else {
+                 document.querySelector(`.inner ul li a[href="#${id}"]`).classList.remove('active');
+             }
+         })
+     }, false);
+
+    const main = parseInt(getComputedStyle(document.body).getPropertyValue('--article-width'), 10);
+    const toc = parseInt(getComputedStyle(document.body).getPropertyValue('--toc-width'), 10);
+    const gap = parseInt(getComputedStyle(document.body).getPropertyValue('--gap'), 10);
+
+    function checkTocPosition() {
+        const width = document.body.scrollWidth;
+
+        if (width - main - (toc * 2) - (gap * 4) > 0) {
+            document.getElementById("toc-container").classList.add("wide");
+        } else {
+            document.getElementById("toc-container").classList.remove("wide");
+        }
+    }
+
+    function getOffsetTop(element) {
+        if (!element.getClientRects().length) {
+            return 0;
+        }
+        let rect = element.getBoundingClientRect();
+        let win = element.ownerDocument.defaultView;
+        return rect.top + win.pageYOffset;   
+    }
+</script>
+
+  <div class="post-content"><blockquote>
+<p>本系列笔记主要参考了 &ldquo;Programming massively parallel processors&quot;这本书，以及网上相关资料，面经；不会特别详细，当作个人整理的面经</p>
+</blockquote>
+<p>reduce, gemm, transpose, softmax, layernorm</p>
+<h1 id="cudacompute-unified-device-architecture编程模型">CUDA(Compute Unified Device Architecture)编程模型<a hidden class="anchor" aria-hidden="true" href="#cudacompute-unified-device-architecture编程模型">#</a></h1>
+<h2 id="cuda软件线程组织形式">CUDA软件线程组织形式<a hidden class="anchor" aria-hidden="true" href="#cuda软件线程组织形式">#</a></h2>
+<p>CUDA从软件层面上提供了三层结构包括grid, block和thread。每个kernal内启动的所有线程在一个grid内。启动kernel时指定&laquo;&lt;dimGrid, dimBlock&raquo;&gt;，都是三维的结构。</p>
+<p>gridDim的最大值范围： (x,y,z): (2^31 - 1, 65535, 65535)
+blockDim的最大值范围：(x,y,z): (1024, 1024, 64)
+但是同时满足，一个block内的threads数量不能超过1024(从kepler开始)。即：$ blockDim.x * blockDim.y * blockDim.z &lt;= 1024 $
+<img loading="lazy" src="/img/CUDA/CUDA-software-arch.png" alt="CUDA software architecture"  />
+</p>
+<h2 id="cuda内存架构">CUDA内存架构<a hidden class="anchor" aria-hidden="true" href="#cuda内存架构">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>变量声明</th>
+<th>所在内存</th>
+<th>作用域</th>
+<th>生命周期</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>kernel内除了array的变量</td>
+<td>register</td>
+<td>thread</td>
+<td>grid</td>
+</tr>
+<tr>
+<td>kernel内的array 变量</td>
+<td>local</td>
+<td>thread</td>
+<td>grid</td>
+</tr>
+<tr>
+<td><code>__shared__</code> 修饰的kernel内的变量</td>
+<td>shared</td>
+<td>block</td>
+<td>grid</td>
+</tr>
+<tr>
+<td><code>__device__</code> 修饰的全局变量</td>
+<td>global</td>
+<td>grid</td>
+<td>application</td>
+</tr>
+<tr>
+<td><code>__device__ __constant__</code> 修饰的全局变量</td>
+<td>constant</td>
+<td>grid</td>
+<td>application</td>
+</tr>
+</tbody>
+</table>
+<p>其中 <strong>寄存器是GPU上运行速度最快的内存空间</strong>，延迟为1个时钟周期。
+接下来是共享内存，<strong>共享内存是GPU上可受用户控制的一级缓存</strong> 。共享内存类似于CPU的缓存，不过与CPU的缓存不同，GPU的共享内存可以有CUDA内核直接编程控制。延迟为1～32个时钟周期。
+local memory实际上就在global memory上，只是通过编译器处理成私有的、每个线程独立的一块内存区域。一般一个kernal内的数组会被处理成local memory。延迟和global memory类似。</p>
+<p>还有texture memeory，但是和科学计算相关不大。</p>
+<h2 id="cuda硬件结构">CUDA硬件结构<a hidden class="anchor" aria-hidden="true" href="#cuda硬件结构">#</a></h2>
+<p>一个GPU可以看作是SM(streaming multiprocessor)的集合，每个SM包含多个SP(streaming processor，或者现在一般叫cuda cores)。
+<img loading="lazy" src="/img/CUDA/CUDA-GPU.png" alt="CUDA GPU"  />
+</p>
+<h3 id="function-declarations">function declarations<a hidden class="anchor" aria-hidden="true" href="#function-declarations">#</a></h3>
+<ul>
+<li><strong>global</strong>: CPU/GPU都可以call, 运行在GPU上</li>
+<li><strong>device</strong>: 运行在GPU上，可以被其他__device__或__global__ call</li>
+<li><strong>host</strong>: 运行在CPU上，可以被其他CPU call（可省略）</li>
+</ul>
+<p>可以同时<code>__host__ __device__</code>修饰一个函数表示在CPU or GPU上运行</p>
+<h3 id="kernel-call-and-grid-launch">kernel call and grid launch<a hidden class="anchor" aria-hidden="true" href="#kernel-call-and-grid-launch">#</a></h3>
+<p>it&rsquo;s recommand that the number of threads in each dimension of a thread block be a multiple of 32
+一个block内的总的thread不能超过1024</p>
+<h3 id="builtins">builtins:<a hidden class="anchor" aria-hidden="true" href="#builtins">#</a></h3>
+<p>int i = blockDim.x * blockDim.Idx + threadIdx.x;
+gridDim.x, grid</p>
+<h3 id="heading"><a hidden class="anchor" aria-hidden="true" href="#heading">#</a></h3>
+<p>SM(streaming multiprocessors)
+A100有108个SM，each with 64 cores
+一个block内的threads一定被分配到同一个SM中
+有可能多个block都被分配到同一个SM中
+(但是可能同时分给一个SM超出cores的线程，A100为例子 2048 threads == 32warps，只是真正同时运行某些warp，其余的可以用作hidding latency)
+A100 support a maximum of 32 blocks per SM, 64 warps(2048 threads) per SM, and 1024 threads per block.也就是可能一个SM内最多有两个blocks（block内有1024个线程的情况下）</p>
+<p>每个SM上都有一个control，一个shared_memory
+__syncthreads() sync一个block内的所有线程</p>
+<p>每个block内的线程在SM内是以warp的形式调度的，每个warp一般是32个线程
+他们的threadIdx是连续的，共享stack and PC（但是Volta以及之后的架构中，每个线程都有独立的PC）
+<img loading="lazy" src="/img/CUDA/warp_pascal_volta.png" alt=""  />
+</p>
+<p>不足32个的会补足32个</p>
+<p>control divergence
+<a href="https://developer.nvidia.com/blog/inside-volta/">https://developer.nvidia.com/blog/inside-volta/</a></p>
+<p>resource occupancy
+<a href="https://xmartlabs.github.io/cuda-calculator/">https://xmartlabs.github.io/cuda-calculator/</a></p>
+<p>computational intensity(FLOP/B)
+roofiline-model</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span><span style="color:#75715e">#define TILE_WIDTH 16
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>__global__ <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">matrixMulKernel</span>(<span style="color:#66d9ef">float</span><span style="color:#f92672">*</span> M, <span style="color:#66d9ef">float</span><span style="color:#f92672">*</span> N, <span style="color:#66d9ef">float</span><span style="color:#f92672">*</span> P, <span style="color:#66d9ef">int</span> Width) {
+</span></span><span style="display:flex;"><span>    __shared__ <span style="color:#66d9ef">float</span> Mds[TILE_WIDTH][TILE_WIDTH];
+</span></span><span style="display:flex;"><span>    __shared__ <span style="color:#66d9ef">float</span> Nds[TILE_WIDTH][TILE_WIDTH];
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int</span> bx <span style="color:#f92672">=</span> blockIdx.x, by <span style="color:#f92672">=</span> blockIdx.y;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int</span> tx <span style="color:#f92672">=</span> threadIdx.x, ty <span style="color:#f92672">=</span> threadIdx.y;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int</span> row <span style="color:#f92672">=</span> by <span style="color:#f92672">*</span> TILE_WIDTH <span style="color:#f92672">+</span> ty;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int</span> col <span style="color:#f92672">=</span> bx <span style="color:#f92672">*</span> TILE_WIDTH <span style="color:#f92672">+</span> tx;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">float</span> value <span style="color:#f92672">=</span> <span style="color:#ae81ff">0.0f</span>;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">size_t</span> i <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>; i <span style="color:#f92672">&lt;</span> Width <span style="color:#f92672">/</span> TILE_WIDTH; i <span style="color:#f92672">++</span>) {
+</span></span><span style="display:flex;"><span>        Mds[ty][tx] <span style="color:#f92672">=</span> M[row <span style="color:#f92672">*</span> Width <span style="color:#f92672">+</span> i <span style="color:#f92672">*</span> TILE_WIDTH <span style="color:#f92672">+</span> tx];
+</span></span><span style="display:flex;"><span>        Nds[ty][tx] <span style="color:#f92672">=</span> M[(i <span style="color:#f92672">*</span> TILE_WIDTH <span style="color:#f92672">+</span> ty) <span style="color:#f92672">*</span> Width <span style="color:#f92672">+</span> col];
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">__syncthreads</span>();
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">size_t</span> k <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>; k <span style="color:#f92672">&lt;</span> TILE_WIDTH; k <span style="color:#f92672">++</span>) {
+</span></span><span style="display:flex;"><span>            value <span style="color:#f92672">+=</span> Mds[ty][k] <span style="color:#f92672">*</span> Nds[k][tx];
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">__syncthreads</span>();
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    P[row <span style="color:#f92672">*</span> Width <span style="color:#f92672">+</span> col] <span style="color:#f92672">=</span> value;
+</span></span><span style="display:flex;"><span>} 
+</span></span></code></pre></div>
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="https://caaatch22.github.io/tags/cuda/">cuda</a></li>
+      <li><a href="https://caaatch22.github.io/tags/parallelcomputing/">ParallelComputing</a></li>
+    </ul>
+<nav class="paginav">
+  <a class="prev" href="https://caaatch22.github.io/posts/tinyml-pruning/">
+    <span class="title">« Prev</span>
+    <br>
+    <span>TinyMl —— 模型剪枝(pruning)</span>
+  </a>
+  <a class="next" href="https://caaatch22.github.io/posts/branch-prediction/">
+    <span class="title">Next »</span>
+    <br>
+    <span>Computer Architecture —— 分支预测</span>
+  </a>
+</nav>
+
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+    <span>&copy; 2024 <a href="https://caaatch22.github.io">Mingjie&#39;s Home</a></span>
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>

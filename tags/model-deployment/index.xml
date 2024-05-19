@@ -55,7 +55,7 @@ $$</p>
 <p>还有一种对称量化(symmetric quantization)，它基于以下事实：常见的训练好的模型参数几乎总是关于0对称的。如下图所示：</p>
 <p><img loading="lazy" src="/img/tinyml/quantization/weight_distribution.png" alt="weight distribution"  />
 </p>
-<p>基于这个观察，我们常将zero point设置为0，并让q_{min} = -q_{max}。这样，我们就可以简化量化公式为：
+<p>基于这个观察，我们常将zero point设置为0，并让 $q_{min} = -q_{max}$ 。这样，我们就可以简化量化公式为：
 $$
 s = \frac{r_{max}}{q_{max}},\ \ z = 0 \
 q = clip(round(\frac{r}{s}), -q_{max}, q_{max}), q_{max} = 2^{bitwidth - 1} - 1
@@ -85,7 +85,7 @@ $$
 <li>$q_{W} \cdot q_{X}$ 是很可能溢出 8bit的，所以其结果一般也会用32bit int表示（具体可能有不同的实现），所以我们一般也先将$Q_{bias}$量化为32bit int，便于与其结果相乘。最后需要对结果在量化为8bit int。</li>
 </ol>
 <h3 id="其他量化方法">其他量化方法</h3>
-<p>minmax量化（$s = \frac{r_{max}-r_{min}}{q_{max} - q_{min}}$）有一个问题，也就是它容易受outlier的点的影响，这对模型参数的量化其实影响还好，因为参数的分布基本是对称的。但是对activations的结果就不一样了，所以又衍生出了几种量化方式。还记得上文说过，为了在模型真正部署之前得到对input, activations的量化参数，我们会在一个cablibration dataset进行训练。在这个过程中，我们可以通过取平均或者*指数移动平均(exponential moving averages)*的方式获取r_{max}, r_{min}，从而减少outlier的影响。
+<p>minmax量化（$s = \frac{r_{max}-r_{min}}{q_{max} - q_{min}}$）有一个问题，也就是它容易受outlier的点的影响，这对模型参数的量化其实影响还好，因为参数的分布基本是对称的。但是对activations的结果就不一样了，所以又衍生出了几种量化方式。还记得上文说过，为了在模型真正部署之前得到对input, activations的量化参数，我们会在一个cablibration dataset进行训练。在这个过程中，我们可以通过取平均或者*指数移动平均(exponential moving averages)*的方式获取 $r_{max}, r_{min}$ ，从而减少outlier的影响。
 $$
 \hat{r}^{(t)}<em>{max, min} = \alpha \cdot r^{(t)}</em>{max, min} + (1 - \alpha) \cdot \hat{r}^{(t-1)}_{max, min}
 $$</p>
