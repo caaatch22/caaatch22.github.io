@@ -15,18 +15,20 @@
       <guid>https://caaatch22.github.io/posts/cuda/</guid>
       <description>本系列笔记主要参考了 &amp;ldquo;Programming massively parallel processors&amp;quot;这本书，以及网上相关资料，面经；不会特别详细，当作个人整理的面经
 TODO: reduce, gemm, transpose, softmax, layernorm
-CUDA软件线程组织形式 CUDA从软件层面上提供了三层结构包括grid, block和thread。每个kernal内启动的所有线程在一个grid内。启动kernel时指定&amp;laquo;&amp;lt;dimGrid, dimBlock&amp;raquo;&amp;gt;，都是三维的结构。
-gridDim的最大值范围： (x,y,z): (2^31 - 1, 65535, 65535) blockDim的最大值范围：(x,y,z): (1024, 1024, 64) 但是同时满足，一个block内的threads数量不能超过1024(从kepler开始)。即：$ blockDim.x * blockDim.y * blockDim.z &amp;lt;= 1024 $ CUDA内存架构 变量声明 所在内存 作用域 生命周期 kernel内除了array的变量 register thread grid kernel内的array 变量 local thread grid __shared__ 修饰的kernel内的变量 shared block grid __device__ 修饰的全局变量 global grid application __device__ __constant__ 修饰的全局变量 constant grid application 其中 寄存器是GPU上运行速度最快的内存空间，延迟为1个时钟周期。 接下来是共享内存，共享内存是GPU上可受用户控制的一级缓存 。共享内存类似于CPU的缓存，不过与CPU的缓存不同，GPU的共享内存可以有CUDA内核直接编程控制。延迟为1～32个时钟周期。 local memory实际上就在global memory上，只是通过编译器处理成私有的、每个线程独立的一块内存区域。一般一个kernal内的数组会被处理成local memory。延迟和global memory类似。</description>
+CUDA软件架构 CUDA从软件层面上提供了三层结构包括grid, block和thread。每个kernal内启动的所有线程在一个grid内。启动kernel时指定&amp;laquo;&amp;lt;dimGrid, dimBlock&amp;raquo;&amp;gt;，都是一个dim3结构。
+gridDim的最大值范围： (x,y,z): (2^31 - 1, 65535, 65535) blockDim的最大值范围：(x,y,z): (1024, 1024, 64) 且还要同时满足：一个block内的threads数量不能超过1024(从kepler开始)。即：$ blockDim.x * blockDim.y * blockDim.z &amp;lt;= 1024 $ CUDA内存架构 变量声明 所在内存 作用域 生命周期 kernel内除了array的变量 register thread grid kernel内的array 变量 local thread grid __shared__ 修饰的kernel内的变量 shared block grid __device__ 修饰的全局变量 global grid application __device__ __constant__ 修饰的全局变量 constant grid application 其中 寄存器是GPU上运行速度最快的内存空间，延迟为1个时钟周期。 接下来是共享内存，共享内存是GPU上可受用户控制的一级缓存 。共享内存类似于CPU的缓存，不过与CPU的缓存不同，GPU的共享内存可以有CUDA内核直接编程控制。延迟为1～32个时钟周期。 local memory实际上就在global memory上，只是通过编译器处理成私有的、每个线程独立的一块内存区域。一般一个kernal内的数组会被处理成local memory。延迟和global memory类似。 还有texture memeory，但是和科学计算相关不大。 CUDA硬件结构 一个GPU可以看作是SM(streaming multiprocessor)的集合，每个SM包含多个SP(streaming processor，或者现在一般叫CUDA cores)。 例如，在一个A100中，一共有108个SMs，每个SM有64个CUDA cores。 从软件调度上，一个grid对应整个GPU(多个SM)，block对应SM，warp/thread级别对应一个CUDA core。 一个block内的threads一定被分配到同一个SM中，但有可能多个block都被分配到同一个SM中。(且可能同时分给一个SM超出硬件cores的线程，A100为例子 2048 threads == 32warps，只是真正同时运行某些warp，其余的可以用作hidding latency等) 每个SM上都有一个control，一个shared_memory。软件上可以通过__syncthreads()同步一个block内的所有线程。</description>
       <content:encoded><![CDATA[<blockquote>
 <p>本系列笔记主要参考了 &ldquo;Programming massively parallel processors&quot;这本书，以及网上相关资料，面经；不会特别详细，当作个人整理的面经</p>
 </blockquote>
 <p>TODO: reduce, gemm, transpose, softmax, layernorm</p>
-<h2 id="cuda软件线程组织形式">CUDA软件线程组织形式</h2>
-<p>CUDA从软件层面上提供了三层结构包括grid, block和thread。每个kernal内启动的所有线程在一个grid内。启动kernel时指定&laquo;&lt;dimGrid, dimBlock&raquo;&gt;，都是三维的结构。</p>
-<p>gridDim的最大值范围： (x,y,z): (2^31 - 1, 65535, 65535)
-blockDim的最大值范围：(x,y,z): (1024, 1024, 64)
-但是同时满足，一个block内的threads数量不能超过1024(从kepler开始)。即：$ blockDim.x * blockDim.y * blockDim.z &lt;= 1024 $
-<img loading="lazy" src="/img/CUDA/CUDA-software-arch.png" alt="CUDA software architecture"  />
+<h2 id="cuda软件架构">CUDA软件架构</h2>
+<p>CUDA从软件层面上提供了三层结构包括grid, block和thread。每个kernal内启动的所有线程在一个grid内。启动kernel时指定&laquo;&lt;dimGrid, dimBlock&raquo;&gt;，都是一个dim3结构。</p>
+<ul>
+<li>gridDim的最大值范围： (x,y,z): (2^31 - 1, 65535, 65535)</li>
+<li>blockDim的最大值范围：(x,y,z): (1024, 1024, 64)</li>
+<li>且还要同时满足：一个block内的threads数量不能超过1024(从kepler开始)。即：$ blockDim.x * blockDim.y * blockDim.z &lt;= 1024 $</li>
+</ul>
+<p><img loading="lazy" src="/img/CUDA/CUDA-software-arch.png" alt="CUDA software architecture"  />
 </p>
 <h2 id="cuda内存架构">CUDA内存架构</h2>
 <table>
@@ -71,22 +73,24 @@ blockDim的最大值范围：(x,y,z): (1024, 1024, 64)
 </tr>
 </tbody>
 </table>
-<p>其中 <strong>寄存器是GPU上运行速度最快的内存空间</strong>，延迟为1个时钟周期。
-接下来是共享内存，<strong>共享内存是GPU上可受用户控制的一级缓存</strong> 。共享内存类似于CPU的缓存，不过与CPU的缓存不同，GPU的共享内存可以有CUDA内核直接编程控制。延迟为1～32个时钟周期。
-local memory实际上就在global memory上，只是通过编译器处理成私有的、每个线程独立的一块内存区域。一般一个kernal内的数组会被处理成local memory。延迟和global memory类似。</p>
-<p>还有texture memeory，但是和科学计算相关不大。</p>
+<ul>
+<li>其中 <strong>寄存器是GPU上运行速度最快的内存空间</strong>，延迟为1个时钟周期。</li>
+<li>接下来是共享内存，<strong>共享内存是GPU上可受用户控制的一级缓存</strong> 。共享内存类似于CPU的缓存，不过与CPU的缓存不同，GPU的共享内存可以有CUDA内核直接编程控制。延迟为1～32个时钟周期。</li>
+<li>local memory实际上就在global memory上，只是通过编译器处理成私有的、每个线程独立的一块内存区域。一般一个kernal内的数组会被处理成local memory。延迟和global memory类似。</li>
+<li>还有texture memeory，但是和科学计算相关不大。</li>
+</ul>
 <h2 id="cuda硬件结构">CUDA硬件结构</h2>
-<p>一个GPU可以看作是SM(streaming multiprocessor)的集合，每个SM包含多个SP(streaming processor，或者现在一般叫cuda cores)。
+<p>一个GPU可以看作是SM(streaming multiprocessor)的集合，每个SM包含多个SP(streaming processor，或者现在一般叫CUDA cores)。
 <img loading="lazy" src="/img/CUDA/CUDA-GPU.png" alt="CUDA GPU"  />
-
-例如，在一个A100中，一共有108个SMs，每个SM有64个cuda cores，每个cuda core有一个FP32的ALU和一个INT32的ALU。</p>
-<p><img loading="lazy" src="/img/CUDA/A100-SM.png" alt="A100 SMs"  />
+</p>
+<p>例如，在一个A100中，一共有108个SMs，每个SM有64个CUDA cores。
+<img loading="lazy" src="/img/CUDA/A100-SM.png" alt="A100 SMs"  />
 </p>
 <p>从软件调度上，一个grid对应整个GPU(多个SM)，block对应SM，warp/thread级别对应一个CUDA core。
 <strong>一个block内的threads一定被分配到同一个SM中，但有可能多个block都被分配到同一个SM中。(且可能同时分给一个SM超出硬件cores的线程，A100为例子 2048 threads == 32warps，只是真正同时运行某些warp，其余的可以用作hidding latency等)</strong>
 每个SM上都有一个control，一个shared_memory。软件上可以通过<code>__syncthreads()</code>同步一个block内的所有线程。</p>
 <h3 id="simtsingle-instruction-multiple-threads">SIMT(single instruction, multiple threads)</h3>
-<p>CUDA以**warp(线程束)**的形式组织线程，一般每32个线程组成一个warp，warp内的线程是SIMT(single instruction, multiple threads)的，<em>Instructions are issued at the warp level.即一个warp内线程的指令的PC总是相同的</em> （但实际上，Volta架构前，warp内的所有线程共享PC和stack；Volta架构后，warp内的不同线程有独立的PS,stack用于做<a href="https://developer.nvidia.com/blog/inside-volta/">Converge Optimizer</a>）
+<p>CUDA以 <strong>warp(线程束)</strong> 的形式组织线程，一般每32个线程组成一个warp，warp内的线程是SIMT(single instruction, multiple threads)的，<em>Instructions are issued at the warp level.即一个warp内线程的指令的PC总是相同的</em> （但实际上，Volta架构前，warp内的所有线程共享PC和stack；Volta架构后，warp内的不同线程有独立的PS,stack用于做<a href="https://developer.nvidia.com/blog/inside-volta/">Converge Optimizer</a>）
 <img loading="lazy" src="/img/CUDA/warp_pascal_volta.png" alt=""  />
 </p>
 <blockquote>
