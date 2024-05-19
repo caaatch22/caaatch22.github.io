@@ -578,9 +578,6 @@ local memory实际上就在global memory上，只是通过编译器处理成私�
 gridDim.x, grid</p>
 <h3 id="heading"></h3>
 <p>A100 support a maximum of 32 blocks per SM, 64 warps(2048 threads) per SM, and 1024 threads per block.也就是可能一个SM内最多有两个blocks（block内有1024个线程的情况下）</p>
-<p>不足32个的会补足32个</p>
-<p>control divergence
-<a href="https://developer.nvidia.com/blog/inside-volta/">https://developer.nvidia.com/blog/inside-volta/</a></p>
 <p>resource occupancy
 <a href="https://xmartlabs.github.io/cuda-calculator/">https://xmartlabs.github.io/cuda-calculator/</a></p>
 <p>computational intensity(FLOP/B)
