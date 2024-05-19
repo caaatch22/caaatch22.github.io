@@ -6,25 +6,7 @@
     <description>Recent content in Posts on Mingjie&#39;s Home</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>zh-cn</language>
-    <lastBuildDate>Mon, 29 Apr 2024 09:38:10 +0000</lastBuildDate><atom:link href="https://caaatch22.github.io/posts/index.xml" rel="self" type="application/rss+xml" />
-    <item>
-      <title>LLM</title>
-      <link>https://caaatch22.github.io/posts/llm/</link>
-      <pubDate>Mon, 29 Apr 2024 09:38:10 +0000</pubDate>
-      
-      <guid>https://caaatch22.github.io/posts/llm/</guid>
-      <description>llama s
-RoPE(Rotary Positional Encoding) RMS-norm KV-cache, Grouped Multi-Query Attention SwiGLU </description>
-      <content:encoded><![CDATA[<p>llama
-<img loading="lazy" src="/img/llm/transformer-vs-llama.png" alt="llama"  />
-s</p>
-<h3 id="roperotary-positional-encoding">RoPE(Rotary Positional Encoding)</h3>
-<h3 id="rms-norm">RMS-norm</h3>
-<h3 id="kv-cache-grouped-multi-query-attention">KV-cache, Grouped Multi-Query Attention</h3>
-<h3 id="swiglu">SwiGLU</h3>
-]]></content:encoded>
-    </item>
-    
+    <lastBuildDate>Tue, 27 Feb 2024 22:19:21 +0000</lastBuildDate><atom:link href="https://caaatch22.github.io/posts/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>TinyMl —— 模型量化(quantization)</title>
       <link>https://caaatch22.github.io/posts/tinyml-quantization/</link>
@@ -571,7 +553,12 @@ local memory实际上就在global memory上，只是通过编译器处理成私�
 <h2 id="cuda硬件结构">CUDA硬件结构</h2>
 <p>一个GPU可以看作是SM(streaming multiprocessor)的集合，每个SM包含多个SP(streaming processor，或者现在一般叫cuda cores)。
 <img loading="lazy" src="/img/CUDA/CUDA-GPU.png" alt="CUDA GPU"  />
-</p>
+
+例如，在一个A100中，一共有108个SMs，每个SM有64个cuda cores，每个cuda core有一个FP32的ALU和一个INT32的ALU。</p>
+<p>从软件调度上，一个grid对应整个GPU(多个SM)，block对应SM，warp/thread级别对应一个CUDA core。
+<strong>一个block内的threads一定被分配到同一个SM中，但有可能多个block都被分配到同一个SM中。(但是可能同时分给一个SM超出硬件cores的线程，A100为例子 2048 threads == 32warps，只是真正同时运行某些warp，其余的可以用作hidding latency等)</strong></p>
+<h3 id="simtsingle-instruction-multiple-threads">SIMT(single instruction, multiple threads)</h3>
+<p>所谓SIMT架构，指的是<em>Instructions are issued at the warp level (32 consecutive threads at a time).即一个warp内的指令的PC总是相同的</em>（实际上，从volta架构后，）</p>
 <h3 id="function-declarations">function declarations</h3>
 <ul>
 <li><strong>global</strong>: CPU/GPU都可以call, 运行在GPU上</li>
@@ -587,11 +574,8 @@ local memory实际上就在global memory上，只是通过编译器处理成私�
 gridDim.x, grid</p>
 <h3 id="heading"></h3>
 <p>SM(streaming multiprocessors)
-A100有108个SM，each with 64 cores
-一个block内的threads一定被分配到同一个SM中
-有可能多个block都被分配到同一个SM中
-(但是可能同时分给一个SM超出cores的线程，A100为例子 2048 threads == 32warps，只是真正同时运行某些warp，其余的可以用作hidding latency)
-A100 support a maximum of 32 blocks per SM, 64 warps(2048 threads) per SM, and 1024 threads per block.也就是可能一个SM内最多有两个blocks（block内有1024个线程的情况下）</p>
+A100有108个SM，each with 64 cores</p>
+<p>A100 support a maximum of 32 blocks per SM, 64 warps(2048 threads) per SM, and 1024 threads per block.也就是可能一个SM内最多有两个blocks（block内有1024个线程的情况下）</p>
 <p>每个SM上都有一个control，一个shared_memory
 __syncthreads() sync一个block内的所有线程</p>
 <p>每个block内的线程在SM内是以warp的形式调度的，每个warp一般是32个线程
