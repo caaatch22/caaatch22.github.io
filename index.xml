@@ -488,14 +488,13 @@ $本质上是一个线性回归。</li>
       
       <guid>https://caaatch22.github.io/posts/cuda/</guid>
       <description>本系列笔记主要参考了 &amp;ldquo;Programming massively parallel processors&amp;quot;这本书，以及网上相关资料，面经；不会特别详细，当作个人整理的面经
-reduce, gemm, transpose, softmax, layernorm
-CUDA(Compute Unified Device Architecture)编程模型 CUDA软件线程组织形式 CUDA从软件层面上提供了三层结构包括grid, block和thread。每个kernal内启动的所有线程在一个grid内。启动kernel时指定&amp;laquo;&amp;lt;dimGrid, dimBlock&amp;raquo;&amp;gt;，都是三维的结构。
+TODO: reduce, gemm, transpose, softmax, layernorm
+CUDA软件线程组织形式 CUDA从软件层面上提供了三层结构包括grid, block和thread。每个kernal内启动的所有线程在一个grid内。启动kernel时指定&amp;laquo;&amp;lt;dimGrid, dimBlock&amp;raquo;&amp;gt;，都是三维的结构。
 gridDim的最大值范围： (x,y,z): (2^31 - 1, 65535, 65535) blockDim的最大值范围：(x,y,z): (1024, 1024, 64) 但是同时满足，一个block内的threads数量不能超过1024(从kepler开始)。即：$ blockDim.x * blockDim.y * blockDim.z &amp;lt;= 1024 $ CUDA内存架构 变量声明 所在内存 作用域 生命周期 kernel内除了array的变量 register thread grid kernel内的array 变量 local thread grid __shared__ 修饰的kernel内的变量 shared block grid __device__ 修饰的全局变量 global grid application __device__ __constant__ 修饰的全局变量 constant grid application 其中 寄存器是GPU上运行速度最快的内存空间，延迟为1个时钟周期。 接下来是共享内存，共享内存是GPU上可受用户控制的一级缓存 。共享内存类似于CPU的缓存，不过与CPU的缓存不同，GPU的共享内存可以有CUDA内核直接编程控制。延迟为1～32个时钟周期。 local memory实际上就在global memory上，只是通过编译器处理成私有的、每个线程独立的一块内存区域。一般一个kernal内的数组会被处理成local memory。延迟和global memory类似。</description>
       <content:encoded><![CDATA[<blockquote>
 <p>本系列笔记主要参考了 &ldquo;Programming massively parallel processors&quot;这本书，以及网上相关资料，面经；不会特别详细，当作个人整理的面经</p>
 </blockquote>
-<p>reduce, gemm, transpose, softmax, layernorm</p>
-<h1 id="cudacompute-unified-device-architecture编程模型">CUDA(Compute Unified Device Architecture)编程模型</h1>
+<p>TODO: reduce, gemm, transpose, softmax, layernorm</p>
 <h2 id="cuda软件线程组织形式">CUDA软件线程组织形式</h2>
 <p>CUDA从软件层面上提供了三层结构包括grid, block和thread。每个kernal内启动的所有线程在一个grid内。启动kernel时指定&laquo;&lt;dimGrid, dimBlock&raquo;&gt;，都是三维的结构。</p>
 <p>gridDim的最大值范围： (x,y,z): (2^31 - 1, 65535, 65535)
@@ -555,10 +554,18 @@ local memory实际上就在global memory上，只是通过编译器处理成私�
 <img loading="lazy" src="/img/CUDA/CUDA-GPU.png" alt="CUDA GPU"  />
 
 例如，在一个A100中，一共有108个SMs，每个SM有64个cuda cores，每个cuda core有一个FP32的ALU和一个INT32的ALU。</p>
+<p><img loading="lazy" src="/img/CUDA/A100-SM.png" alt="A100 SMs"  />
+</p>
 <p>从软件调度上，一个grid对应整个GPU(多个SM)，block对应SM，warp/thread级别对应一个CUDA core。
-<strong>一个block内的threads一定被分配到同一个SM中，但有可能多个block都被分配到同一个SM中。(但是可能同时分给一个SM超出硬件cores的线程，A100为例子 2048 threads == 32warps，只是真正同时运行某些warp，其余的可以用作hidding latency等)</strong></p>
+<strong>一个block内的threads一定被分配到同一个SM中，但有可能多个block都被分配到同一个SM中。(且可能同时分给一个SM超出硬件cores的线程，A100为例子 2048 threads == 32warps，只是真正同时运行某些warp，其余的可以用作hidding latency等)</strong>
+每个SM上都有一个control，一个shared_memory。软件上可以通过<code>__syncthreads()</code>同步一个block内的所有线程。</p>
 <h3 id="simtsingle-instruction-multiple-threads">SIMT(single instruction, multiple threads)</h3>
-<p>所谓SIMT架构，指的是<em>Instructions are issued at the warp level (32 consecutive threads at a time).即一个warp内的指令的PC总是相同的</em>（实际上，从volta架构后，）</p>
+<p>CUDA以**warp(线程束)**的形式组织线程，一般每32个线程组成一个warp，warp内的线程是SIMT(single instruction, multiple threads)的，<em>Instructions are issued at the warp level.即一个warp内线程的指令的PC总是相同的</em> （但实际上，Volta架构前，warp内的所有线程共享PC和stack；Volta架构后，warp内的不同线程有独立的PS,stack用于做<a href="https://developer.nvidia.com/blog/inside-volta/">Converge Optimizer</a>）
+<img loading="lazy" src="/img/CUDA/warp_pascal_volta.png" alt=""  />
+</p>
+<blockquote>
+<p>如果我们创建的block线程数不是32的倍数会怎么样？会自动补到32的倍数。</p>
+</blockquote>
 <h3 id="function-declarations">function declarations</h3>
 <ul>
 <li><strong>global</strong>: CPU/GPU都可以call, 运行在GPU上</li>
@@ -566,22 +573,11 @@ local memory实际上就在global memory上，只是通过编译器处理成私�
 <li><strong>host</strong>: 运行在CPU上，可以被其他CPU call（可省略）</li>
 </ul>
 <p>可以同时<code>__host__ __device__</code>修饰一个函数表示在CPU or GPU上运行</p>
-<h3 id="kernel-call-and-grid-launch">kernel call and grid launch</h3>
-<p>it&rsquo;s recommand that the number of threads in each dimension of a thread block be a multiple of 32
-一个block内的总的thread不能超过1024</p>
 <h3 id="builtins">builtins:</h3>
 <p>int i = blockDim.x * blockDim.Idx + threadIdx.x;
 gridDim.x, grid</p>
 <h3 id="heading"></h3>
-<p>SM(streaming multiprocessors)
-A100有108个SM，each with 64 cores</p>
 <p>A100 support a maximum of 32 blocks per SM, 64 warps(2048 threads) per SM, and 1024 threads per block.也就是可能一个SM内最多有两个blocks（block内有1024个线程的情况下）</p>
-<p>每个SM上都有一个control，一个shared_memory
-__syncthreads() sync一个block内的所有线程</p>
-<p>每个block内的线程在SM内是以warp的形式调度的，每个warp一般是32个线程
-他们的threadIdx是连续的，共享stack and PC（但是Volta以及之后的架构中，每个线程都有独立的PC）
-<img loading="lazy" src="/img/CUDA/warp_pascal_volta.png" alt=""  />
-</p>
 <p>不足32个的会补足32个</p>
 <p>control divergence
 <a href="https://developer.nvidia.com/blog/inside-volta/">https://developer.nvidia.com/blog/inside-volta/</a></p>

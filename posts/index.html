@@ -205,8 +205,8 @@ Model #Parameters Linear Layer(FC) $feature_{in} * feature_{out}$ Conv Layer $c_
   </header>
   <div class="entry-content">
     <p>本系列笔记主要参考了 “Programming massively parallel processors&#34;这本书，以及网上相关资料，面经；不会特别详细，当作个人整理的面经
-reduce, gemm, transpose, softmax, layernorm
-CUDA(Compute Unified Device Architecture)编程模型 CUDA软件线程组织形式 CUDA从软件层面上提供了三层结构包括grid, block和thread。每个kernal内启动的所有线程在一个grid内。启动kernel时指定«&lt;dimGrid, dimBlock»&gt;，都是三维的结构。
+TODO: reduce, gemm, transpose, softmax, layernorm
+CUDA软件线程组织形式 CUDA从软件层面上提供了三层结构包括grid, block和thread。每个kernal内启动的所有线程在一个grid内。启动kernel时指定«&lt;dimGrid, dimBlock»&gt;，都是三维的结构。
 gridDim的最大值范围： (x,y,z): (2^31 - 1, 65535, 65535) blockDim的最大值范围：(x,y,z): (1024, 1024, 64) 但是同时满足，一个block内的threads数量不能超过1024(从kepler开始)。即：$ blockDim.x * blockDim.y * blockDim.z &lt;= 1024 $ CUDA内存架构 变量声明 所在内存 作用域 生命周期 kernel内除了array的变量 register thread grid kernel内的array 变量 local thread grid __shared__ 修饰的kernel内的变量 shared block grid __device__ 修饰的全局变量 global grid application __device__ __constant__ 修饰的全局变量 constant grid application 其中 寄存器是GPU上运行速度最快的内存空间，延迟为1个时钟周期。 接下来是共享内存，共享内存是GPU上可受用户控制的一级缓存 。共享内存类似于CPU的缓存，不过与CPU的缓存不同，GPU的共享内存可以有CUDA内核直接编程控制。延迟为1～32个时钟周期。 local memory实际上就在global memory上，只是通过编译器处理成私有的、每个线程独立的一块内存区域。一般一个kernal内的数组会被处理成local memory。延迟和global memory类似。...</p>
   </div>
   <footer class="entry-footer"><span title='2024-01-26 22:35:22 +0000 UTC'>January 26, 2024</span>&nbsp;·&nbsp;2 min</footer>
