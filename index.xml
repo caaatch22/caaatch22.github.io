@@ -753,8 +753,8 @@ $本质上是一个线性回归。</li>
 </ul>
 </li>
 </ol>
-<!-- raw HTML omitted -->
-<!-- raw HTML omitted -->
+<!-- resource occupancy
+https://xmartlabs.github.io/cuda-calculator/ -->
 <h2 id="一些并行算法">一些并行算法</h2>
 <p>TODO: reduce, gemm, transpose, softmax, layernor</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span><span style="color:#75715e">#define TILE_WIDTH 16
@@ -1088,8 +1088,11 @@ $target\ addr = cur\ PC + SignExd(offset)$</li>
       <pubDate>Fri, 01 Sep 2023 15:51:19 +0000</pubDate>
       
       <guid>https://caaatch22.github.io/posts/c-%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B--%E7%8E%B0%E4%BB%A3architecture%E7%9A%84%E5%A6%A5%E5%8D%8F/</guid>
-      <description>&lt;!-- raw HTML omitted --&gt;
-&lt;!-- raw HTML omitted --&gt;
+      <description>&lt;!-- cover:
+  image: img/memory-model/title-graph.png
+  alt: &#34;一本介绍缓存一致性的书&#34;
+  caption: &#34;~~图文无关~~&#34;
+  hidden: true --&gt;
 &lt;h2 id=&#34;介绍&#34;&gt;介绍&lt;/h2&gt;
 &lt;p&gt;什么是内存模型(Memory Model)呢？这里介绍的内存模型并非&lt;a href=&#34;https://citeseerx.ist.psu.edu/document?repid=rep1&amp;amp;type=pdf&amp;amp;doi=160489e8b12cd9a44cbff0cd85fb6aa05437d1ac&#34;&gt;C++对象的内存排布模型&lt;/a&gt;，而是一个非编程语言层面的概念。我们知道在C++11中，标准引入了 &lt;code&gt;std::atomic&amp;lt;&amp;gt;&lt;/code&gt;原子对象，同时还引入了&lt;/p&gt;
 &lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-cpp&#34; data-lang=&#34;cpp&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;memory_order_relaxed
@@ -1115,8 +1118,11 @@ $target\ addr = cur\ PC + SignExd(offset)$</li>
 &lt;blockquote&gt;
 &lt;p&gt;bonus question: 不同等级的cache latency？&lt;/p&gt;
 &lt;p&gt;answer: l1: 1ns, l2: 5ns, l3: 50~100ns, main memory: 200ns&lt;/p&gt;</description>
-      <content:encoded><![CDATA[<!-- raw HTML omitted -->
-<!-- raw HTML omitted -->
+      <content:encoded><![CDATA[<!-- cover:
+  image: img/memory-model/title-graph.png
+  alt: "一本介绍缓存一致性的书"
+  caption: "~~图文无关~~"
+  hidden: true -->
 <h2 id="介绍">介绍</h2>
 <p>什么是内存模型(Memory Model)呢？这里介绍的内存模型并非<a href="https://citeseerx.ist.psu.edu/document?repid=rep1&amp;type=pdf&amp;doi=160489e8b12cd9a44cbff0cd85fb6aa05437d1ac">C++对象的内存排布模型</a>，而是一个非编程语言层面的概念。我们知道在C++11中，标准引入了 <code>std::atomic&lt;&gt;</code>原子对象，同时还引入了</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>memory_order_relaxed
@@ -1260,7 +1266,7 @@ POWER架构还提供了一个额外的“轻量级同步”指令，称为 <code
       </tr>
   </tbody>
 </table>
-<!-- raw HTML omitted -->
+<!-- ![acuire barrier](/img/memory-model/acquire-barrier.png) -->
 <p>在默认情况下，<code>std::atomic&lt;&gt;</code>相关函数总是选用 <code>std::memory_order_seq_cst</code>，它能有效地帮我们避免错误。但是，我们既然都使用 <code>atomic</code>而不是 <code>mutex</code>了，自然是对性能有较高要求。
 <img loading="lazy" src="/img/memory-model/memory-barriers-performance.png" alt="memory barriers and performance"  />
  从上图中可以看出，<code>memory_order_relaxed</code>的写性能和 <code>non-atomic</code>几乎没有差别，而 <code>seq_cst</code>则要慢许多。</p>
@@ -1310,8 +1316,8 @@ POWER架构还提供了一个额外的“轻量级同步”指令，称为 <code
 </span></span><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">A</span> {<span style="color:#66d9ef">long</span> x;}
 </span></span><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">B</span> {<span style="color:#66d9ef">long</span> x; <span style="color:#66d9ef">long</span> y;}
 </span></span><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">C</span> {<span style="color:#66d9ef">long</span> x; <span style="color:#66d9ef">long</span> y; <span style="color:#66d9ef">long</span> z;}
-</span></span></code></pre></div><p>那么atomic<!-- raw HTML omitted -->， T取x, A, B, C的时候哪些是lock-free，哪些不是呢？</p>
-<p>我们可以用std::atomic<!-- raw HTML omitted -->::is_lock_free()找出答案。上述选项中，T = x, A的时候一定是lock_free的，T = C的时候一定不是lock_free的。</p>
+</span></span></code></pre></div><p>那么atomic<T>， T取x, A, B, C的时候哪些是lock-free，哪些不是呢？</p>
+<p>我们可以用std::atomic<T>::is_lock_free()找出答案。上述选项中，T = x, A的时候一定是lock_free的，T = C的时候一定不是lock_free的。</p>
 <blockquote>
 <p>C++17提供std::is_always_lock_free可以在编译器进行判断，如果为false不代表一定是 no lock_free的</p>
 </blockquote>
@@ -2696,7 +2702,7 @@ $\sigma$ = | $\Sigma = {1, 2, \cdots, \sigma}$| （用于序列上时是值域�
 <h2 id="buffer-pool-manager-1">Buffer Pool Manager</h2>
 <p>在后两个实验开始之前，我建议先将Task #2和Task #3的<a href="https://15445.courses.cs.cmu.edu/fall2022/project1/">实验材料</a>完整的看完在开始写代码。因为 <code>replacer</code> 和 <code>buffer pool manager</code> 有较大程度的耦合。很多API设计需要对照两个组件才能知道自己应该维护的数据与功能的边界。为了更符合直觉，我会先阐述 <code>buffer pool manager</code> 的设计，同时会穿插着 <code>LRU-k</code> 的API什么时候，在哪用。</p>
 <p><strong>Buffer Pool Manager</strong> 维护的数据的基本单位为一段逻辑连续的字节数组，在磁盘上表现为<strong>页（page）</strong>，页内部结构有自己的一些结构（包括header, content等），在这个实验中我们只关心 <code>page_id_</code> (页的唯一标识)， <code>pin_conut_</code> 以及 <code>is_dirty_</code> 。对应在内存上，我们用 <strong>frame</strong> 这个词代表 <strong>框</strong>，就是装着某个物理页的框。在代码中其实就是buffer pool管理着一大片内存 <code>Page pages[pool_size_]</code>，但是 buffer pool 初始化时（资源获取时）我们得到的 pages 并不包含我们想要的页，它里面的数据是没有意义的，从而它是一个<em>空的框</em>。frame_id指的就是这个数组的下标。里面装的页有自己的<code>page_id</code>。另外，我们用一个哈希表<code>page_table_</code>保存从 页号(page id) 到 框号(frame_id) 的映射。</p>
-<!-- raw HTML omitted -->
+<img src="/img/busTub/buffer_pool_manager/pages.png" width="75%" height="75%">
 <p>管理帧的内存池大小一般来说是远小于磁盘的，因此在内存池满了后，再从磁盘加载新的页到内存池，需要某种替换策略（replacer）将一些不再使用的页踢出内存池以腾出空间。</p>
 <p>buffer pool manager 的<strong>实现核心</strong>在于对所有 page 的状态的管理。每个page有四种状态：</p>
 <ol>
@@ -2712,7 +2718,7 @@ $\sigma$ = | $\Sigma = {1, 2, \cdots, \sigma}$| （用于序列上时是值域�
 </span></span><span style="display:flex;"><span><span style="color:#66d9ef">auto</span> BufferPoolManagerInstance<span style="color:#f92672">::</span>UnpinPgImp(page_id_t page_id, <span style="color:#66d9ef">bool</span> is_dirty) <span style="color:#f92672">-&gt;</span> <span style="color:#66d9ef">bool</span>
 </span></span><span style="display:flex;"><span><span style="color:#66d9ef">auto</span> BufferPoolManagerInstance<span style="color:#f92672">::</span>DeletePgImp(page_id_t page_id) <span style="color:#f92672">-&gt;</span> <span style="color:#66d9ef">bool</span>
 </span></span></code></pre></div><p>便是驱动状态机中上述状态发生改变的动作（action），（注意： <em>AllocatePage 和 DeallocatePage</em>不对外部公开） 状态机如下：</p>
-<!-- raw HTML omitted -->
+<img src="/img/busTub/buffer_pool_manager/state-machine-of-page.png" width="50%" height="50%">
 <p>每个函数声明处的注释已经非常详细的描述了函数行为了。以下列出一些我在做的时候容易困惑的点：</p>
 <ul>
 <li><code>page_table_</code>维护的只是在内存中的page的<code>page_id</code>到<code>frame_id</code>的映射。也就是说它不保存 <em>Allocated but not in MEM</em> 的 page（因为在磁盘上的page也没有一个到 <code>frame_id</code> 的映射）</li>
@@ -2942,14 +2948,16 @@ if you&rsquo;re <em>behind a NAT</em>, you can open connections out to the inter
 </ul>
 <h2 id="the-4-layer-internet-model">The 4 layer Internet Model</h2>
 <h3 id="network-layer-and-link-layer">Network layer and link layer</h3>
-<!-- raw HTML omitted -->
+<img src = "/img/cs144/4LayerModel.png" align="left" width="300px" height="430"/>
+<span style="float:left">
+</span> The Internet is made up of `event hosts`, `links` and `routers`. 
 <p>data is delivered in <strong>packets</strong>
 a packet is a self-contained unit consisting of the data we want to be delivered.</p>
 <p>link layer&rsquo;s job is  to carry the data over one link  at a time.
 <code>ethernet</code> and <code>wifi</code> &ndash;&gt; two examples of different links layers</p>
 <p>Network layer&rsquo;s job is to deliver packets end to end across the internet.
 <strong>a packet is a collection data with header</strong>.
-<!-- raw HTML omitted --></p>
+<img src = "/img/cs144/packet.png" align="right" width="380" height ="100px"/></p>
 <p>network layer packet are called <code>datagram</code>.</p>
 <p><img loading="lazy" src="/img/cs144%5cNetwork_link.png" alt=""  />
 </p>
@@ -2973,7 +2981,8 @@ a packet is a self-contained unit consisting of the data we want to be delivered
 <p>they have their own protocol to define the syntax and semantics of data flowing between two end points
 (e.g. http, bit-torrent)</p>
 <h3 id="others">others</h3>
-<!-- raw HTML omitted -->
+<img src = "/img/cs144/IP_is_thin.png" width="700px" height="350"/>
+<img src = "/img/cs144/OSI-model.png" width="700px" height="350"/>
 <h2 id="ip-service-model">IP Service model</h2>
 <table>
   <thead>
@@ -3023,7 +3032,7 @@ bc most links have a limit on the size of packets.(ethernet &ndash; 1500bytes)</
 </li>
 <li>allows for new options to be added to header</li>
 </ol>
-<!-- raw HTML omitted -->
+<img src = "/img/cs144/IPv4-datagram.png"  width="500px" />
 <h2 id="life-of-a-packet">Life of a Packet</h2>
 <h3 id="three-way-handshake">three-way handshake</h3>
 <ol>

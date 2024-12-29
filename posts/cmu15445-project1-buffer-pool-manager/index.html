@@ -392,7 +392,7 @@ Buffer Pool Manager
 <h2 id="buffer-pool-manager-1">Buffer Pool Manager<a hidden class="anchor" aria-hidden="true" href="#buffer-pool-manager-1">#</a></h2>
 <p>在后两个实验开始之前，我建议先将Task #2和Task #3的<a href="https://15445.courses.cs.cmu.edu/fall2022/project1/">实验材料</a>完整的看完在开始写代码。因为 <code>replacer</code> 和 <code>buffer pool manager</code> 有较大程度的耦合。很多API设计需要对照两个组件才能知道自己应该维护的数据与功能的边界。为了更符合直觉，我会先阐述 <code>buffer pool manager</code> 的设计，同时会穿插着 <code>LRU-k</code> 的API什么时候，在哪用。</p>
 <p><strong>Buffer Pool Manager</strong> 维护的数据的基本单位为一段逻辑连续的字节数组，在磁盘上表现为<strong>页（page）</strong>，页内部结构有自己的一些结构（包括header, content等），在这个实验中我们只关心 <code>page_id_</code> (页的唯一标识)， <code>pin_conut_</code> 以及 <code>is_dirty_</code> 。对应在内存上，我们用 <strong>frame</strong> 这个词代表 <strong>框</strong>，就是装着某个物理页的框。在代码中其实就是buffer pool管理着一大片内存 <code>Page pages[pool_size_]</code>，但是 buffer pool 初始化时（资源获取时）我们得到的 pages 并不包含我们想要的页，它里面的数据是没有意义的，从而它是一个<em>空的框</em>。frame_id指的就是这个数组的下标。里面装的页有自己的<code>page_id</code>。另外，我们用一个哈希表<code>page_table_</code>保存从 页号(page id) 到 框号(frame_id) 的映射。</p>
-<!-- raw HTML omitted -->
+<img src="/img/busTub/buffer_pool_manager/pages.png" width="75%" height="75%">
 <p>管理帧的内存池大小一般来说是远小于磁盘的，因此在内存池满了后，再从磁盘加载新的页到内存池，需要某种替换策略（replacer）将一些不再使用的页踢出内存池以腾出空间。</p>
 <p>buffer pool manager 的<strong>实现核心</strong>在于对所有 page 的状态的管理。每个page有四种状态：</p>
 <ol>
@@ -408,7 +408,7 @@ Buffer Pool Manager
 </span></span><span style="display:flex;"><span><span style="color:#66d9ef">auto</span> BufferPoolManagerInstance<span style="color:#f92672">::</span>UnpinPgImp(page_id_t page_id, <span style="color:#66d9ef">bool</span> is_dirty) <span style="color:#f92672">-&gt;</span> <span style="color:#66d9ef">bool</span>
 </span></span><span style="display:flex;"><span><span style="color:#66d9ef">auto</span> BufferPoolManagerInstance<span style="color:#f92672">::</span>DeletePgImp(page_id_t page_id) <span style="color:#f92672">-&gt;</span> <span style="color:#66d9ef">bool</span>
 </span></span></code></pre></div><p>便是驱动状态机中上述状态发生改变的动作（action），（注意： <em>AllocatePage 和 DeallocatePage</em>不对外部公开） 状态机如下：</p>
-<!-- raw HTML omitted -->
+<img src="/img/busTub/buffer_pool_manager/state-machine-of-page.png" width="50%" height="50%">
 <p>每个函数声明处的注释已经非常详细的描述了函数行为了。以下列出一些我在做的时候容易困惑的点：</p>
 <ul>
 <li><code>page_table_</code>维护的只是在内存中的page的<code>page_id</code>到<code>frame_id</code>的映射。也就是说它不保存 <em>Allocated but not in MEM</em> 的 page（因为在磁盘上的page也没有一个到 <code>frame_id</code> 的映射）</li>

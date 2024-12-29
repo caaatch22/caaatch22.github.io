@@ -233,8 +233,11 @@ $target\ addr = cur\ PC + SignExd(offset)$</li>
       <pubDate>Fri, 01 Sep 2023 15:51:19 +0000</pubDate>
       
       <guid>https://caaatch22.github.io/posts/c-%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B--%E7%8E%B0%E4%BB%A3architecture%E7%9A%84%E5%A6%A5%E5%8D%8F/</guid>
-      <description>&lt;!-- raw HTML omitted --&gt;
-&lt;!-- raw HTML omitted --&gt;
+      <description>&lt;!-- cover:
+  image: img/memory-model/title-graph.png
+  alt: &#34;一本介绍缓存一致性的书&#34;
+  caption: &#34;~~图文无关~~&#34;
+  hidden: true --&gt;
 &lt;h2 id=&#34;介绍&#34;&gt;介绍&lt;/h2&gt;
 &lt;p&gt;什么是内存模型(Memory Model)呢？这里介绍的内存模型并非&lt;a href=&#34;https://citeseerx.ist.psu.edu/document?repid=rep1&amp;amp;type=pdf&amp;amp;doi=160489e8b12cd9a44cbff0cd85fb6aa05437d1ac&#34;&gt;C++对象的内存排布模型&lt;/a&gt;，而是一个非编程语言层面的概念。我们知道在C++11中，标准引入了 &lt;code&gt;std::atomic&amp;lt;&amp;gt;&lt;/code&gt;原子对象，同时还引入了&lt;/p&gt;
 &lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-cpp&#34; data-lang=&#34;cpp&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;memory_order_relaxed
@@ -260,8 +263,11 @@ $target\ addr = cur\ PC + SignExd(offset)$</li>
 &lt;blockquote&gt;
 &lt;p&gt;bonus question: 不同等级的cache latency？&lt;/p&gt;
 &lt;p&gt;answer: l1: 1ns, l2: 5ns, l3: 50~100ns, main memory: 200ns&lt;/p&gt;</description>
-      <content:encoded><![CDATA[<!-- raw HTML omitted -->
-<!-- raw HTML omitted -->
+      <content:encoded><![CDATA[<!-- cover:
+  image: img/memory-model/title-graph.png
+  alt: "一本介绍缓存一致性的书"
+  caption: "~~图文无关~~"
+  hidden: true -->
 <h2 id="介绍">介绍</h2>
 <p>什么是内存模型(Memory Model)呢？这里介绍的内存模型并非<a href="https://citeseerx.ist.psu.edu/document?repid=rep1&amp;type=pdf&amp;doi=160489e8b12cd9a44cbff0cd85fb6aa05437d1ac">C++对象的内存排布模型</a>，而是一个非编程语言层面的概念。我们知道在C++11中，标准引入了 <code>std::atomic&lt;&gt;</code>原子对象，同时还引入了</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>memory_order_relaxed
@@ -405,7 +411,7 @@ POWER架构还提供了一个额外的“轻量级同步”指令，称为 <code
       </tr>
   </tbody>
 </table>
-<!-- raw HTML omitted -->
+<!-- ![acuire barrier](/img/memory-model/acquire-barrier.png) -->
 <p>在默认情况下，<code>std::atomic&lt;&gt;</code>相关函数总是选用 <code>std::memory_order_seq_cst</code>，它能有效地帮我们避免错误。但是，我们既然都使用 <code>atomic</code>而不是 <code>mutex</code>了，自然是对性能有较高要求。
 <img loading="lazy" src="/img/memory-model/memory-barriers-performance.png" alt="memory barriers and performance"  />
  从上图中可以看出，<code>memory_order_relaxed</code>的写性能和 <code>non-atomic</code>几乎没有差别，而 <code>seq_cst</code>则要慢许多。</p>
@@ -455,8 +461,8 @@ POWER架构还提供了一个额外的“轻量级同步”指令，称为 <code
 </span></span><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">A</span> {<span style="color:#66d9ef">long</span> x;}
 </span></span><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">B</span> {<span style="color:#66d9ef">long</span> x; <span style="color:#66d9ef">long</span> y;}
 </span></span><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">C</span> {<span style="color:#66d9ef">long</span> x; <span style="color:#66d9ef">long</span> y; <span style="color:#66d9ef">long</span> z;}
-</span></span></code></pre></div><p>那么atomic<!-- raw HTML omitted -->， T取x, A, B, C的时候哪些是lock-free，哪些不是呢？</p>
-<p>我们可以用std::atomic<!-- raw HTML omitted -->::is_lock_free()找出答案。上述选项中，T = x, A的时候一定是lock_free的，T = C的时候一定不是lock_free的。</p>
+</span></span></code></pre></div><p>那么atomic<T>， T取x, A, B, C的时候哪些是lock-free，哪些不是呢？</p>
+<p>我们可以用std::atomic<T>::is_lock_free()找出答案。上述选项中，T = x, A的时候一定是lock_free的，T = C的时候一定不是lock_free的。</p>
 <blockquote>
 <p>C++17提供std::is_always_lock_free可以在编译器进行判断，如果为false不代表一定是 no lock_free的</p>
 </blockquote>

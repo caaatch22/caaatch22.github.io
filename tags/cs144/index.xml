@@ -48,14 +48,16 @@ if you&rsquo;re <em>behind a NAT</em>, you can open connections out to the inter
 </ul>
 <h2 id="the-4-layer-internet-model">The 4 layer Internet Model</h2>
 <h3 id="network-layer-and-link-layer">Network layer and link layer</h3>
-<!-- raw HTML omitted -->
+<img src = "/img/cs144/4LayerModel.png" align="left" width="300px" height="430"/>
+<span style="float:left">
+</span> The Internet is made up of `event hosts`, `links` and `routers`. 
 <p>data is delivered in <strong>packets</strong>
 a packet is a self-contained unit consisting of the data we want to be delivered.</p>
 <p>link layer&rsquo;s job is  to carry the data over one link  at a time.
 <code>ethernet</code> and <code>wifi</code> &ndash;&gt; two examples of different links layers</p>
 <p>Network layer&rsquo;s job is to deliver packets end to end across the internet.
 <strong>a packet is a collection data with header</strong>.
-<!-- raw HTML omitted --></p>
+<img src = "/img/cs144/packet.png" align="right" width="380" height ="100px"/></p>
 <p>network layer packet are called <code>datagram</code>.</p>
 <p><img loading="lazy" src="/img/cs144%5cNetwork_link.png" alt=""  />
 </p>
@@ -79,7 +81,8 @@ a packet is a self-contained unit consisting of the data we want to be delivered
 <p>they have their own protocol to define the syntax and semantics of data flowing between two end points
 (e.g. http, bit-torrent)</p>
 <h3 id="others">others</h3>
-<!-- raw HTML omitted -->
+<img src = "/img/cs144/IP_is_thin.png" width="700px" height="350"/>
+<img src = "/img/cs144/OSI-model.png" width="700px" height="350"/>
 <h2 id="ip-service-model">IP Service model</h2>
 <table>
   <thead>
@@ -129,7 +132,7 @@ bc most links have a limit on the size of packets.(ethernet &ndash; 1500bytes)</
 </li>
 <li>allows for new options to be added to header</li>
 </ol>
-<!-- raw HTML omitted -->
+<img src = "/img/cs144/IPv4-datagram.png"  width="500px" />
 <h2 id="life-of-a-packet">Life of a Packet</h2>
 <h3 id="three-way-handshake">three-way handshake</h3>
 <ol>
