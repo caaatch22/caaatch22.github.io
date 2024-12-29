@@ -124,7 +124,8 @@ def linear_quantize(fp_tensor, bitwidth, scale, zero_point, dtype=torch.int8) -&
           gtag('config', 'G-WEG841BBW9');
         }
       </script><meta property="og:title" content="TinyMl —— 模型量化(quantization)" />
-<meta property="og:description" content="Overview
+<meta property="og:description"
+  content="Overview
 模型量化（quantization）指的是用更少的bit表示模型参数，从而减少模型的大小，加速推理过程的技术。
 一种常见的量化方式是线性量化(linear quantization)，也叫仿射量化(affine quantization)。其实就是按比例将tensor（一般为fp32）放缩到 $2^{bitwidth}$ 的范围内，比如8bit等。我们很容易给出量化公式：
 $$
@@ -158,12 +159,14 @@ def linear_quantize(fp_tensor, bitwidth, scale, zero_point, dtype=torch.int8) -&
 上述过程被称为非对称量化(asymmetric quantization)。" />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://caaatch22.github.io/posts/tinyml-quantization/" /><meta property="article:section" content="posts" />
-<meta property="article:published_time" content="2024-02-27T22:19:21+00:00" />
-<meta property="article:modified_time" content="2024-02-27T22:19:21+00:00" />
 
-<meta name="twitter:card" content="summary"/>
-<meta name="twitter:title" content="TinyMl —— 模型量化(quantization)"/>
-<meta name="twitter:description" content="Overview
+<meta property="article:published_time" content="2024-02-27T22:19:21+00:00" />
+
+<meta property="article:modified_time" content="2024-02-27T22:19:21+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta name="twitter:title" content="TinyMl —— 模型量化(quantization)" />
+<meta name="twitter:description"
+    content="Overview
 模型量化（quantization）指的是用更少的bit表示模型参数，从而减少模型的大小，加速推理过程的技术。
 一种常见的量化方式是线性量化(linear quantization)，也叫仿射量化(affine quantization)。其实就是按比例将tensor（一般为fp32）放缩到 $2^{bitwidth}$ 的范围内，比如8bit等。我们很容易给出量化公式：
 $$
@@ -194,7 +197,7 @@ def linear_quantize(fp_tensor, bitwidth, scale, zero_point, dtype=torch.int8) -&
     quantized_min, quantized_max = get_quantized_range(bitwidth)
     quantized_tensor = shifted_tensor.clamp_(quantized_min, quantized_max)
     return quantized_tensor
-上述过程被称为非对称量化(asymmetric quantization)。"/>
+上述过程被称为非对称量化(asymmetric quantization)。" />
 
 
 <script type="application/ld+json">

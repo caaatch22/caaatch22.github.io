@@ -108,7 +108,8 @@ Buffer Pool Manager
           gtag('config', 'G-WEG841BBW9');
         }
       </script><meta property="og:title" content="CMU15445-project1 Buffer Pool Manager" />
-<meta property="og:description" content="Buffer Pool Manager
+<meta property="og:description"
+  content="Buffer Pool Manager
 
 cmu15445 是一门关于数据库管理系统（DBMS）设计与实现的经典公开课，是很多dba和内核开发人员的入门课程。开课教授Andy Pavlo 非常风趣幽默，他有自己上课的DJ，他曾在浴缸里录课，且时常语出惊人。这门课的实验项目BusTub非常有挑战性，并对所有人开放评测资源。
 
@@ -127,13 +128,15 @@ Buffer Pool Manager
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://caaatch22.github.io/posts/cmu15445-project1-buffer-pool-manager/" />
 <meta property="og:image" content="https://caaatch22.github.io/img/busTub/bustub.png" /><meta property="article:section" content="posts" />
-<meta property="article:published_time" content="2022-12-22T15:37:34+00:00" />
-<meta property="article:modified_time" content="2022-12-22T15:37:34+00:00" />
 
+<meta property="article:published_time" content="2022-12-22T15:37:34+00:00" />
+
+<meta property="article:modified_time" content="2022-12-22T15:37:34+00:00" />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:image" content="https://caaatch22.github.io/img/busTub/bustub.png" />
-<meta name="twitter:title" content="CMU15445-project1 Buffer Pool Manager"/>
-<meta name="twitter:description" content="Buffer Pool Manager
+<meta name="twitter:title" content="CMU15445-project1 Buffer Pool Manager" />
+<meta name="twitter:description"
+    content="Buffer Pool Manager
 
 cmu15445 是一门关于数据库管理系统（DBMS）设计与实现的经典公开课，是很多dba和内核开发人员的入门课程。开课教授Andy Pavlo 非常风趣幽默，他有自己上课的DJ，他曾在浴缸里录课，且时常语出惊人。这门课的实验项目BusTub非常有挑战性，并对所有人开放评测资源。
 
@@ -148,7 +151,7 @@ Task #3: Buffer Pool Manager Instance
 可拓展哈希表是这个是实验中相对独立的模块。这里不会讲它的细节，后面的两个任务中需要用到哈希表的地方我直接用std::unordered_map替代，而且效率还更高。应该是因为 Extendible Hash Table 要求线程安全，为了方便在我在每个函数入口都加了大锁。
 想要 Extendible Hash Table 具体细节的可以看这个b站视频。关于它的优化，我想可以进行更细粒度的锁管理甚至写一个无锁(lockfree)的哈希表。
 Buffer Pool Manager
-在后两个实验开始之前，我建议先将Task #2和Task #3的实验材料完整的看完在开始写代码。因为 replacer 和 buffer pool manager 有较大程度的耦合。很多API设计需要对照两个组件才能知道自己应该维护的数据与功能的边界。为了更符合直觉，我会先阐述 buffer pool manager 的设计，同时会穿插着 LRU-k 的API什么时候，在哪用。"/>
+在后两个实验开始之前，我建议先将Task #2和Task #3的实验材料完整的看完在开始写代码。因为 replacer 和 buffer pool manager 有较大程度的耦合。很多API设计需要对照两个组件才能知道自己应该维护的数据与功能的边界。为了更符合直觉，我会先阐述 buffer pool manager 的设计，同时会穿插着 LRU-k 的API什么时候，在哪用。" />
 
 
 <script type="application/ld+json">

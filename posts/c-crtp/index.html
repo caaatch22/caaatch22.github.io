@@ -112,7 +112,8 @@ inline Vec3f operator&#43;(const Vec3f &amp;lhs, const Vec3f &amp;rhs) {
           gtag('config', 'G-WEG841BBW9');
         }
       </script><meta property="og:title" content="C&#43;&#43; CRTP" />
-<meta property="og:description" content="
+<meta property="og:description"
+  content="
 原先只是了解这个名词，想着C&#43;&#43;20后静态多态直接用 concept来实现就好了就没细看，没必要整这些模板元编程的奇技淫巧。没想到面试某量化C&#43;&#43;开发的时候被狠狠拷打&hellip;&hellip;.
 
 CRTP (curiously recurring template pattern)
@@ -155,12 +156,14 @@ inline Vec3f operator&#43;(const Vec3f &amp;lhs, const Vec3f &amp;rhs) {
 定义好VectorBase后，Vec3f, Vec4f等直接实现接口就好。相比虚函数的形式，在空间和runtime都有优势。" />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://caaatch22.github.io/posts/c-crtp/" /><meta property="article:section" content="posts" />
-<meta property="article:published_time" content="2023-05-20T17:33:40+00:00" />
-<meta property="article:modified_time" content="2023-05-20T17:33:40+00:00" />
 
-<meta name="twitter:card" content="summary"/>
-<meta name="twitter:title" content="C&#43;&#43; CRTP"/>
-<meta name="twitter:description" content="
+<meta property="article:published_time" content="2023-05-20T17:33:40+00:00" />
+
+<meta property="article:modified_time" content="2023-05-20T17:33:40+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta name="twitter:title" content="C&#43;&#43; CRTP" />
+<meta name="twitter:description"
+    content="
 原先只是了解这个名词，想着C&#43;&#43;20后静态多态直接用 concept来实现就好了就没细看，没必要整这些模板元编程的奇技淫巧。没想到面试某量化C&#43;&#43;开发的时候被狠狠拷打&hellip;&hellip;.
 
 CRTP (curiously recurring template pattern)
@@ -200,7 +203,7 @@ inline Vec3f operator&#43;(const Vec3f &amp;lhs, const Vec3f &amp;rhs) {
   result.z = lhs.z &#43; rhs.z;
   return result;
 }
-定义好VectorBase后，Vec3f, Vec4f等直接实现接口就好。相比虚函数的形式，在空间和runtime都有优势。"/>
+定义好VectorBase后，Vec3f, Vec4f等直接实现接口就好。相比虚函数的形式，在空间和runtime都有优势。" />
 
 
 <script type="application/ld+json">

@@ -93,7 +93,8 @@ B&#43; tree internal page 与 B &#43; tree leaf page 都继承自B &#43; tree pa
           gtag('config', 'G-WEG841BBW9');
         }
       </script><meta property="og:title" content="CMU15445-project2 Concurrent B&#43; tree" />
-<meta property="og:description" content="Overview
+<meta property="og:description"
+  content="Overview
 
 这个实验应该是最难的一个实验了。。。（感觉和Project 4 —— Transaction实现的难度差不多） 另外，2022fall版本的B&#43; tree更是变态，因为几乎没有给任何内部的API，让人无从下手。建议到 Github repo 里找到20年的，我基本是根据里面定义的函数来实现的。
 
@@ -118,13 +119,15 @@ B&#43; tree internal page 与 B &#43; tree leaf page 都继承自B &#43; tree pa
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://caaatch22.github.io/posts/cmu15445-project2-concurrent-b-tree/" />
 <meta property="og:image" content="https://caaatch22.github.io/img/busTub/B-tree/B-tree.png" /><meta property="article:section" content="posts" />
-<meta property="article:published_time" content="2022-12-27T23:45:12+00:00" />
-<meta property="article:modified_time" content="2022-12-27T23:45:12+00:00" />
 
+<meta property="article:published_time" content="2022-12-27T23:45:12+00:00" />
+
+<meta property="article:modified_time" content="2022-12-27T23:45:12+00:00" />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:image" content="https://caaatch22.github.io/img/busTub/B-tree/B-tree.png" />
-<meta name="twitter:title" content="CMU15445-project2 Concurrent B&#43; tree"/>
-<meta name="twitter:description" content="Overview
+<meta name="twitter:title" content="CMU15445-project2 Concurrent B&#43; tree" />
+<meta name="twitter:description"
+    content="Overview
 
 这个实验应该是最难的一个实验了。。。（感觉和Project 4 —— Transaction实现的难度差不多） 另外，2022fall版本的B&#43; tree更是变态，因为几乎没有给任何内部的API，让人无从下手。建议到 Github repo 里找到20年的，我基本是根据里面定义的函数来实现的。
 
@@ -145,7 +148,7 @@ Task #1 - B&#43;Tree Pages
 
 
 B&#43; tree internal page 与 B &#43; tree leaf page 都继承自B &#43; tree page，B &#43; tree page 中定义了 B&#43; 树每个结点的一些信息。而B &#43; Tree 这个类则是Checkpoint 1的主要对象，它对internal page 以及 leaf page 进行管理，并对外开放接口。而在内存中，internal page 与 leaf page 都属于 page 的一部分，关系如下图所示。他们就是 page 中的 data 部分。因此，每次
-从 buffer pool manager 得到一个 page 后，若是将他们用作 B&#43;树的结点，则需要对这个 data 进行释义，也就是将他强制转化为internal page 或者 leaf page。这在 C&#43;&#43; 中通过 reinterpret_cast 完成。"/>
+从 buffer pool manager 得到一个 page 后，若是将他们用作 B&#43;树的结点，则需要对这个 data 进行释义，也就是将他强制转化为internal page 或者 leaf page。这在 C&#43;&#43; 中通过 reinterpret_cast 完成。" />
 
 
 <script type="application/ld+json">
