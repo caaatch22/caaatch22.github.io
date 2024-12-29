@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
   <channel>
-    <title>icpc on Mingjie&#39;s Home</title>
+    <title>Icpc on Mingjie&#39;s Home</title>
     <link>https://caaatch22.github.io/tags/icpc/</link>
-    <description>Recent content in icpc on Mingjie&#39;s Home</description>
+    <description>Recent content in Icpc on Mingjie&#39;s Home</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>zh-cn</language>
     <lastBuildDate>Mon, 29 May 2023 13:35:22 +0000</lastBuildDate><atom:link href="https://caaatch22.github.io/tags/icpc/index.xml" rel="self" type="application/rss+xml" />
@@ -13,8 +13,8 @@
       <pubDate>Mon, 29 May 2023 13:35:22 +0000</pubDate>
       
       <guid>https://caaatch22.github.io/posts/icpc%E8%A5%BF%E5%AE%89%E6%B8%B8%E8%AE%B0/</guid>
-      <description>没写记录，学弟写了，直接用
-ICPC西安邀请赛</description>
+      <description>&lt;p&gt;&lt;del&gt;没写记录，学弟写了，直接用&lt;/del&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&#34;https://tthac09.github.io/2023/05/24/icpc2023-xian-invitational-notes/&#34;&gt;ICPC西安邀请赛&lt;/a&gt;&lt;/p&gt;</description>
       <content:encoded><![CDATA[<p><del>没写记录，学弟写了，直接用</del></p>
 <p><a href="https://tthac09.github.io/2023/05/24/icpc2023-xian-invitational-notes/">ICPC西安邀请赛</a></p>
 ]]></content:encoded>
@@ -26,12 +26,28 @@ ICPC西安邀请赛</description>
       <pubDate>Tue, 10 Jan 2023 16:18:32 +0000</pubDate>
       
       <guid>https://caaatch22.github.io/posts/%E7%AE%97%E6%B3%95%E7%AB%9E%E8%B5%9B%E4%B8%AD%E7%9A%84wavelet-tree/</guid>
-      <description>Wavelet Tree for Competitive Programming 最近在学FM-Index相关算法用于数据库，了解到Wavelet Tree这一数据结构，发现其还可以应用在算法竞赛中。网上相关中文资料比较少，权当自己做个学习笔记
-开始之前 在学习wavelet tree前，不妨看看他能解决什么样的问题。
-假设我们有一长为 $n$ 的序列 $A[0&amp;hellip;n - 1]$ 。在算法竞赛中，典型的数据量是 $n = 1e5, |A[i]| &amp;lt;= 1e9$
-区间 $[L, R)$ 中元素$x$的出现次数 区间 $[L, R)$ 中的第k小数 区间 $[L, R)$ 上 小于等于x的数的个数 &amp;hellip; 以上问题都可以通过可持久化线段树在解决。那为什么还需要wavelet tree呢，我们都知道可持久化线段树的常数很大，并且十分消耗空间，在有些苛刻的题目下可能会被卡 好吧应该都是金牌题，不是我该考虑的 。利用wavelet tree可以在$log(\sigma)$时间内完成的同时（且优秀的常数），若使用bitvector优化空间，空间上大概比可持久化线段树少一个量级。最重要的一点是，我个人觉得他比主席树更加直观易懂。 $\sigma$ = | $\Sigma = {1, 2, \cdots, \sigma}$| （用于序列上时是值域大小）。
-用wavelet tree的缺点就是带修改操作比较难写，码量较大，一般不会在比赛时使用。
-Wavelet Tree 该图给出了用序列 $A = [7, 3, 5, 6, 1, 3, 2, 7, 8, 4]$ 构建的wavelet tree的形态。对于树上的每个节点，我们会将其按照值域分成两个部分$[low, mid), [mid, high)$。通过 稳定划分（stable_partition，即不改变相对顺序的情况下划分）将该节点上的序列中小于 $mid$的划分到左子树中，大于等于mid的划分到右子树中，递归直至节点中只有一种值时为叶节点。需要注意的是，我们并不会在叶子节点中直接存储序列的值，而是通过某个方法使得我们能够使用较小的空间的情况下得到足够的信息。</description>
+      <description>&lt;h1 id=&#34;wavelet-tree-for-competitive-programming&#34;&gt;Wavelet Tree for Competitive Programming&lt;/h1&gt;
+&lt;blockquote&gt;
+&lt;p&gt;最近在学&lt;em&gt;FM-Index&lt;/em&gt;相关算法用于数据库，了解到Wavelet Tree这一数据结构，发现其还可以应用在算法竞赛中。网上相关中文资料比较少，权当自己做个学习笔记&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h2 id=&#34;开始之前&#34;&gt;开始之前&lt;/h2&gt;
+&lt;p&gt;在学习&lt;code&gt;wavelet tree&lt;/code&gt;前，不妨看看他能解决什么样的问题。&lt;/p&gt;
+&lt;p&gt;假设我们有一长为 $n$ 的序列 $A[0&amp;hellip;n - 1]$ 。在算法竞赛中，典型的数据量是  $n = 1e5,  |A[i]| &amp;lt;= 1e9$&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;区间 $[L, R)$ 中元素$x$的&lt;code&gt;出现次数&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;区间 $[L, R)$ 中的&lt;code&gt;第k小数&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;区间 $[L, R)$ 上 &lt;code&gt;小于等于x的数的个数&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&amp;hellip;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;以上问题都可以通过&lt;em&gt;可持久化线段树&lt;/em&gt;在解决。那为什么还需要wavelet tree呢，我们都知道可持久化线段树的常数很大，并且十分消耗空间，在有些苛刻的题目下可能会被卡  &lt;del&gt;好吧应该都是金牌题，不是我该考虑的&lt;/del&gt; 。利用wavelet tree可以在$log(\sigma)$时间内完成的同时（且优秀的常数），若使用&lt;code&gt;bitvector&lt;/code&gt;优化空间，空间上大概比可持久化线段树少一个量级。最重要的一点是，我个人觉得他比主席树更加直观易懂。
+$\sigma$ = | $\Sigma = {1, 2, \cdots, \sigma}$| （用于序列上时是值域大小）。&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;用wavelet tree的缺点就是带修改操作比较难写，码量较大，一般不会在比赛时使用。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h2 id=&#34;wavelet-tree&#34;&gt;Wavelet Tree&lt;/h2&gt;
+&lt;p&gt;&lt;img loading=&#34;lazy&#34; src=&#34;https://caaatch22.github.io/img/waveletTree/waveletTree.png&#34; alt=&#34;&#34;  /&gt;
+&lt;/p&gt;
+&lt;p&gt;该图给出了用序列 $A = [7, 3, 5, 6, 1, 3, 2, 7, 8, 4]$ 构建的wavelet tree的形态。对于树上的每个节点，我们会将其按照值域分成两个部分$[low, mid), [mid, high)$。通过 &lt;strong&gt;稳定划分&lt;/strong&gt;（stable_partition，即不改变相对顺序的情况下划分）将该节点上的序列中小于 $mid$的划分到左子树中，大于等于mid的划分到右子树中，递归直至节点中只有一种值时为叶节点。需要注意的是，我们并不会在叶子节点中直接存储序列的值，而是通过某个方法使得我们能够使用较小的空间的情况下得到足够的信息。&lt;/p&gt;</description>
       <content:encoded><![CDATA[<h1 id="wavelet-tree-for-competitive-programming">Wavelet Tree for Competitive Programming</h1>
 <blockquote>
 <p>最近在学<em>FM-Index</em>相关算法用于数据库，了解到Wavelet Tree这一数据结构，发现其还可以应用在算法竞赛中。网上相关中文资料比较少，权当自己做个学习笔记</p>
@@ -199,8 +215,258 @@ $\sigma$ = | $\Sigma = {1, 2, \cdots, \sigma}$| （用于序列上时是值域�
       <pubDate>Thu, 17 Mar 2022 23:38:14 +0000</pubDate>
       
       <guid>https://caaatch22.github.io/posts/xcpc-template/</guid>
-      <description>icpc模板 Previous Next &amp;nbsp; &amp;nbsp; / [pdf] View the PDF file here. algorithm-template Competitive Programming template
-basic algorithm 双指针 离散化，去重 前缀和与差分 二分 单调栈 单调队列 尺取法 归并排序，快速排序，第k小 树的中心 拓扑排序 math 素数，筛素数，素性测试， 反素数 质因数分解，预处理质因数 欧拉函数 组合数 拓展欧几里得，线性同余方程 中国剩余定理 容斥原理 高斯消元，高斯异或 矩阵乘法 博弈论，Nim游戏 莫比乌斯反演 BSGS FFT 生成函数 线性基 date strcture 并查集 Sparse table Trie, 01Trie 树状数组 线段树，扫描线 树链剖分 可持久化线段树，kth number, 主席树 splay 分块 莫队 点分治 kdtree Graph Floyd bellman-ford, spfa，判负环 dijkstra， 拆点 分层图最短路 差分约束 最小生成树 prim, kruskal 瓶颈生成树 kruskal重构树 lca 二分图匹配 欧拉回路欧拉路径 强连通分量 2-sat 网络流相关 string 字符串hash KMP， 前缀函数 Z-algorithm ac自动机 SA SAM dp 01pack, 完全背包，多重背包及优化，分组背包 线性dp, LCS, LIS, 编辑距离 区间dp 字符串压缩 数位dp 状压dp 树形dp 基环树dp 单调队列优化dp 斜率优化dp Geometry 常用模板 二维凸包 github地址 https://github.</description>
+      <description>&lt;h2 id=&#34;icpc模板&#34;&gt;icpc模板&lt;/h2&gt;
+&lt;script src= &#39;/js/pdf-js/build/pdf.js&#39;&gt;&lt;/script&gt;
+
+&lt;style&gt;
+  #embed-pdf-container {
+    position: relative;
+    width: 100%;
+    height: auto;
+    min-height: 20vh;
+     
+  }
+  
+  .pdf-canvas {
+    border: 1px solid black;
+    direction: ltr;
+    width: 100%;
+    height: auto;
+    display: none;
+  }
+  
+  #the-canvas {
+    border: 1px solid black;
+    direction: ltr;
+    width: 100%;
+    height: auto;
+    display: none;
+  }
+  
+  
+  .pdf-loadingWrapper {
+    display: none;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 350px;
+  }
+  
+  .pdf-loading {
+    display: inline-block;
+    width: 50px;
+    height: 50px;
+    border: 3px solid #d2d0d0;;
+    border-radius: 50%;
+    border-top-color: #383838;
+    animation: spin 1s ease-in-out infinite;
+    -webkit-animation: spin 1s ease-in-out infinite;
+  }
+  
+  
+  
+  
+  
+  #overlayText {
+    word-wrap: break-word;
+    display: grid;
+    justify-content: end;
+  }
+  
+  #overlayText a {
+    position: relative;
+    top: 10px;
+    right: 4px;
+    color: #000;
+    margin: auto;
+    background-color: #eeeeee;
+    padding: 0.3em 1em;
+    border: solid 2px;
+    border-radius: 12px;
+    border-color: #00000030;
+    text-decoration: none;
+  }
+  
+  #overlayText svg {
+    height: clamp(1em, 2vw, 1.4em);
+    width:  clamp(1em, 2vw, 1.4em);
+  }
+  
+  
+  
+  @keyframes spin {
+    to { -webkit-transform: rotate(360deg); }
+  }
+  @-webkit-keyframes spin {
+    to { -webkit-transform: rotate(360deg); }
+  }
+  &lt;/style&gt;&lt;div class=&#34;embed-pdf-container&#34; id=&#34;embed-pdf-container-e21a8caf&#34;&gt;
+    &lt;div class=&#34;pdf-loadingWrapper&#34; id=&#34;pdf-loadingWrapper-e21a8caf&#34;&gt;
+        &lt;div class=&#34;pdf-loading&#34; id=&#34;pdf-loading-e21a8caf&#34;&gt;&lt;/div&gt;
+    &lt;/div&gt;
+    &lt;div id=&#34;overlayText&#34;&gt;
+      &lt;a href=&#34;https://caaatch22.github.io/catch22-algorithm-template.pdf&#34; aria-label=&#34;Download&#34; download&gt;
+        &lt;svg aria-hidden=&#34;true&#34; xmlns=&#34;http://www.w3.org/2000/svg&#34; viewBox=&#34;0 0 18 18&#34;&gt;
+            &lt;path d=&#34;M9 13c.3 0 .5-.1.7-.3L15.4 7 14 5.6l-4 4V1H8v8.6l-4-4L2.6 7l5.7 5.7c.2.2.4.3.7.3zm-7 2h14v2H2z&#34; /&gt;
+        &lt;/svg&gt;
+      &lt;/a&gt;
+    &lt;/div&gt;
+    &lt;canvas class=&#34;pdf-canvas&#34; id=&#34;pdf-canvas-e21a8caf&#34;&gt;&lt;/canvas&gt;
+&lt;/div&gt;
+
+&lt;div class=&#34;pdf-paginator&#34; id=&#34;pdf-paginator-e21a8caf&#34;&gt;
+    &lt;button id=&#34;pdf-prev-e21a8caf&#34;&gt;Previous&lt;/button&gt;
+    &lt;button id=&#34;pdf-next-e21a8caf&#34;&gt;Next&lt;/button&gt; &amp;nbsp; &amp;nbsp;
+    &lt;span&gt;
+      &lt;span class=&#34;pdf-pagenum&#34; id=&#34;pdf-pagenum-e21a8caf&#34;&gt;&lt;/span&gt; / &lt;span class=&#34;pdf-pagecount&#34; id=&#34;pdf-pagecount-e21a8caf&#34;&gt;&lt;/span&gt;
+    &lt;/span&gt;
+    &lt;a class=&#34;pdf-source&#34; id=&#34;pdf-source-e21a8caf&#34; href=&#34;https://caaatch22.github.io/catch22-algorithm-template.pdf&#34;&gt;[pdf]&lt;/a&gt;
+&lt;/div&gt;
+
+&lt;noscript&gt;
+View the PDF file &lt;a class=&#34;pdf-source&#34; id=&#34;pdf-source-noscript-e21a8caf&#34; href=&#34;https://caaatch22.github.io/catch22-algorithm-template.pdf&#34;&gt;here&lt;/a&gt;.
+&lt;/noscript&gt;
+
+&lt;script type=&#34;text/javascript&#34;&gt;
+    (function(){
+    var url = &#39;\/catch22-algorithm-template.pdf&#39;;
+
+    var hidePaginator = &#34;&#34; === &#34;true&#34;;
+    var hideLoader = &#34;&#34; === &#34;true&#34;;
+    var selectedPageNum = parseInt(&#34;&#34;) || 1;
+
+    
+    var pdfjsLib = window[&#39;pdfjs-dist/build/pdf&#39;];
+
+    
+    if (pdfjsLib.GlobalWorkerOptions.workerSrc == &#39;&#39;)
+      pdfjsLib.GlobalWorkerOptions.workerSrc = &#34;https:\/\/caaatch22.github.io\/&#34; + &#39;js/pdf-js/build/pdf.worker.js&#39;;
+
+    
+    var pdfDoc = null,
+        pageNum = selectedPageNum,
+        pageRendering = false,
+        pageNumPending = null,
+        scale = 3,
+        canvas = document.getElementById(&#39;pdf-canvas-e21a8caf&#39;),
+        ctx = canvas.getContext(&#39;2d&#39;),
+        paginator = document.getElementById(&#34;pdf-paginator-e21a8caf&#34;),
+        loadingWrapper = document.getElementById(&#39;pdf-loadingWrapper-e21a8caf&#39;);
+
+
+    
+    showPaginator();
+    showLoader();
+
+    
+
+    function renderPage(num) {
+      pageRendering = true;
+      
+      pdfDoc.getPage(num).then(function(page) {
+        var viewport = page.getViewport({scale: scale});
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+
+        
+        var renderContext = {
+          canvasContext: ctx,
+          viewport: viewport
+        };
+        var renderTask = page.render(renderContext);
+
+        
+        renderTask.promise.then(function() {
+          pageRendering = false;
+          showContent();
+
+          if (pageNumPending !== null) {
+            
+            renderPage(pageNumPending);
+            pageNumPending = null;
+          }
+        });
+      });
+
+      
+      document.getElementById(&#39;pdf-pagenum-e21a8caf&#39;).textContent = num;
+    }
+
+    
+
+    function showContent() {
+      loadingWrapper.style.display = &#39;none&#39;;
+      canvas.style.display = &#39;block&#39;;
+    }
+
+    
+
+    function showLoader() {
+      if(hideLoader) return
+      loadingWrapper.style.display = &#39;flex&#39;;
+      canvas.style.display = &#39;none&#39;;
+    }
+
+    
+
+    function showPaginator() {
+      if(hidePaginator) return
+      paginator.style.display = &#39;block&#39;;
+    }
+
+    
+
+    function queueRenderPage(num) {
+      if (pageRendering) {
+        pageNumPending = num;
+      } else {
+        renderPage(num);
+      }
+    }
+
+    
+
+    function onPrevPage() {
+      if (pageNum &lt;= 1) {
+        return;
+      }
+      pageNum--;
+      queueRenderPage(pageNum);
+    }
+    document.getElementById(&#39;pdf-prev-e21a8caf&#39;).addEventListener(&#39;click&#39;, onPrevPage);
+
+    
+
+    function onNextPage() {
+      if (pageNum &gt;= pdfDoc.numPages) {
+        return;
+      }
+      pageNum++;
+      queueRenderPage(pageNum);
+    }
+    document.getElementById(&#39;pdf-next-e21a8caf&#39;).addEventListener(&#39;click&#39;, onNextPage);
+
+    
+
+    pdfjsLib.getDocument(url).promise.then(function(pdfDoc_) {
+      pdfDoc = pdfDoc_;
+      var numPages = pdfDoc.numPages;
+      document.getElementById(&#39;pdf-pagecount-e21a8caf&#39;).textContent = numPages;
+
+      
+      if(pageNum &gt; numPages) {
+        pageNum = numPages
+      }
+
+      
+      renderPage(pageNum);
+    });
+    })();
+&lt;/script&gt;
+
+&lt;h1 id=&#34;algorithm-template&#34;&gt;algorithm-template&lt;/h1&gt;
+&lt;blockquote&gt;
+&lt;p&gt;Competitive Programming template&lt;/p&gt;</description>
       <content:encoded><![CDATA[<h2 id="icpc模板">icpc模板</h2>
 <script src= '/js/pdf-js/build/pdf.js'></script>
 
@@ -326,7 +592,7 @@ View the PDF file <a class="pdf-source" id="pdf-source-noscript-e21a8caf" href="
 
     
     if (pdfjsLib.GlobalWorkerOptions.workerSrc == '')
-      pdfjsLib.GlobalWorkerOptions.workerSrc = "https:\/\/caaatch22.github.io" + 'js/pdf-js/build/pdf.worker.js';
+      pdfjsLib.GlobalWorkerOptions.workerSrc = "https:\/\/caaatch22.github.io\/" + 'js/pdf-js/build/pdf.worker.js';
 
     
     var pdfDoc = null,

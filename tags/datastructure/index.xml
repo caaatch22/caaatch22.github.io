@@ -13,11 +13,37 @@
       <pubDate>Sun, 23 Jul 2023 21:23:15 +0000</pubDate>
       
       <guid>https://caaatch22.github.io/posts/phmap/</guid>
-      <description>众所周知，C++标准库的 unordered_map在性能上向来不是一个好的选择。开源市场上有非常多的高性能哈希表可供选择，phmap继承自 absl-hashmap，有着非常好的插入、查找性能。在著名的Comprehensive C++ Hashmap Benchmarks 2022榜单中名列前茅。事实上，我比对了 phmap::flat_hash_map与榜单中综合性能第一的 ankerl::unordered_dense::map，我的benchmark中只有遍历哈希表时，flat_hash_map的性能低于 unordered_dense::map，其余无论是插入还是随即查找，大部分情况下 flat_hash_map的性能都更优。本文简单介绍了 flat_hash_map相关情况，以及一些使用上的建议与坑点。
-flat_hash_map 和 node_hash_map区别 phmap中有提供了两类哈希表，其内部布局示意图如下：
-由上图（忽略了bucket的细节）可以看出，flat_hash_map的最大的优点在于
-node之间的内存是连续的(虽然可能中间存在空node)，遍历的时候对cache更加友好 并且相比于 node_hash_map版少一次寻址过程（std::unordered_map的设计与 node_hash_map）相同。 而 flat_*系列的缺点就是在 rehash的时候:
-会引发原来的value失效（这里的失效指的是原来的那个对象所对应的内存失效，而不是value所包含的内容失效，例如，value是一个指针，那它的值——所指向的对象，不会受到影响）。举个例子： flat_hash_map&amp;lt;int, Data&amp;gt; mp; node_hash_map&amp;lt;int, Data&amp;gt; nodemp; mp[0] = Data(); nodemp[0] = Data(); auto&amp;amp; mp0 = mp[0]; auto&amp;amp; nodemp0 = nodemp[0]; // tigger rehash for (int i = 1; i &amp;lt;= 10; i ++) { mp[i] = Data(); nodemp[i] = Data(); } assert(std::addressof(mp[0]) != std::addressof(mp0)); assert(std::addressof(nodemp[0]) == std::addressof(nodemp0)); 原因就是 flat_hash_map的内存布局导致的。而 node_hash_map或者 std::unordered_map就保证不会出现这种情况，因为当他们rehash的时候，只需要将bucket内的指针重新分配，指针的值还是指向原来的 node&amp;lt;key, value&amp;gt;.</description>
+      <description>&lt;blockquote&gt;
+&lt;p&gt;众所周知，C++标准库的 &lt;code&gt;unordered_map&lt;/code&gt;在性能上向来不是一个好的选择。开源市场上有非常多的高性能哈希表可供选择，&lt;a href=&#34;https://github.com/greg7mdp/parallel-hashmap&#34;&gt;phmap&lt;/a&gt;继承自 &lt;code&gt;absl-hashmap&lt;/code&gt;，有着非常好的插入、查找性能。在著名的&lt;a href=&#34;https://martin.ankerl.com/2022/08/27/hashmap-bench-01/#benchmark-results-table&#34;&gt;Comprehensive C++ Hashmap Benchmarks 2022&lt;/a&gt;榜单中名列前茅。事实上，我比对了 &lt;code&gt;phmap::flat_hash_map&lt;/code&gt;与榜单中综合性能第一的 &lt;code&gt;ankerl::unordered_dense::map&lt;/code&gt;，我的benchmark中只有遍历哈希表时，&lt;code&gt;flat_hash_map&lt;/code&gt;的性能低于 &lt;code&gt;unordered_dense::map&lt;/code&gt;，其余无论是插入还是随即查找，大部分情况下 &lt;code&gt;flat_hash_map&lt;/code&gt;的性能都更优。本文简单介绍了 &lt;code&gt;flat_hash_map&lt;/code&gt;相关情况，以及一些使用上的建议与坑点。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h3 id=&#34;flat_hash_map-和-node_hash_map区别&#34;&gt;flat_hash_map 和 node_hash_map区别&lt;/h3&gt;
+&lt;p&gt;phmap中有提供了两类哈希表，其内部布局示意图如下：&lt;/p&gt;
+&lt;p&gt;&lt;img loading=&#34;lazy&#34; src=&#34;https://caaatch22.github.io/img/phmap/flat_hash_map-vs-node_hash_map.png&#34; alt=&#34;&#34;  /&gt;
+&lt;/p&gt;
+&lt;p&gt;由上图（忽略了bucket的细节）可以看出，&lt;code&gt;flat_hash_map&lt;/code&gt;的最大的优点在于&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;node之间的内存是连续的(虽然可能中间存在空node)，遍历的时候对cache更加友好&lt;/li&gt;
+&lt;li&gt;并且相比于 &lt;code&gt;node_hash_map&lt;/code&gt;版少一次寻址过程（&lt;code&gt;std::unordered_map&lt;/code&gt;的设计与 &lt;code&gt;node_hash_map&lt;/code&gt;）相同。&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;而 &lt;code&gt;flat_*&lt;/code&gt;系列的缺点就是在 &lt;code&gt;rehash&lt;/code&gt;的时候:&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;会引发原来的value&lt;strong&gt;失效&lt;/strong&gt;（这里的失效指的是原来的那个对象所对应的内存失效，而不是value所包含的内容失效，例如，value是一个指针，那它的值——所指向的对象，不会受到影响）。举个例子：&lt;/li&gt;
+&lt;/ol&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-cpp&#34; data-lang=&#34;cpp&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;flat_hash_map&lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;int&lt;/span&gt;, Data&lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&lt;/span&gt; mp;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;node_hash_map&lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;int&lt;/span&gt;, Data&lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&lt;/span&gt; nodemp;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;mp[&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;] &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; Data();
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;nodemp[&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;] &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; Data();
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;auto&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&lt;/span&gt; mp0 &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; mp[&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;];
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;auto&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&lt;/span&gt; nodemp0 &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; nodemp[&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;];
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;// tigger rehash
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; (&lt;span style=&#34;color:#66d9ef&#34;&gt;int&lt;/span&gt; i &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;; i &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;10&lt;/span&gt;; i &lt;span style=&#34;color:#f92672&#34;&gt;++&lt;/span&gt;) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;	mp[i] &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; Data();
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;	nodemp[i] &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; Data(); 
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;assert(std&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;addressof(mp[&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;]) &lt;span style=&#34;color:#f92672&#34;&gt;!=&lt;/span&gt; std&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;addressof(mp0));
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;assert(std&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;addressof(nodemp[&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;]) &lt;span style=&#34;color:#f92672&#34;&gt;==&lt;/span&gt; std&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;addressof(nodemp0));
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;原因就是 &lt;code&gt;flat_hash_map&lt;/code&gt;的内存布局导致的。而 &lt;code&gt;node_hash_map&lt;/code&gt;或者 &lt;code&gt;std::unordered_map&lt;/code&gt;就保证不会出现这种情况，因为当他们rehash的时候，只需要将bucket内的指针重新分配，指针的值还是指向原来的 &lt;code&gt;node&amp;lt;key, value&amp;gt;&lt;/code&gt;.&lt;/p&gt;</description>
       <content:encoded><![CDATA[<blockquote>
 <p>众所周知，C++标准库的 <code>unordered_map</code>在性能上向来不是一个好的选择。开源市场上有非常多的高性能哈希表可供选择，<a href="https://github.com/greg7mdp/parallel-hashmap">phmap</a>继承自 <code>absl-hashmap</code>，有着非常好的插入、查找性能。在著名的<a href="https://martin.ankerl.com/2022/08/27/hashmap-bench-01/#benchmark-results-table">Comprehensive C++ Hashmap Benchmarks 2022</a>榜单中名列前茅。事实上，我比对了 <code>phmap::flat_hash_map</code>与榜单中综合性能第一的 <code>ankerl::unordered_dense::map</code>，我的benchmark中只有遍历哈希表时，<code>flat_hash_map</code>的性能低于 <code>unordered_dense::map</code>，其余无论是插入还是随即查找，大部分情况下 <code>flat_hash_map</code>的性能都更优。本文简单介绍了 <code>flat_hash_map</code>相关情况，以及一些使用上的建议与坑点。</p>
 </blockquote>
@@ -135,116 +161,116 @@ node之间的内存是连续的(虽然可能中间存在空node)，遍历的时�
 <p>以下操作的个数都为 <code>1'000'000</code>次，最后一列string-&gt;string 插入次数为 <code>100'000</code>次</p>
 <p><em>vector作为baseline插入pair&lt;K,V&gt;进行比较</em></p>
 <table>
-<thead>
-<tr>
-<th>benchmarks(insert)</th>
-<th>insert ints</th>
-<th>insert ints(reserve first)</th>
-<th>insert string(sso)-&gt;ptr</th>
-<th>insert int-&gt;LargeData</th>
-<th>insert string(8)-&gt;string(4096)</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>std::vector</td>
-<td>17ms</td>
-<td>7ms</td>
-<td>33ms</td>
-<td>102ms</td>
-<td>153ms</td>
-</tr>
-<tr>
-<td>std::unordered_map</td>
-<td>170ms</td>
-<td>72ms</td>
-<td>343ms</td>
-<td>249ms</td>
-<td>213ms</td>
-</tr>
-<tr>
-<td>flat_hash_map</td>
-<td>47ms</td>
-<td>34ms</td>
-<td>90ms</td>
-<td>462ms</td>
-<td>182ms</td>
-</tr>
-<tr>
-<td>node_hash_map</td>
-<td>152ms</td>
-<td>68ms</td>
-<td>182ms</td>
-<td>236ms</td>
-<td>183ms</td>
-</tr>
-</tbody>
+  <thead>
+      <tr>
+          <th>benchmarks(insert)</th>
+          <th>insert ints</th>
+          <th>insert ints(reserve first)</th>
+          <th>insert string(sso)-&gt;ptr</th>
+          <th>insert int-&gt;LargeData</th>
+          <th>insert string(8)-&gt;string(4096)</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>std::vector</td>
+          <td>17ms</td>
+          <td>7ms</td>
+          <td>33ms</td>
+          <td>102ms</td>
+          <td>153ms</td>
+      </tr>
+      <tr>
+          <td>std::unordered_map</td>
+          <td>170ms</td>
+          <td>72ms</td>
+          <td>343ms</td>
+          <td>249ms</td>
+          <td>213ms</td>
+      </tr>
+      <tr>
+          <td>flat_hash_map</td>
+          <td>47ms</td>
+          <td>34ms</td>
+          <td>90ms</td>
+          <td>462ms</td>
+          <td>182ms</td>
+      </tr>
+      <tr>
+          <td>node_hash_map</td>
+          <td>152ms</td>
+          <td>68ms</td>
+          <td>182ms</td>
+          <td>236ms</td>
+          <td>183ms</td>
+      </tr>
+  </tbody>
 </table>
 <table>
-<thead>
-<tr>
-<th>benchmarks(read)</th>
-<th>iterate ints</th>
-<th>find int</th>
-<th>iterate string</th>
-<th>find string</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>std::vector</td>
-<td>0ms</td>
-<td>*</td>
-<td>3ms</td>
-<td>*</td>
-</tr>
-<tr>
-<td>std::unordered_map</td>
-<td>20ms</td>
-<td>52ms</td>
-<td>55ms</td>
-<td>152ms</td>
-</tr>
-<tr>
-<td>flat_hash_map</td>
-<td>3ms</td>
-<td>23ms</td>
-<td>8ms</td>
-<td>71ms</td>
-</tr>
-<tr>
-<td>node_hash_map</td>
-<td>14ms</td>
-<td>38ms</td>
-<td>14ms</td>
-<td>108ms</td>
-</tr>
-</tbody>
+  <thead>
+      <tr>
+          <th>benchmarks(read)</th>
+          <th>iterate ints</th>
+          <th>find int</th>
+          <th>iterate string</th>
+          <th>find string</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>std::vector</td>
+          <td>0ms</td>
+          <td>*</td>
+          <td>3ms</td>
+          <td>*</td>
+      </tr>
+      <tr>
+          <td>std::unordered_map</td>
+          <td>20ms</td>
+          <td>52ms</td>
+          <td>55ms</td>
+          <td>152ms</td>
+      </tr>
+      <tr>
+          <td>flat_hash_map</td>
+          <td>3ms</td>
+          <td>23ms</td>
+          <td>8ms</td>
+          <td>71ms</td>
+      </tr>
+      <tr>
+          <td>node_hash_map</td>
+          <td>14ms</td>
+          <td>38ms</td>
+          <td>14ms</td>
+          <td>108ms</td>
+      </tr>
+  </tbody>
 </table>
 <p><em>About parallel_flat_hash_map</em></p>
 <table>
-<thead>
-<tr>
-<th>inserting 1000000 ints</th>
-<th>1-thread</th>
-<th>8-threads</th>
-<th>8-threads</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>flat_hash_map</td>
-<td>31ms</td>
-<td>23ms(no lock)</td>
-<td>214ms(mutex manually)</td>
-</tr>
-<tr>
-<td>parallel_flat_hash_map</td>
-<td>35ms</td>
-<td>*</td>
-<td>70ms(mutex/shared_mutex)</td>
-</tr>
-</tbody>
+  <thead>
+      <tr>
+          <th>inserting 1000000 ints</th>
+          <th>1-thread</th>
+          <th>8-threads</th>
+          <th>8-threads</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>flat_hash_map</td>
+          <td>31ms</td>
+          <td>23ms(no lock)</td>
+          <td>214ms(mutex manually)</td>
+      </tr>
+      <tr>
+          <td>parallel_flat_hash_map</td>
+          <td>35ms</td>
+          <td>*</td>
+          <td>70ms(mutex/shared_mutex)</td>
+      </tr>
+  </tbody>
 </table>
 <h3 id="一个小问题">一个小问题</h3>
 <p>在测试的时候发现，无论是 <code>flat_hash_map</code>还是 <code>node_hash_map</code>都没法插入 <code>None-moveable</code>的数据，但是 <code>std::unordered_map</code>可以。</p>
@@ -304,12 +330,28 @@ node之间的内存是连续的(虽然可能中间存在空node)，遍历的时�
       <pubDate>Tue, 10 Jan 2023 16:18:32 +0000</pubDate>
       
       <guid>https://caaatch22.github.io/posts/%E7%AE%97%E6%B3%95%E7%AB%9E%E8%B5%9B%E4%B8%AD%E7%9A%84wavelet-tree/</guid>
-      <description>Wavelet Tree for Competitive Programming 最近在学FM-Index相关算法用于数据库，了解到Wavelet Tree这一数据结构，发现其还可以应用在算法竞赛中。网上相关中文资料比较少，权当自己做个学习笔记
-开始之前 在学习wavelet tree前，不妨看看他能解决什么样的问题。
-假设我们有一长为 $n$ 的序列 $A[0&amp;hellip;n - 1]$ 。在算法竞赛中，典型的数据量是 $n = 1e5, |A[i]| &amp;lt;= 1e9$
-区间 $[L, R)$ 中元素$x$的出现次数 区间 $[L, R)$ 中的第k小数 区间 $[L, R)$ 上 小于等于x的数的个数 &amp;hellip; 以上问题都可以通过可持久化线段树在解决。那为什么还需要wavelet tree呢，我们都知道可持久化线段树的常数很大，并且十分消耗空间，在有些苛刻的题目下可能会被卡 好吧应该都是金牌题，不是我该考虑的 。利用wavelet tree可以在$log(\sigma)$时间内完成的同时（且优秀的常数），若使用bitvector优化空间，空间上大概比可持久化线段树少一个量级。最重要的一点是，我个人觉得他比主席树更加直观易懂。 $\sigma$ = | $\Sigma = {1, 2, \cdots, \sigma}$| （用于序列上时是值域大小）。
-用wavelet tree的缺点就是带修改操作比较难写，码量较大，一般不会在比赛时使用。
-Wavelet Tree 该图给出了用序列 $A = [7, 3, 5, 6, 1, 3, 2, 7, 8, 4]$ 构建的wavelet tree的形态。对于树上的每个节点，我们会将其按照值域分成两个部分$[low, mid), [mid, high)$。通过 稳定划分（stable_partition，即不改变相对顺序的情况下划分）将该节点上的序列中小于 $mid$的划分到左子树中，大于等于mid的划分到右子树中，递归直至节点中只有一种值时为叶节点。需要注意的是，我们并不会在叶子节点中直接存储序列的值，而是通过某个方法使得我们能够使用较小的空间的情况下得到足够的信息。</description>
+      <description>&lt;h1 id=&#34;wavelet-tree-for-competitive-programming&#34;&gt;Wavelet Tree for Competitive Programming&lt;/h1&gt;
+&lt;blockquote&gt;
+&lt;p&gt;最近在学&lt;em&gt;FM-Index&lt;/em&gt;相关算法用于数据库，了解到Wavelet Tree这一数据结构，发现其还可以应用在算法竞赛中。网上相关中文资料比较少，权当自己做个学习笔记&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h2 id=&#34;开始之前&#34;&gt;开始之前&lt;/h2&gt;
+&lt;p&gt;在学习&lt;code&gt;wavelet tree&lt;/code&gt;前，不妨看看他能解决什么样的问题。&lt;/p&gt;
+&lt;p&gt;假设我们有一长为 $n$ 的序列 $A[0&amp;hellip;n - 1]$ 。在算法竞赛中，典型的数据量是  $n = 1e5,  |A[i]| &amp;lt;= 1e9$&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;区间 $[L, R)$ 中元素$x$的&lt;code&gt;出现次数&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;区间 $[L, R)$ 中的&lt;code&gt;第k小数&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;区间 $[L, R)$ 上 &lt;code&gt;小于等于x的数的个数&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&amp;hellip;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;以上问题都可以通过&lt;em&gt;可持久化线段树&lt;/em&gt;在解决。那为什么还需要wavelet tree呢，我们都知道可持久化线段树的常数很大，并且十分消耗空间，在有些苛刻的题目下可能会被卡  &lt;del&gt;好吧应该都是金牌题，不是我该考虑的&lt;/del&gt; 。利用wavelet tree可以在$log(\sigma)$时间内完成的同时（且优秀的常数），若使用&lt;code&gt;bitvector&lt;/code&gt;优化空间，空间上大概比可持久化线段树少一个量级。最重要的一点是，我个人觉得他比主席树更加直观易懂。
+$\sigma$ = | $\Sigma = {1, 2, \cdots, \sigma}$| （用于序列上时是值域大小）。&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;用wavelet tree的缺点就是带修改操作比较难写，码量较大，一般不会在比赛时使用。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h2 id=&#34;wavelet-tree&#34;&gt;Wavelet Tree&lt;/h2&gt;
+&lt;p&gt;&lt;img loading=&#34;lazy&#34; src=&#34;https://caaatch22.github.io/img/waveletTree/waveletTree.png&#34; alt=&#34;&#34;  /&gt;
+&lt;/p&gt;
+&lt;p&gt;该图给出了用序列 $A = [7, 3, 5, 6, 1, 3, 2, 7, 8, 4]$ 构建的wavelet tree的形态。对于树上的每个节点，我们会将其按照值域分成两个部分$[low, mid), [mid, high)$。通过 &lt;strong&gt;稳定划分&lt;/strong&gt;（stable_partition，即不改变相对顺序的情况下划分）将该节点上的序列中小于 $mid$的划分到左子树中，大于等于mid的划分到右子树中，递归直至节点中只有一种值时为叶节点。需要注意的是，我们并不会在叶子节点中直接存储序列的值，而是通过某个方法使得我们能够使用较小的空间的情况下得到足够的信息。&lt;/p&gt;</description>
       <content:encoded><![CDATA[<h1 id="wavelet-tree-for-competitive-programming">Wavelet Tree for Competitive Programming</h1>
 <blockquote>
 <p>最近在学<em>FM-Index</em>相关算法用于数据库，了解到Wavelet Tree这一数据结构，发现其还可以应用在算法竞赛中。网上相关中文资料比较少，权当自己做个学习笔记</p>

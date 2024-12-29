@@ -7,12 +7,28 @@
 <meta name="robots" content="index, follow">
 <title>将Wavelet Tree用于算法竞赛 | Mingjie&#39;s Home</title>
 <meta name="keywords" content="icpc, DataStructure">
-<meta name="description" content="Wavelet Tree for Competitive Programming 最近在学FM-Index相关算法用于数据库，了解到Wavelet Tree这一数据结构，发现其还可以应用在算法竞赛中。网上相关中文资料比较少，权当自己做个学习笔记
-开始之前 在学习wavelet tree前，不妨看看他能解决什么样的问题。
-假设我们有一长为 $n$ 的序列 $A[0&hellip;n - 1]$ 。在算法竞赛中，典型的数据量是 $n = 1e5, |A[i]| &lt;= 1e9$
-区间 $[L, R)$ 中元素$x$的出现次数 区间 $[L, R)$ 中的第k小数 区间 $[L, R)$ 上 小于等于x的数的个数 &hellip; 以上问题都可以通过可持久化线段树在解决。那为什么还需要wavelet tree呢，我们都知道可持久化线段树的常数很大，并且十分消耗空间，在有些苛刻的题目下可能会被卡 好吧应该都是金牌题，不是我该考虑的 。利用wavelet tree可以在$log(\sigma)$时间内完成的同时（且优秀的常数），若使用bitvector优化空间，空间上大概比可持久化线段树少一个量级。最重要的一点是，我个人觉得他比主席树更加直观易懂。 $\sigma$ = | $\Sigma = {1, 2, \cdots, \sigma}$| （用于序列上时是值域大小）。
+<meta name="description" content="Wavelet Tree for Competitive Programming
+
+最近在学FM-Index相关算法用于数据库，了解到Wavelet Tree这一数据结构，发现其还可以应用在算法竞赛中。网上相关中文资料比较少，权当自己做个学习笔记
+
+开始之前
+在学习wavelet tree前，不妨看看他能解决什么样的问题。
+假设我们有一长为 $n$ 的序列 $A[0&hellip;n - 1]$ 。在算法竞赛中，典型的数据量是  $n = 1e5,  |A[i]| &lt;= 1e9$
+
+区间 $[L, R)$ 中元素$x$的出现次数
+区间 $[L, R)$ 中的第k小数
+区间 $[L, R)$ 上 小于等于x的数的个数
+&hellip;
+
+以上问题都可以通过可持久化线段树在解决。那为什么还需要wavelet tree呢，我们都知道可持久化线段树的常数很大，并且十分消耗空间，在有些苛刻的题目下可能会被卡  好吧应该都是金牌题，不是我该考虑的 。利用wavelet tree可以在$log(\sigma)$时间内完成的同时（且优秀的常数），若使用bitvector优化空间，空间上大概比可持久化线段树少一个量级。最重要的一点是，我个人觉得他比主席树更加直观易懂。
+$\sigma$ = | $\Sigma = {1, 2, \cdots, \sigma}$| （用于序列上时是值域大小）。
+
 用wavelet tree的缺点就是带修改操作比较难写，码量较大，一般不会在比赛时使用。
-Wavelet Tree 该图给出了用序列 $A = [7, 3, 5, 6, 1, 3, 2, 7, 8, 4]$ 构建的wavelet tree的形态。对于树上的每个节点，我们会将其按照值域分成两个部分$[low, mid), [mid, high)$。通过 稳定划分（stable_partition，即不改变相对顺序的情况下划分）将该节点上的序列中小于 $mid$的划分到左子树中，大于等于mid的划分到右子树中，递归直至节点中只有一种值时为叶节点。需要注意的是，我们并不会在叶子节点中直接存储序列的值，而是通过某个方法使得我们能够使用较小的空间的情况下得到足够的信息。">
+
+Wavelet Tree
+
+
+该图给出了用序列 $A = [7, 3, 5, 6, 1, 3, 2, 7, 8, 4]$ 构建的wavelet tree的形态。对于树上的每个节点，我们会将其按照值域分成两个部分$[low, mid), [mid, high)$。通过 稳定划分（stable_partition，即不改变相对顺序的情况下划分）将该节点上的序列中小于 $mid$的划分到左子树中，大于等于mid的划分到右子树中，递归直至节点中只有一种值时为叶节点。需要注意的是，我们并不会在叶子节点中直接存储序列的值，而是通过某个方法使得我们能够使用较小的空间的情况下得到足够的信息。">
 <meta name="author" content="">
 <link rel="canonical" href="https://caaatch22.github.io/posts/%E7%AE%97%E6%B3%95%E7%AB%9E%E8%B5%9B%E4%B8%AD%E7%9A%84wavelet-tree/">
 <link crossorigin="anonymous" href="/assets/css/stylesheet.678b5c47efa744d2e0dd0d61101075e6aecdc9a0631e7ad8538f4ec0cca79273.css" integrity="sha256-Z4tcR&#43;&#43;nRNLg3Q1hEBB15q7NyaBjHnrYU49OwMynknM=" rel="preload stylesheet" as="style">
@@ -25,6 +41,7 @@ Wavelet Tree 该图给出了用序列 $A = [7, 3, 5, 6, 1, 3, 2, 7, 8, 4]$ 构�
 <link rel="mask-icon" href="https://caaatch22.github.io/safari-pinned-tab.svg">
 <meta name="theme-color" content="#2e2e33">
 <meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://caaatch22.github.io/posts/%E7%AE%97%E6%B3%95%E7%AB%9E%E8%B5%9B%E4%B8%AD%E7%9A%84wavelet-tree/">
 <noscript>
     <style>
         #theme-toggle,
@@ -83,23 +100,42 @@ Wavelet Tree 该图给出了用序列 $A = [7, 3, 5, 6, 1, 3, 2, 7, 8, 4]$ 构�
 </script>
 
 
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-WEG841BBW9"></script>
-<script>
-var doNotTrack = false;
-if (!doNotTrack) {
-	window.dataLayer = window.dataLayer || [];
-	function gtag(){dataLayer.push(arguments);}
-	gtag('js', new Date());
-	gtag('config', 'G-WEG841BBW9', { 'anonymize_ip': false });
-}
-</script>
-<meta property="og:title" content="将Wavelet Tree用于算法竞赛" />
-<meta property="og:description" content="Wavelet Tree for Competitive Programming 最近在学FM-Index相关算法用于数据库，了解到Wavelet Tree这一数据结构，发现其还可以应用在算法竞赛中。网上相关中文资料比较少，权当自己做个学习笔记
-开始之前 在学习wavelet tree前，不妨看看他能解决什么样的问题。
-假设我们有一长为 $n$ 的序列 $A[0&hellip;n - 1]$ 。在算法竞赛中，典型的数据量是 $n = 1e5, |A[i]| &lt;= 1e9$
-区间 $[L, R)$ 中元素$x$的出现次数 区间 $[L, R)$ 中的第k小数 区间 $[L, R)$ 上 小于等于x的数的个数 &hellip; 以上问题都可以通过可持久化线段树在解决。那为什么还需要wavelet tree呢，我们都知道可持久化线段树的常数很大，并且十分消耗空间，在有些苛刻的题目下可能会被卡 好吧应该都是金牌题，不是我该考虑的 。利用wavelet tree可以在$log(\sigma)$时间内完成的同时（且优秀的常数），若使用bitvector优化空间，空间上大概比可持久化线段树少一个量级。最重要的一点是，我个人觉得他比主席树更加直观易懂。 $\sigma$ = | $\Sigma = {1, 2, \cdots, \sigma}$| （用于序列上时是值域大小）。
+      <script async src="https://www.googletagmanager.com/gtag/js?id=G-WEG841BBW9"></script>
+      <script>
+        var doNotTrack = false;
+        if ( false ) {
+          var dnt = (navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack);
+          var doNotTrack = (dnt == "1" || dnt == "yes");
+        }
+        if (!doNotTrack) {
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-WEG841BBW9');
+        }
+      </script><meta property="og:title" content="将Wavelet Tree用于算法竞赛" />
+<meta property="og:description" content="Wavelet Tree for Competitive Programming
+
+最近在学FM-Index相关算法用于数据库，了解到Wavelet Tree这一数据结构，发现其还可以应用在算法竞赛中。网上相关中文资料比较少，权当自己做个学习笔记
+
+开始之前
+在学习wavelet tree前，不妨看看他能解决什么样的问题。
+假设我们有一长为 $n$ 的序列 $A[0&hellip;n - 1]$ 。在算法竞赛中，典型的数据量是  $n = 1e5,  |A[i]| &lt;= 1e9$
+
+区间 $[L, R)$ 中元素$x$的出现次数
+区间 $[L, R)$ 中的第k小数
+区间 $[L, R)$ 上 小于等于x的数的个数
+&hellip;
+
+以上问题都可以通过可持久化线段树在解决。那为什么还需要wavelet tree呢，我们都知道可持久化线段树的常数很大，并且十分消耗空间，在有些苛刻的题目下可能会被卡  好吧应该都是金牌题，不是我该考虑的 。利用wavelet tree可以在$log(\sigma)$时间内完成的同时（且优秀的常数），若使用bitvector优化空间，空间上大概比可持久化线段树少一个量级。最重要的一点是，我个人觉得他比主席树更加直观易懂。
+$\sigma$ = | $\Sigma = {1, 2, \cdots, \sigma}$| （用于序列上时是值域大小）。
+
 用wavelet tree的缺点就是带修改操作比较难写，码量较大，一般不会在比赛时使用。
-Wavelet Tree 该图给出了用序列 $A = [7, 3, 5, 6, 1, 3, 2, 7, 8, 4]$ 构建的wavelet tree的形态。对于树上的每个节点，我们会将其按照值域分成两个部分$[low, mid), [mid, high)$。通过 稳定划分（stable_partition，即不改变相对顺序的情况下划分）将该节点上的序列中小于 $mid$的划分到左子树中，大于等于mid的划分到右子树中，递归直至节点中只有一种值时为叶节点。需要注意的是，我们并不会在叶子节点中直接存储序列的值，而是通过某个方法使得我们能够使用较小的空间的情况下得到足够的信息。" />
+
+Wavelet Tree
+
+
+该图给出了用序列 $A = [7, 3, 5, 6, 1, 3, 2, 7, 8, 4]$ 构建的wavelet tree的形态。对于树上的每个节点，我们会将其按照值域分成两个部分$[low, mid), [mid, high)$。通过 稳定划分（stable_partition，即不改变相对顺序的情况下划分）将该节点上的序列中小于 $mid$的划分到左子树中，大于等于mid的划分到右子树中，递归直至节点中只有一种值时为叶节点。需要注意的是，我们并不会在叶子节点中直接存储序列的值，而是通过某个方法使得我们能够使用较小的空间的情况下得到足够的信息。" />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://caaatch22.github.io/posts/%E7%AE%97%E6%B3%95%E7%AB%9E%E8%B5%9B%E4%B8%AD%E7%9A%84wavelet-tree/" />
 <meta property="og:image" content="https://caaatch22.github.io/img/waveletTree/waveletTree.png" /><meta property="article:section" content="posts" />
@@ -109,28 +145,44 @@ Wavelet Tree 该图给出了用序列 $A = [7, 3, 5, 6, 1, 3, 2, 7, 8, 4]$ 构�
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:image" content="https://caaatch22.github.io/img/waveletTree/waveletTree.png" />
 <meta name="twitter:title" content="将Wavelet Tree用于算法竞赛"/>
-<meta name="twitter:description" content="Wavelet Tree for Competitive Programming 最近在学FM-Index相关算法用于数据库，了解到Wavelet Tree这一数据结构，发现其还可以应用在算法竞赛中。网上相关中文资料比较少，权当自己做个学习笔记
-开始之前 在学习wavelet tree前，不妨看看他能解决什么样的问题。
-假设我们有一长为 $n$ 的序列 $A[0&hellip;n - 1]$ 。在算法竞赛中，典型的数据量是 $n = 1e5, |A[i]| &lt;= 1e9$
-区间 $[L, R)$ 中元素$x$的出现次数 区间 $[L, R)$ 中的第k小数 区间 $[L, R)$ 上 小于等于x的数的个数 &hellip; 以上问题都可以通过可持久化线段树在解决。那为什么还需要wavelet tree呢，我们都知道可持久化线段树的常数很大，并且十分消耗空间，在有些苛刻的题目下可能会被卡 好吧应该都是金牌题，不是我该考虑的 。利用wavelet tree可以在$log(\sigma)$时间内完成的同时（且优秀的常数），若使用bitvector优化空间，空间上大概比可持久化线段树少一个量级。最重要的一点是，我个人觉得他比主席树更加直观易懂。 $\sigma$ = | $\Sigma = {1, 2, \cdots, \sigma}$| （用于序列上时是值域大小）。
+<meta name="twitter:description" content="Wavelet Tree for Competitive Programming
+
+最近在学FM-Index相关算法用于数据库，了解到Wavelet Tree这一数据结构，发现其还可以应用在算法竞赛中。网上相关中文资料比较少，权当自己做个学习笔记
+
+开始之前
+在学习wavelet tree前，不妨看看他能解决什么样的问题。
+假设我们有一长为 $n$ 的序列 $A[0&hellip;n - 1]$ 。在算法竞赛中，典型的数据量是  $n = 1e5,  |A[i]| &lt;= 1e9$
+
+区间 $[L, R)$ 中元素$x$的出现次数
+区间 $[L, R)$ 中的第k小数
+区间 $[L, R)$ 上 小于等于x的数的个数
+&hellip;
+
+以上问题都可以通过可持久化线段树在解决。那为什么还需要wavelet tree呢，我们都知道可持久化线段树的常数很大，并且十分消耗空间，在有些苛刻的题目下可能会被卡  好吧应该都是金牌题，不是我该考虑的 。利用wavelet tree可以在$log(\sigma)$时间内完成的同时（且优秀的常数），若使用bitvector优化空间，空间上大概比可持久化线段树少一个量级。最重要的一点是，我个人觉得他比主席树更加直观易懂。
+$\sigma$ = | $\Sigma = {1, 2, \cdots, \sigma}$| （用于序列上时是值域大小）。
+
 用wavelet tree的缺点就是带修改操作比较难写，码量较大，一般不会在比赛时使用。
-Wavelet Tree 该图给出了用序列 $A = [7, 3, 5, 6, 1, 3, 2, 7, 8, 4]$ 构建的wavelet tree的形态。对于树上的每个节点，我们会将其按照值域分成两个部分$[low, mid), [mid, high)$。通过 稳定划分（stable_partition，即不改变相对顺序的情况下划分）将该节点上的序列中小于 $mid$的划分到左子树中，大于等于mid的划分到右子树中，递归直至节点中只有一种值时为叶节点。需要注意的是，我们并不会在叶子节点中直接存储序列的值，而是通过某个方法使得我们能够使用较小的空间的情况下得到足够的信息。"/>
+
+Wavelet Tree
+
+
+该图给出了用序列 $A = [7, 3, 5, 6, 1, 3, 2, 7, 8, 4]$ 构建的wavelet tree的形态。对于树上的每个节点，我们会将其按照值域分成两个部分$[low, mid), [mid, high)$。通过 稳定划分（stable_partition，即不改变相对顺序的情况下划分）将该节点上的序列中小于 $mid$的划分到左子树中，大于等于mid的划分到右子树中，递归直至节点中只有一种值时为叶节点。需要注意的是，我们并不会在叶子节点中直接存储序列的值，而是通过某个方法使得我们能够使用较小的空间的情况下得到足够的信息。"/>
 
 
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "BreadcrumbList",
-  "itemListElement": [, 
+  "itemListElement": [
     {
       "@type": "ListItem",
-      "position":  2 ,
+      "position":  1 ,
       "name": "Posts",
       "item": "https://caaatch22.github.io/posts/"
     }, 
     {
       "@type": "ListItem",
-      "position":  3 ,
+      "position":  2 ,
       "name": "将Wavelet Tree用于算法竞赛",
       "item": "https://caaatch22.github.io/posts/%E7%AE%97%E6%B3%95%E7%AB%9E%E8%B5%9B%E4%B8%AD%E7%9A%84wavelet-tree/"
     }
@@ -143,7 +195,7 @@ Wavelet Tree 该图给出了用序列 $A = [7, 3, 5, 6, 1, 3, 2, 7, 8, 4]$ 构�
   "@type": "BlogPosting",
   "headline": "将Wavelet Tree用于算法竞赛",
   "name": "将Wavelet Tree用于算法竞赛",
-  "description": "Wavelet Tree for Competitive Programming 最近在学FM-Index相关算法用于数据库，了解到Wavelet Tree这一数据结构，发现其还可以应用在算法竞赛中。网上相关中文资料比较少，权当自己做个学习笔记\n开始之前 在学习wavelet tree前，不妨看看他能解决什么样的问题。\n假设我们有一长为 $n$ 的序列 $A[0\u0026hellip;n - 1]$ 。在算法竞赛中，典型的数据量是 $n = 1e5, |A[i]| \u0026lt;= 1e9$\n区间 $[L, R)$ 中元素$x$的出现次数 区间 $[L, R)$ 中的第k小数 区间 $[L, R)$ 上 小于等于x的数的个数 \u0026hellip; 以上问题都可以通过可持久化线段树在解决。那为什么还需要wavelet tree呢，我们都知道可持久化线段树的常数很大，并且十分消耗空间，在有些苛刻的题目下可能会被卡 好吧应该都是金牌题，不是我该考虑的 。利用wavelet tree可以在$log(\\sigma)$时间内完成的同时（且优秀的常数），若使用bitvector优化空间，空间上大概比可持久化线段树少一个量级。最重要的一点是，我个人觉得他比主席树更加直观易懂。 $\\sigma$ = | $\\Sigma = {1, 2, \\cdots, \\sigma}$| （用于序列上时是值域大小）。\n用wavelet tree的缺点就是带修改操作比较难写，码量较大，一般不会在比赛时使用。\nWavelet Tree 该图给出了用序列 $A = [7, 3, 5, 6, 1, 3, 2, 7, 8, 4]$ 构建的wavelet tree的形态。对于树上的每个节点，我们会将其按照值域分成两个部分$[low, mid), [mid, high)$。通过 稳定划分（stable_partition，即不改变相对顺序的情况下划分）将该节点上的序列中小于 $mid$的划分到左子树中，大于等于mid的划分到右子树中，递归直至节点中只有一种值时为叶节点。需要注意的是，我们并不会在叶子节点中直接存储序列的值，而是通过某个方法使得我们能够使用较小的空间的情况下得到足够的信息。",
+  "description": "Wavelet Tree for Competitive Programming 最近在学FM-Index相关算法用于数据库，了解到Wavelet Tree这一数据结构，发现其还可以应用在算法竞赛中。网上相关中文资料比较少，权当自己做个学习笔记\n开始之前 在学习wavelet tree前，不妨看看他能解决什么样的问题。\n假设我们有一长为 $n$ 的序列 $A[0\u0026hellip;n - 1]$ 。在算法竞赛中，典型的数据量是 $n = 1e5, |A[i]| \u0026lt;= 1e9$\n区间 $[L, R)$ 中元素$x$的出现次数 区间 $[L, R)$ 中的第k小数 区间 $[L, R)$ 上 小于等于x的数的个数 \u0026hellip; 以上问题都可以通过可持久化线段树在解决。那为什么还需要wavelet tree呢，我们都知道可持久化线段树的常数很大，并且十分消耗空间，在有些苛刻的题目下可能会被卡 好吧应该都是金牌题，不是我该考虑的 。利用wavelet tree可以在$log(\\sigma)$时间内完成的同时（且优秀的常数），若使用bitvector优化空间，空间上大概比可持久化线段树少一个量级。最重要的一点是，我个人觉得他比主席树更加直观易懂。 $\\sigma$ = | $\\Sigma = {1, 2, \\cdots, \\sigma}$| （用于序列上时是值域大小）。\n用wavelet tree的缺点就是带修改操作比较难写，码量较大，一般不会在比赛时使用。\nWavelet Tree 该图给出了用序列 $A = [7, 3, 5, 6, 1, 3, 2, 7, 8, 4]$ 构建的wavelet tree的形态。对于树上的每个节点，我们会将其按照值域分成两个部分$[low, mid), [mid, high)$。通过 稳定划分（stable_partition，即不改变相对顺序的情况下划分）将该节点上的序列中小于 $mid$的划分到左子树中，大于等于mid的划分到右子树中，递归直至节点中只有一种值时为叶节点。需要注意的是，我们并不会在叶子节点中直接存储序列的值，而是通过某个方法使得我们能够使用较小的空间的情况下得到足够的信息。\n",
   "keywords": [
     "icpc", "DataStructure"
   ],
@@ -183,7 +235,7 @@ Wavelet Tree 该图给出了用序列 $A = [7, 3, 5, 6, 1, 3, 2, 7, 8, 4]$ 构�
 <header class="header">
     <nav class="nav">
         <div class="logo">
-            <a href="https://caaatch22.github.io" accesskey="h" title="Mingjie&#39;s Home (Alt + H)">Mingjie&#39;s Home</a>
+            <a href="https://caaatch22.github.io/" accesskey="h" title="Mingjie&#39;s Home (Alt + H)">Mingjie&#39;s Home</a>
             <div class="logo-switches">
                 <button id="theme-toggle" accesskey="t" title="(Alt + T)">
                     <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
@@ -205,6 +257,8 @@ Wavelet Tree 该图给出了用序列 $A = [7, 3, 5, 6, 1, 3, 2, 7, 8, 4]$ 构�
                         <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
                     </svg>
                 </button>
+                <ul class="lang-switch"><li>|</li>
+                </ul>
             </div>
         </div>
         <ul id="menu">
@@ -235,11 +289,11 @@ Wavelet Tree 该图给出了用序列 $A = [7, 3, 5, 6, 1, 3, 2, 7, 8, 4]$ 构�
 
 <article class="post-single">
   <header class="post-header">
-    <div class="breadcrumbs"><a href="https://caaatch22.github.io">Home</a>&nbsp;»&nbsp;<a href="https://caaatch22.github.io/posts/">Posts</a></div>
+    <div class="breadcrumbs"><a href="https://caaatch22.github.io/">Home</a>&nbsp;»&nbsp;<a href="https://caaatch22.github.io/posts/">Posts</a></div>
     <h1 class="post-title">
       将Wavelet Tree用于算法竞赛
     </h1>
-    <div class="post-meta"><span title='2023-01-10 16:18:32 +0000 UTC'>January 10, 2023</span>&nbsp;·&nbsp;4 min
+    <div class="post-meta">&lt;span title=&#39;2023-01-10 16:18:32 &#43;0000 UTC&#39;&gt;January 10, 2023&lt;/span&gt;&amp;nbsp;·&amp;nbsp;4 min
 
 </div>
   </header> <aside id="toc-container" class="toc-container wide">
@@ -499,7 +553,7 @@ $\sigma$ = | $\Sigma = {1, 2, \cdots, \sigma}$| （用于序列上时是值域�
 
   <footer class="post-footer">
     <ul class="post-tags">
-      <li><a href="https://caaatch22.github.io/tags/icpc/">icpc</a></li>
+      <li><a href="https://caaatch22.github.io/tags/icpc/">Icpc</a></li>
       <li><a href="https://caaatch22.github.io/tags/datastructure/">DataStructure</a></li>
     </ul>
 <nav class="paginav">
@@ -520,7 +574,7 @@ $\sigma$ = | $\Sigma = {1, 2, \cdots, \sigma}$| （用于序列上时是值域�
     </main>
     
 <footer class="footer">
-    <span>&copy; 2024 <a href="https://caaatch22.github.io">Mingjie&#39;s Home</a></span>
+    <span>&copy; 2024 <a href="https://caaatch22.github.io/">Mingjie&#39;s Home</a></span>
     <span>
         Powered by
         <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &

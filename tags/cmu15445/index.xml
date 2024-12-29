@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
   <channel>
-    <title>cmu15445 on Mingjie&#39;s Home</title>
+    <title>Cmu15445 on Mingjie&#39;s Home</title>
     <link>https://caaatch22.github.io/tags/cmu15445/</link>
-    <description>Recent content in cmu15445 on Mingjie&#39;s Home</description>
+    <description>Recent content in Cmu15445 on Mingjie&#39;s Home</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>zh-cn</language>
     <lastBuildDate>Tue, 17 Jan 2023 23:45:12 +0000</lastBuildDate><atom:link href="https://caaatch22.github.io/tags/cmu15445/index.xml" rel="self" type="application/rss+xml" />
@@ -13,13 +13,34 @@
       <pubDate>Tue, 17 Jan 2023 23:45:12 +0000</pubDate>
       
       <guid>https://caaatch22.github.io/posts/cmu15445-project3-query-execution/</guid>
-      <description>Overview 在这次实验写完后，我们已经能使用bustub-shell完成执行 sql 语句了，还是挺有成就感的。同时，TA 为我们准备了浏览器上的bustub ，方便和我们写的对比调试。你也可以使用 explain 来查看他的优化策略与执行步骤。
-这次实验的主要难点在于读代码，理清 bustub 的执行引擎的数据流以及代码中的实现。搞懂了之后各个算子的实现就很简单了（相对 B+树）。
-上图是 bustub 的整体架构。
-Parser sql 语句的解析就像其他编程语言一样，同样需要翻译成比较结构化的东西。Parser 阶段会生成一个抽象语法树(AST, Abstract Syntax Tree)。 这并不是数据库核心部分，bustub 直接使用了 PostgreSQL 的 parser 库 libpg_query。
-Binder 得到 AST 后，需要将这些词语绑定到数据库实体上，这就是 Binder 的工作。例如有这样一条 sql：
-SELECT table1.y, table2.x FROM table1 INNER JOIN table2 ON table1.x = table2.y; 其中 SELECT 和 FROM 是关键字，x 和 table1 是标识符。我们可以使用 explain 来看看 binder 层（bustub-shell 未完成时也可以使用 explain）：
-=== BINDER === BoundSelec { table=BoundJoin { type=Inner, left=BoundBaseTableRef { table=table1, oid=25 }, right=BoundBaseTableRef { table=table2, oid=26 }, condition=(table1.</description>
+      <description>&lt;h2 id=&#34;overview&#34;&gt;Overview&lt;/h2&gt;
+&lt;blockquote&gt;
+&lt;p&gt;在这次实验写完后，我们已经能使用bustub-shell完成执行 sql 语句了，还是挺有成就感的。同时，TA 为我们准备了&lt;a href=&#34;https://15445.courses.cs.cmu.edu/fall2022/bustub/&#34;&gt;浏览器上的bustub&lt;/a&gt; ，方便和我们写的对比调试。你也可以使用 &lt;code&gt;explain&lt;/code&gt; 来查看他的优化策略与执行步骤。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;这次实验的主要难点在于读代码，理清 bustub 的执行引擎的数据流以及代码中的实现。搞懂了之后各个算子的实现就很简单了（相对 B+树）。&lt;/p&gt;
+&lt;p&gt;&lt;img loading=&#34;lazy&#34; src=&#34;https://caaatch22.github.io/img/busTub/query_excution/project-structure.png&#34; alt=&#34;&#34;  /&gt;
+&lt;/p&gt;
+&lt;p&gt;上图是 bustub 的整体架构。&lt;/p&gt;
+&lt;h3 id=&#34;parser&#34;&gt;Parser&lt;/h3&gt;
+&lt;p&gt;sql 语句的解析就像其他编程语言一样，同样需要翻译成比较结构化的东西。Parser 阶段会生成一个&lt;em&gt;抽象语法树(AST, Abstract Syntax Tree)&lt;/em&gt;。 这并不是数据库核心部分，bustub 直接使用了 PostgreSQL 的 parser 库 libpg_query。&lt;/p&gt;
+&lt;h3 id=&#34;binder&#34;&gt;Binder&lt;/h3&gt;
+&lt;p&gt;得到 AST 后，需要将这些词语绑定到数据库实体上，这就是 Binder 的工作。例如有这样一条 sql：&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-sql&#34; data-lang=&#34;sql&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;SELECT&lt;/span&gt; table1.y, table2.x &lt;span style=&#34;color:#66d9ef&#34;&gt;FROM&lt;/span&gt; table1 &lt;span style=&#34;color:#66d9ef&#34;&gt;INNER&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;JOIN&lt;/span&gt; table2 &lt;span style=&#34;color:#66d9ef&#34;&gt;ON&lt;/span&gt; table1.x &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; table2.y;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;其中 &lt;code&gt;SELECT&lt;/code&gt; 和 &lt;code&gt;FROM&lt;/code&gt; 是关键字，&lt;code&gt;x&lt;/code&gt; 和 &lt;code&gt;table1&lt;/code&gt; 是标识符。我们可以使用 &lt;code&gt;explain&lt;/code&gt; 来看看 &lt;code&gt;binder&lt;/code&gt; 层（bustub-shell 未完成时也可以使用 explain）：&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-shell&#34; data-lang=&#34;shell&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;===&lt;/span&gt; BINDER &lt;span style=&#34;color:#f92672&#34;&gt;===&lt;/span&gt;                                               
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt; BoundSelec &lt;span style=&#34;color:#f92672&#34;&gt;{&lt;/span&gt;                                        
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;   table&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;BoundJoin &lt;span style=&#34;color:#f92672&#34;&gt;{&lt;/span&gt; type&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;Inner, left&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;BoundBaseTableRef &lt;span style=&#34;color:#f92672&#34;&gt;{&lt;/span&gt; table&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;table1, oid&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;25&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;}&lt;/span&gt;, right&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;BoundBaseTableRef &lt;span style=&#34;color:#f92672&#34;&gt;{&lt;/span&gt; table&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;table2, oid&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;26&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;}&lt;/span&gt;, condition&lt;span style=&#34;color:#f92672&#34;&gt;=(&lt;/span&gt;table1.x&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;table2.y&lt;span style=&#34;color:#f92672&#34;&gt;)&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;}&lt;/span&gt;, 
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;   columns&lt;span style=&#34;color:#f92672&#34;&gt;=[&lt;/span&gt;table1.y, table2.x&lt;span style=&#34;color:#f92672&#34;&gt;]&lt;/span&gt;,                       
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;   groupBy&lt;span style=&#34;color:#f92672&#34;&gt;=[]&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;   having&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;,  
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;   where&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;,  
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;   limit&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;, 
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;   offset&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;   order_by&lt;span style=&#34;color:#f92672&#34;&gt;=[]&lt;/span&gt;,                                 
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;   is_distinct&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;false,         
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;   ctes&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;可以看出，binder的作用就是对AST的各个节点绑定一个（物理）实体。&lt;/p&gt;</description>
       <content:encoded><![CDATA[<h2 id="overview">Overview</h2>
 <blockquote>
 <p>在这次实验写完后，我们已经能使用bustub-shell完成执行 sql 语句了，还是挺有成就感的。同时，TA 为我们准备了<a href="https://15445.courses.cs.cmu.edu/fall2022/bustub/">浏览器上的bustub</a> ，方便和我们写的对比调试。你也可以使用 <code>explain</code> 来查看他的优化策略与执行步骤。</p>
@@ -206,12 +227,28 @@ SELECT table1.y, table2.x FROM table1 INNER JOIN table2 ON table1.x = table2.y; 
       <pubDate>Tue, 27 Dec 2022 23:45:12 +0000</pubDate>
       
       <guid>https://caaatch22.github.io/posts/cmu15445-project2-concurrent-b-tree/</guid>
-      <description>Overview 这个实验应该是最难的一个实验了。。。（感觉和Project 4 —— Transaction实现的难度差不多） 另外，2022fall版本的B+ tree更是变态，因为几乎没有给任何内部的API，让人无从下手。建议到 Github repo 里找到20年的，我基本是根据里面定义的函数来实现的。
-实验材料贴心的为你分成了两个检查点，四个小任务。
-Checkpoint #1
-Task #1 - B+Tree Pages Task #2 - B+Tree Data Structure (Insertion, Deletion, Point Search) Checkpoint #2
-Task #3 - Index Iterator Task #4 - Concurrent Index Task #1 - B+Tree Pages 第一个任务算是热身，主要是搞清楚 B+ 树的一些类之间的关系。 我们知道，数据库中的索引也是数据，同样以 page 的形式被组织。我们先来看看要完成的这些类之间的关系。
-B+ tree internal page 与 B + tree leaf page 都继承自B + tree page，B + tree page 中定义了 B+ 树每个结点的一些信息。而B + Tree 这个类则是Checkpoint 1的主要对象，它对internal page 以及 leaf page 进行管理，并对外开放接口。而在内存中，internal page 与 leaf page 都属于 page 的一部分，关系如下图所示。他们就是 page 中的 data 部分。因此，每次 从 buffer pool manager 得到一个 page 后，若是将他们用作 B+树的结点，则需要对这个 data 进行释义，也就是将他强制转化为internal page 或者 leaf page。这在 C++ 中通过 reinterpret_cast 完成。</description>
+      <description>&lt;h2 id=&#34;overview&#34;&gt;Overview&lt;/h2&gt;
+&lt;blockquote&gt;
+&lt;p&gt;这个实验应该是最难的一个实验了。。。（感觉和Project 4 —— Transaction实现的难度差不多） 另外，2022fall版本的B+ tree更是变态，因为几乎没有给任何内部的API，让人无从下手。建议到 Github repo 里找到20年的，我基本是根据里面定义的函数来实现的。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;实验材料&lt;del&gt;贴心的&lt;/del&gt;为你分成了两个检查点，四个小任务。&lt;/p&gt;
+&lt;p&gt;Checkpoint #1&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Task #1 - B+Tree Pages&lt;/li&gt;
+&lt;li&gt;Task #2 - B+Tree Data Structure (Insertion, Deletion, Point Search)&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Checkpoint #2&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Task #3 - Index Iterator&lt;/li&gt;
+&lt;li&gt;Task #4 - Concurrent Index&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;task-1---btree-pages&#34;&gt;Task #1 - B+Tree Pages&lt;/h2&gt;
+&lt;p&gt;第一个任务算是热身，主要是搞清楚 B+ 树的一些类之间的关系。
+我们知道，数据库中的索引也是数据，同样以 page 的形式被组织。我们先来看看要完成的这些类之间的关系。&lt;/p&gt;
+&lt;p&gt;&lt;img loading=&#34;lazy&#34; src=&#34;https://caaatch22.github.io/img/busTub/B-tree/B-tree-page-relation.png&#34; alt=&#34;&#34;  /&gt;
+&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;B+ tree internal page&lt;/code&gt; 与 &lt;code&gt;B + tree leaf page&lt;/code&gt; 都继承自&lt;code&gt;B + tree page&lt;/code&gt;，&lt;code&gt;B + tree page&lt;/code&gt; 中定义了 B+ 树每个结点的一些信息。而B + Tree 这个类则是Checkpoint 1的主要对象，它对&lt;code&gt;internal page&lt;/code&gt; 以及 &lt;code&gt;leaf page&lt;/code&gt; 进行管理，并对外开放接口。而在内存中，internal page 与 leaf page 都属于 page 的一部分，关系如下图所示。他们就是 &lt;code&gt;page&lt;/code&gt; 中的 data 部分。因此，每次
+从 buffer pool manager 得到一个 page 后，若是将他们用作 B+树的结点，则需要对这个 data 进行&lt;strong&gt;释义&lt;/strong&gt;，也就是将他强制转化为internal page 或者 leaf page。这在 C++ 中通过 &lt;a href=&#34;https://en.cppreference.com/w/cpp/language/reinterpret_cast&#34;&gt;&lt;strong&gt;reinterpret_cast&lt;/strong&gt;&lt;/a&gt; 完成。&lt;/p&gt;</description>
       <content:encoded><![CDATA[<h2 id="overview">Overview</h2>
 <blockquote>
 <p>这个实验应该是最难的一个实验了。。。（感觉和Project 4 —— Transaction实现的难度差不多） 另外，2022fall版本的B+ tree更是变态，因为几乎没有给任何内部的API，让人无从下手。建议到 Github repo 里找到20年的，我基本是根据里面定义的函数来实现的。</p>
@@ -319,11 +356,22 @@ B+ tree internal page 与 B + tree leaf page 都继承自B + tree page，B + tre
       <pubDate>Thu, 22 Dec 2022 15:37:34 +0000</pubDate>
       
       <guid>https://caaatch22.github.io/posts/cmu15445-project1-buffer-pool-manager/</guid>
-      <description>Buffer Pool Manager cmu15445 是一门关于数据库管理系统（DBMS）设计与实现的经典公开课，是很多dba和内核开发人员的入门课程。开课教授Andy Pavlo 非常风趣幽默，他有自己上课的DJ，他曾在浴缸里录课，且时常语出惊人。这门课的实验项目BusTub非常有挑战性，并对所有人开放评测资源。
-Overview BusTub是一个面向磁盘的 DBMS(Database Management System)。由于磁盘上的数据不支持字节粒度的访问，这就需要一个管理页的中间层，而 Andy 坚持&amp;ldquo;The OS is not your friend&amp;rdquo;， 反对使用 mmap 进行页操作，因此实验一的目标便在于通过实现 Buffer Pool Manager 主动管理磁盘中的页（page）在内存中的缓存，从而，最小化磁盘访问次数（时间上）、最大化相关数据连续（空间上）。
-这次实验有三个子任务，分别是
-Task #1: Extendible Hash Table Task #2: LRU-K Replacer Task #3: Buffer Pool Manager Instance 可拓展哈希表是这个是实验中相对独立的模块。这里不会讲它的细节，后面的两个任务中需要用到哈希表的地方我直接用std::unordered_map替代，而且效率还更高。应该是因为 Extendible Hash Table 要求线程安全，为了方便在我在每个函数入口都加了大锁。 想要 Extendible Hash Table 具体细节的可以看这个b站视频。关于它的优化，我想可以进行更细粒度的锁管理甚至写一个无锁(lockfree)的哈希表。
-Buffer Pool Manager 在后两个实验开始之前，我建议先将Task #2和Task #3的实验材料完整的看完在开始写代码。因为 replacer 和 buffer pool manager 有较大程度的耦合。很多API设计需要对照两个组件才能知道自己应该维护的数据与功能的边界。为了更符合直觉，我会先阐述 buffer pool manager 的设计，同时会穿插着 LRU-k 的API什么时候，在哪用。</description>
+      <description>&lt;h1 id=&#34;buffer-pool-manager&#34;&gt;Buffer Pool Manager&lt;/h1&gt;
+&lt;blockquote&gt;
+&lt;p&gt;cmu15445 是一门关于数据库管理系统（DBMS）设计与实现的经典公开课，是很多dba和内核开发人员的入门课程。开课教授Andy Pavlo 非常风趣幽默，他有自己上课的DJ，他曾在浴缸里录课，且时常语出惊人。这门课的实验项目BusTub非常有挑战性，并对所有人开放评测资源。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h2 id=&#34;overview&#34;&gt;Overview&lt;/h2&gt;
+&lt;p&gt;BusTub是一个面向磁盘的 DBMS(Database Management System)。由于磁盘上的数据不支持字节粒度的访问，这就需要一个管理页的中间层，而 Andy 坚持&lt;a href=&#34;https://db.cs.cmu.edu/mmap-cidr2022/&#34;&gt;&amp;ldquo;The OS is not your friend&amp;rdquo;&lt;/a&gt;， 反对使用 mmap 进行页操作，因此实验一的目标便在于通过实现 Buffer Pool Manager 主动管理磁盘中的页（page）在内存中的缓存，从而，最小化磁盘访问次数（时间上）、最大化相关数据连续（空间上）。&lt;/p&gt;
+&lt;p&gt;这次实验有三个子任务，分别是&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Task #1: Extendible Hash Table&lt;/li&gt;
+&lt;li&gt;Task #2: LRU-K Replacer&lt;/li&gt;
+&lt;li&gt;Task #3: Buffer Pool Manager Instance&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;可拓展哈希表是这个是实验中相对独立的模块。这里不会讲它的细节，后面的两个任务中需要用到哈希表的地方我直接用std::unordered_map替代，而且效率还更高。应该是因为 Extendible Hash Table 要求线程安全，为了方便在我在每个函数入口都加了大锁。
+想要 Extendible Hash Table 具体细节的可以看这个&lt;a href=&#34;https://www.bilibili.com/video/BV1nV4y1N7LM/?spm_id_from=333.788&amp;amp;vd_source=11c680307875dda5d5b5c13fca2e5c57&#34;&gt;b站视频&lt;/a&gt;。关于它的优化，我想可以进行更细粒度的锁管理甚至写一个无锁(lockfree)的哈希表。&lt;/p&gt;
+&lt;h2 id=&#34;buffer-pool-manager-1&#34;&gt;Buffer Pool Manager&lt;/h2&gt;
+&lt;p&gt;在后两个实验开始之前，我建议先将Task #2和Task #3的&lt;a href=&#34;https://15445.courses.cs.cmu.edu/fall2022/project1/&#34;&gt;实验材料&lt;/a&gt;完整的看完在开始写代码。因为 &lt;code&gt;replacer&lt;/code&gt; 和 &lt;code&gt;buffer pool manager&lt;/code&gt; 有较大程度的耦合。很多API设计需要对照两个组件才能知道自己应该维护的数据与功能的边界。为了更符合直觉，我会先阐述 &lt;code&gt;buffer pool manager&lt;/code&gt; 的设计，同时会穿插着 &lt;code&gt;LRU-k&lt;/code&gt; 的API什么时候，在哪用。&lt;/p&gt;</description>
       <content:encoded><![CDATA[<h1 id="buffer-pool-manager">Buffer Pool Manager</h1>
 <blockquote>
 <p>cmu15445 是一门关于数据库管理系统（DBMS）设计与实现的经典公开课，是很多dba和内核开发人员的入门课程。开课教授Andy Pavlo 非常风趣幽默，他有自己上课的DJ，他曾在浴缸里录课，且时常语出惊人。这门课的实验项目BusTub非常有挑战性，并对所有人开放评测资源。</p>

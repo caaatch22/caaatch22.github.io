@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
   <channel>
-    <title>mlsys on Mingjie&#39;s Home</title>
+    <title>Mlsys on Mingjie&#39;s Home</title>
     <link>https://caaatch22.github.io/tags/mlsys/</link>
-    <description>Recent content in mlsys on Mingjie&#39;s Home</description>
+    <description>Recent content in Mlsys on Mingjie&#39;s Home</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>zh-cn</language>
     <lastBuildDate>Tue, 27 Feb 2024 22:19:21 +0000</lastBuildDate><atom:link href="https://caaatch22.github.io/tags/mlsys/index.xml" rel="self" type="application/rss+xml" />
@@ -13,13 +13,38 @@
       <pubDate>Tue, 27 Feb 2024 22:19:21 +0000</pubDate>
       
       <guid>https://caaatch22.github.io/posts/tinyml-quantization/</guid>
-      <description>Overview 模型量化（quantization）指的是用更少的bit表示模型参数，从而减少模型的大小，加速推理过程的技术。
-一种常见的量化方式是线性量化(linear quantization)，也叫仿射量化(affine quantization)。其实就是按比例将tensor（一般为fp32）放缩到 $2^{bitwidth}$ 的范围内，比如8bit等。我们很容易给出量化公式： $$ r = s(q - z) $$ 其中，r(real value)值得是量化前的值，q(quantized value)是量化后的值，s(scale)是放缩比例，z(zero point)相当于是一个偏移量。
-如何求出$s$和$z$呢？一种简单且常见的方式是通过最大最小值来估计，即：
-$$ s = \frac{r_{max} - r_{min}}{q_{max} - q_{min}} $$ $r_{max}$就是这个tensor的最大值，$r_{min}$是最小值，$q_{max}$和$q_{min}$是我们指定的量化后的最大最小值。如下图所示： 有了scale, 容易得到 $z = q_{min} - \frac{r_{min}}{s}$。在实际操作中，z一般会被round到最近的整数$z = round(q_{min} - \frac{r_{min}}{s})$（有很多不同的round规则，这个有具体实现决定）。
-得到量化方程： $$ q = clip(round(\frac{r}{s}) + z, q_{min}, q_{max}) $$
-代码示意如下：（实际会用pytorch已有的quantize api或者其他推理框架）
-def get_quantized_range(bitwidth): quantized_max = (1 &amp;lt;&amp;lt; (bitwidth - 1)) - 1 quantized_min = -(1 &amp;lt;&amp;lt; (bitwidth - 1)) return quantized_min, quantized_max def linear_quantize(fp_tensor, bitwidth, scale, zero_point, dtype=torch.</description>
+      <description>&lt;h2 id=&#34;overview&#34;&gt;Overview&lt;/h2&gt;
+&lt;p&gt;模型量化（quantization）指的是用更少的bit表示模型参数，从而减少模型的大小，加速推理过程的技术。&lt;/p&gt;
+&lt;p&gt;一种常见的量化方式是线性量化(linear quantization)，也叫仿射量化(affine quantization)。其实就是按比例将tensor（一般为fp32）放缩到 $2^{bitwidth}$ 的范围内，比如8bit等。我们很容易给出量化公式：
+$$
+r = s(q - z)
+$$
+其中，r(real value)值得是量化前的值，q(quantized value)是量化后的值，s(scale)是放缩比例，z(zero point)相当于是一个偏移量。&lt;/p&gt;
+&lt;p&gt;如何求出$s$和$z$呢？一种简单且常见的方式是通过最大最小值来估计，即：&lt;/p&gt;
+&lt;p&gt;$$
+s = \frac{r_{max} - r_{min}}{q_{max} - q_{min}}
+$$
+$r_{max}$就是这个tensor的最大值，$r_{min}$是最小值，$q_{max}$和$q_{min}$是我们指定的量化后的最大最小值。如下图所示：
+&lt;img loading=&#34;lazy&#34; src=&#34;https://caaatch22.github.io/img/tinyml/quantization/quantization.png&#34; alt=&#34;image&#34;  /&gt;
+&lt;/p&gt;
+&lt;p&gt;有了scale, 容易得到 $z = q_{min} - \frac{r_{min}}{s}$。在实际操作中，z一般会被round到最近的整数$z = round(q_{min} - \frac{r_{min}}{s})$（有很多不同的round规则，这个有具体实现决定）。&lt;/p&gt;
+&lt;p&gt;得到量化方程：
+$$
+q = clip(round(\frac{r}{s}) + z, q_{min}, q_{max})
+$$&lt;/p&gt;
+&lt;p&gt;代码示意如下：（实际会用pytorch已有的quantize api或者其他推理框架）&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;get_quantized_range&lt;/span&gt;(bitwidth):
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    quantized_max &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; (&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&amp;lt;&lt;/span&gt; (bitwidth &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;)) &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    quantized_min &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt;(&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&amp;lt;&lt;/span&gt; (bitwidth &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;))
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; quantized_min, quantized_max
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;linear_quantize&lt;/span&gt;(fp_tensor, bitwidth, scale, zero_point, dtype&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;torch&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;int8) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; torch&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;Tensor:
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    rounded_tensor &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; torch&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;round(fp_tensor &lt;span style=&#34;color:#f92672&#34;&gt;/&lt;/span&gt; scale)&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;to(dtype)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    shifted_tensor &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; rounded_tensor &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; zero_point
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    quantized_min, quantized_max &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; get_quantized_range(bitwidth)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    quantized_tensor &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; shifted_tensor&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;clamp_(quantized_min, quantized_max)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; quantized_tensor
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;上述过程被称为非对称量化(asymmetric quantization)。&lt;/p&gt;</description>
       <content:encoded><![CDATA[<h2 id="overview">Overview</h2>
 <p>模型量化（quantization）指的是用更少的bit表示模型参数，从而减少模型的大小，加速推理过程的技术。</p>
 <p>一种常见的量化方式是线性量化(linear quantization)，也叫仿射量化(affine quantization)。其实就是按比例将tensor（一般为fp32）放缩到 $2^{bitwidth}$ 的范围内，比如8bit等。我们很容易给出量化公式：
@@ -222,13 +247,62 @@ $$</p>
       <pubDate>Tue, 20 Feb 2024 15:35:59 +0000</pubDate>
       
       <guid>https://caaatch22.github.io/posts/tinyml-pruning/</guid>
-      <description>最近正在学习 MIT 6.5940, 韩松老师的课，做deep learning compression的应该都只知道。课程分为三个部分，efficient inference, domain-specific optimization, efficient training。有完整的课件，视频和实验。最后一个lab是将llama2部署在个人电脑上，非常有意思（谁不想要个自己的大模型呢）。其余lab也都可以白嫖google colab的gpu
-Introduction 正式介绍pruning and sparsity之前，我们先来聊聊为什么要做model compression这个事情。 Today&amp;rsquo;s Model is Too Big!
-随着Large language model的出现，如GPT-3，如今的模型参数量已经达到了上百billion，别说训练，我们甚至无法在一个gpu上对其进行推理。更别提如果我们想要将其部署在其他边缘设备上。
-所以当前在做inference之前，一般都会有个model-compression的过程，包括pruning（剪枝），quantization（量化），distillation（蒸馏）等。这些方法都是为了减少模型的大小，加速推理过程。这些方法也被广泛地集成到了各种加速卡，gpu中。例如nv的A100就支持structured sparsity（[N:M]形式的，具体含义下文会详细介绍）。
-Efficiency Metrics 我们再来看看一些 efficiency metrics，这也是我们在做inference过程中需要考虑的指标：
-Memory-Related Metrics # parameters model size total/peak #activations Computation-Related Metrics MACs FLOP, FLOPs # parameters 下表是一些常见结构的参数数量：
-Model #Parameters Linear Layer(FC) $feature_{in} * feature_{out}$ Conv Layer $c_{i} * c_{o} * k_{h} * k_{w} $ Grouped Conv Layer $c_{i} * c_{o} * k_{h} * k_{w} / g$ Depthwise Conv Layer $c_{o} * k_{h} * k_{w}$ 其中，Grouped Conv指的是将输入在channel维度进行分组，然后分别进行卷积，最后concatenate。Depthwise Conv是分组个数 $g$ 等于输入channel数的情况。</description>
+      <description>&lt;blockquote&gt;
+&lt;p&gt;最近正在学习 &lt;a href=&#34;https://hanlab.mit.edu/courses/2023-fall-65940&#34;&gt;MIT 6.5940&lt;/a&gt;, &lt;a href=&#34;https://hanlab.mit.edu/songhan&#34;&gt;韩松&lt;/a&gt;老师的课，做deep learning compression的应该都只知道。课程分为三个部分，&lt;strong&gt;efficient inference, domain-specific optimization, efficient training&lt;/strong&gt;。有完整的课件，视频和实验。最后一个lab是将llama2部署在个人电脑上，非常有意思（谁不想要个自己的大模型呢）。其余lab也都可以白嫖google colab的gpu&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h2 id=&#34;introduction&#34;&gt;Introduction&lt;/h2&gt;
+&lt;p&gt;正式介绍pruning and sparsity之前，我们先来聊聊为什么要做model compression这个事情。
+&lt;img loading=&#34;lazy&#34; src=&#34;https://caaatch22.github.io/img/tinyml/pruning/todays-model-size.png&#34; alt=&#34;todays-model-size&#34;  /&gt;
+&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Today&amp;rsquo;s Model is Too Big!&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;随着Large language model的出现，如GPT-3，如今的模型参数量已经达到了上百billion，别说训练，我们甚至无法在一个gpu上对其进行推理。更别提如果我们想要将其部署在其他边缘设备上。&lt;/p&gt;
+&lt;p&gt;所以当前在做inference之前，一般都会有个model-compression的过程，包括pruning（剪枝），quantization（量化），distillation（蒸馏）等。这些方法都是为了减少模型的大小，加速推理过程。这些方法也被广泛地集成到了各种加速卡，gpu中。例如nv的A100就支持structured sparsity（[N:M]形式的，具体含义下文会详细介绍）。&lt;/p&gt;
+&lt;h3 id=&#34;efficiency-metrics&#34;&gt;Efficiency Metrics&lt;/h3&gt;
+&lt;p&gt;我们再来看看一些 efficiency metrics，这也是我们在做inference过程中需要考虑的指标：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Memory-Related Metrics
+&lt;ul&gt;
+&lt;li&gt;# parameters&lt;/li&gt;
+&lt;li&gt;model size&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;total/peak #activations&lt;/li&gt;
+&lt;li&gt;Computation-Related Metrics
+&lt;ul&gt;
+&lt;li&gt;MACs&lt;/li&gt;
+&lt;li&gt;FLOP, FLOPs&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h4 id=&#34;-parameters&#34;&gt;# parameters&lt;/h4&gt;
+&lt;p&gt;下表是一些常见结构的参数数量：&lt;/p&gt;
+&lt;table&gt;
+  &lt;thead&gt;
+      &lt;tr&gt;
+          &lt;th&gt;Model&lt;/th&gt;
+          &lt;th&gt;#Parameters&lt;/th&gt;
+      &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+      &lt;tr&gt;
+          &lt;td&gt;Linear Layer(FC)&lt;/td&gt;
+          &lt;td&gt;$feature_{in} * feature_{out}$&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;Conv Layer&lt;/td&gt;
+          &lt;td&gt;$c_{i} * c_{o} * k_{h} * k_{w} $&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;Grouped Conv Layer&lt;/td&gt;
+          &lt;td&gt;$c_{i} * c_{o} * k_{h} * k_{w} / g$&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;Depthwise Conv Layer&lt;/td&gt;
+          &lt;td&gt;$c_{o} * k_{h} * k_{w}$&lt;/td&gt;
+      &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;其中，Grouped Conv指的是将输入在channel维度进行分组，然后分别进行卷积，最后concatenate。Depthwise Conv是分组个数 $g$ 等于输入channel数的情况。&lt;/p&gt;</description>
       <content:encoded><![CDATA[<blockquote>
 <p>最近正在学习 <a href="https://hanlab.mit.edu/courses/2023-fall-65940">MIT 6.5940</a>, <a href="https://hanlab.mit.edu/songhan">韩松</a>老师的课，做deep learning compression的应该都只知道。课程分为三个部分，<strong>efficient inference, domain-specific optimization, efficient training</strong>。有完整的课件，视频和实验。最后一个lab是将llama2部署在个人电脑上，非常有意思（谁不想要个自己的大模型呢）。其余lab也都可以白嫖google colab的gpu</p>
 </blockquote>
@@ -259,30 +333,30 @@ Model #Parameters Linear Layer(FC) $feature_{in} * feature_{out}$ Conv Layer $c_
 <h4 id="-parameters"># parameters</h4>
 <p>下表是一些常见结构的参数数量：</p>
 <table>
-<thead>
-<tr>
-<th>Model</th>
-<th>#Parameters</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Linear Layer(FC)</td>
-<td>$feature_{in} * feature_{out}$</td>
-</tr>
-<tr>
-<td>Conv Layer</td>
-<td>$c_{i} * c_{o} * k_{h} * k_{w} $</td>
-</tr>
-<tr>
-<td>Grouped Conv Layer</td>
-<td>$c_{i} * c_{o} * k_{h} * k_{w} / g$</td>
-</tr>
-<tr>
-<td>Depthwise Conv Layer</td>
-<td>$c_{o} * k_{h} * k_{w}$</td>
-</tr>
-</tbody>
+  <thead>
+      <tr>
+          <th>Model</th>
+          <th>#Parameters</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>Linear Layer(FC)</td>
+          <td>$feature_{in} * feature_{out}$</td>
+      </tr>
+      <tr>
+          <td>Conv Layer</td>
+          <td>$c_{i} * c_{o} * k_{h} * k_{w} $</td>
+      </tr>
+      <tr>
+          <td>Grouped Conv Layer</td>
+          <td>$c_{i} * c_{o} * k_{h} * k_{w} / g$</td>
+      </tr>
+      <tr>
+          <td>Depthwise Conv Layer</td>
+          <td>$c_{o} * k_{h} * k_{w}$</td>
+      </tr>
+  </tbody>
 </table>
 <p>其中，Grouped Conv指的是将输入在channel维度进行分组，然后分别进行卷积，最后concatenate。Depthwise Conv是分组个数 $g$ 等于输入channel数的情况。</p>
 <p>除了这些weight外，还有bias以及norm相关的参数。
@@ -306,30 +380,30 @@ $$</p>
 <p><code>MAC</code>的含义是 <strong>Multiply-Accumulate operation</strong>。例如，一个gemm(genearl matrix multiplication)的$MACs = m * n * k$（对于m * k的矩阵和k * n的矩阵相乘）。深度学习中几乎90%的时间都在做gemm，一个conv2d操作也可以由im2col转换为gemm操作。</p>
 <p>以下是常见的一些layer的MACs计算：</p>
 <table>
-<thead>
-<tr>
-<th>layer</th>
-<th>MACs(batch size = 1)</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Linear</td>
-<td>$feature_{in} * feature_{out}$</td>
-</tr>
-<tr>
-<td>Conv</td>
-<td>$c_{i}  * k_{h} * k_{w} * h_{o} * w_{o} * c_{o}$</td>
-</tr>
-<tr>
-<td>grouped conv</td>
-<td>$c_{i}/g * k_{h} * k_{w} * h_{o} * w_{o}* c_{o} $</td>
-</tr>
-<tr>
-<td>depthwise conv</td>
-<td>$c_{o} * k_{h} * k_{w} * h_{o} * w_{o}$</td>
-</tr>
-</tbody>
+  <thead>
+      <tr>
+          <th>layer</th>
+          <th>MACs(batch size = 1)</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>Linear</td>
+          <td>$feature_{in} * feature_{out}$</td>
+      </tr>
+      <tr>
+          <td>Conv</td>
+          <td>$c_{i}  * k_{h} * k_{w} * h_{o} * w_{o} * c_{o}$</td>
+      </tr>
+      <tr>
+          <td>grouped conv</td>
+          <td>$c_{i}/g * k_{h} * k_{w} * h_{o} * w_{o}* c_{o} $</td>
+      </tr>
+      <tr>
+          <td>depthwise conv</td>
+          <td>$c_{o} * k_{h} * k_{w} * h_{o} * w_{o}$</td>
+      </tr>
+  </tbody>
 </table>
 <p>（简单解释一下conv2d的MACs：对于每个输出特征图上的每个像素点，都需要进行 $c_i \times k_h \times k_w $ 次乘法运算和累加操作（假设每个卷积核和输入通道的对应部分做完整个卷积运算）。因为输出特征图有 $c_o$ 个通道，每个通道有 $h_o \times w_o$ 个像素点，所以总共的MACs数就是上面公式中的乘积。）</p>
 <h4 id="flop-and-flops">FLOP and FLOPs</h4>

@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>Back to Basics -- c&#43;&#43; move sematics | Mingjie&#39;s Home</title>
+<meta name="keywords" content="cpp">
+<meta name="description" content="1.3 Copying as a Fallback
+1.4 const Return Values
+const std::string get_value();不再是guideline，因为const disables 移动语义
+例如：
+const std::string getValue();
+std::vector&lt;std::string&gt; coll;
+coll.push_back(getValue()); // copies(because the return value is const)
+
+const std::string getValue(); // BAD: disables move semantics for return values
+const std::string&amp; getRef(); // OK
+const std::string* getPtr(); // OK
+Summary
+
+Move semantics allows us to optimize the copying of objects, where we no longer need the value. It can be used implicitly (for unnamed temporary objects or local return values) or explicitly (with std::move()).
+std::move() means I no longer need this value here. It marks the object as movable. An object marked with std::move() is not (partially) destroyed (the destructor still will be called).
+By declaring a function with a non-const rvalue reference (such as std::string&amp;&amp;), you define an interface where the caller semantically claims that it no longer needs the passed value. The implementer of the function can use this information to optimize its task by “stealing” the value or do any other modification with the passed argument. Usually, the implementer also has to ensure that the passed argument is in a valid state after the call.
+Moved-from objects of the C&#43;&#43; standard library are still valid objects, but you no longer know their value.
+Copy semantics is used as a fallback for move semantics (if copy semantics is supported). If there is no implementation taking an rvalue reference, any implementation taking an ordinary const lvalue reference (such as const std::string&amp;) is used. This fallback is then used even if the object is explicitly marked with std::move().
+Calling std::move() for a const object usually has no effect.
+If you return by value (not by reference), do not declare the return value as a whole to be const.
+
+Moved-from objects
+Valid but Unspecified State">
+<meta name="author" content="">
+<link rel="canonical" href="https://caaatch22.github.io/posts/back2basics-cpp-move-sematic/">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.678b5c47efa744d2e0dd0d61101075e6aecdc9a0631e7ad8538f4ec0cca79273.css" integrity="sha256-Z4tcR&#43;&#43;nRNLg3Q1hEBB15q7NyaBjHnrYU49OwMynknM=" rel="preload stylesheet" as="style">
+<script defer crossorigin="anonymous" src="/assets/js/highlight.f413e19d0714851f6474e7ee9632408e58ac146fbdbe62747134bea2fa3415e0.js" integrity="sha256-9BPhnQcUhR9kdOfuljJAjlisFG&#43;9vmJ0cTS&#43;ovo0FeA="
+    onload="hljs.initHighlightingOnLoad();"></script>
+<link rel="icon" href="https://caaatch22.github.io/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://caaatch22.github.io/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://caaatch22.github.io/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://caaatch22.github.io/apple-touch-icon.png">
+<link rel="mask-icon" href="https://caaatch22.github.io/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://caaatch22.github.io/posts/back2basics-cpp-move-sematic/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --hljs-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.2/dist/katex.min.css" integrity="sha384-bYdxxUwYipFNohQlHt0bjN/LCpueqWz13HufFEV1SUatKs1cm4L6fFgCi1jT643X" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.2/dist/katex.min.js" integrity="sha384-Qsn9KnoKISj6dI8g7p1HBlNpVx0I8p1SvlwOldgi3IorMle61nQy4zEahWYtljaz" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.2/dist/contrib/auto-render.min.js" integrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+          
+          
+          delimiters: [
+              {left: '$$', right: '$$', display: true},
+              {left: '$', right: '$', display: false},
+              {left: '\\(', right: '\\)', display: false},
+              {left: '\\[', right: '\\]', display: true}
+          ],
+          
+          throwOnError : false
+        });
+    });
+</script>
+
+
+      <script async src="https://www.googletagmanager.com/gtag/js?id=G-WEG841BBW9"></script>
+      <script>
+        var doNotTrack = false;
+        if ( false ) {
+          var dnt = (navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack);
+          var doNotTrack = (dnt == "1" || dnt == "yes");
+        }
+        if (!doNotTrack) {
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-WEG841BBW9');
+        }
+      </script><meta property="og:title" content="Back to Basics -- c&#43;&#43; move sematics" />
+<meta property="og:description" content="1.3 Copying as a Fallback
+1.4 const Return Values
+const std::string get_value();不再是guideline，因为const disables 移动语义
+例如：
+const std::string getValue();
+std::vector&lt;std::string&gt; coll;
+coll.push_back(getValue()); // copies(because the return value is const)
+
+const std::string getValue(); // BAD: disables move semantics for return values
+const std::string&amp; getRef(); // OK
+const std::string* getPtr(); // OK
+Summary
+
+Move semantics allows us to optimize the copying of objects, where we no longer need the value. It can be used implicitly (for unnamed temporary objects or local return values) or explicitly (with std::move()).
+std::move() means I no longer need this value here. It marks the object as movable. An object marked with std::move() is not (partially) destroyed (the destructor still will be called).
+By declaring a function with a non-const rvalue reference (such as std::string&amp;&amp;), you define an interface where the caller semantically claims that it no longer needs the passed value. The implementer of the function can use this information to optimize its task by “stealing” the value or do any other modification with the passed argument. Usually, the implementer also has to ensure that the passed argument is in a valid state after the call.
+Moved-from objects of the C&#43;&#43; standard library are still valid objects, but you no longer know their value.
+Copy semantics is used as a fallback for move semantics (if copy semantics is supported). If there is no implementation taking an rvalue reference, any implementation taking an ordinary const lvalue reference (such as const std::string&amp;) is used. This fallback is then used even if the object is explicitly marked with std::move().
+Calling std::move() for a const object usually has no effect.
+If you return by value (not by reference), do not declare the return value as a whole to be const.
+
+Moved-from objects
+Valid but Unspecified State" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://caaatch22.github.io/posts/back2basics-cpp-move-sematic/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-10-17T23:38:14+00:00" />
+<meta property="article:modified_time" content="2023-10-17T23:38:14+00:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Back to Basics -- c&#43;&#43; move sematics"/>
+<meta name="twitter:description" content="1.3 Copying as a Fallback
+1.4 const Return Values
+const std::string get_value();不再是guideline，因为const disables 移动语义
+例如：
+const std::string getValue();
+std::vector&lt;std::string&gt; coll;
+coll.push_back(getValue()); // copies(because the return value is const)
+
+const std::string getValue(); // BAD: disables move semantics for return values
+const std::string&amp; getRef(); // OK
+const std::string* getPtr(); // OK
+Summary
+
+Move semantics allows us to optimize the copying of objects, where we no longer need the value. It can be used implicitly (for unnamed temporary objects or local return values) or explicitly (with std::move()).
+std::move() means I no longer need this value here. It marks the object as movable. An object marked with std::move() is not (partially) destroyed (the destructor still will be called).
+By declaring a function with a non-const rvalue reference (such as std::string&amp;&amp;), you define an interface where the caller semantically claims that it no longer needs the passed value. The implementer of the function can use this information to optimize its task by “stealing” the value or do any other modification with the passed argument. Usually, the implementer also has to ensure that the passed argument is in a valid state after the call.
+Moved-from objects of the C&#43;&#43; standard library are still valid objects, but you no longer know their value.
+Copy semantics is used as a fallback for move semantics (if copy semantics is supported). If there is no implementation taking an rvalue reference, any implementation taking an ordinary const lvalue reference (such as const std::string&amp;) is used. This fallback is then used even if the object is explicitly marked with std::move().
+Calling std::move() for a const object usually has no effect.
+If you return by value (not by reference), do not declare the return value as a whole to be const.
+
+Moved-from objects
+Valid but Unspecified State"/>
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "Posts",
+      "item": "https://caaatch22.github.io/posts/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "Back to Basics -- c++ move sematics",
+      "item": "https://caaatch22.github.io/posts/back2basics-cpp-move-sematic/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Back to Basics -- c++ move sematics",
+  "name": "Back to Basics -- c\u002b\u002b move sematics",
+  "description": "1.3 Copying as a Fallback\n1.4 const Return Values const std::string get_value();不再是guideline，因为const disables 移动语义 例如：\nconst std::string getValue(); std::vector\u0026lt;std::string\u0026gt; coll; coll.push_back(getValue()); // copies(because the return value is const) const std::string getValue(); // BAD: disables move semantics for return values const std::string\u0026amp; getRef(); // OK const std::string* getPtr(); // OK Summary Move semantics allows us to optimize the copying of objects, where we no longer need the value. It can be used implicitly (for unnamed temporary objects or local return values) or explicitly (with std::move()). std::move() means I no longer need this value here. It marks the object as movable. An object marked with std::move() is not (partially) destroyed (the destructor still will be called). By declaring a function with a non-const rvalue reference (such as std::string\u0026amp;\u0026amp;), you define an interface where the caller semantically claims that it no longer needs the passed value. The implementer of the function can use this information to optimize its task by “stealing” the value or do any other modification with the passed argument. Usually, the implementer also has to ensure that the passed argument is in a valid state after the call. Moved-from objects of the C++ standard library are still valid objects, but you no longer know their value. Copy semantics is used as a fallback for move semantics (if copy semantics is supported). If there is no implementation taking an rvalue reference, any implementation taking an ordinary const lvalue reference (such as const std::string\u0026amp;) is used. This fallback is then used even if the object is explicitly marked with std::move(). Calling std::move() for a const object usually has no effect. If you return by value (not by reference), do not declare the return value as a whole to be const. Moved-from objects Valid but Unspecified State\n",
+  "keywords": [
+    "cpp"
+  ],
+  "articleBody": "1.3 Copying as a Fallback\n1.4 const Return Values const std::string get_value();不再是guideline，因为const disables 移动语义 例如：\nconst std::string getValue(); std::vector\u003cstd::string\u003e coll; coll.push_back(getValue()); // copies(because the return value is const) const std::string getValue(); // BAD: disables move semantics for return values const std::string\u0026 getRef(); // OK const std::string* getPtr(); // OK Summary Move semantics allows us to optimize the copying of objects, where we no longer need the value. It can be used implicitly (for unnamed temporary objects or local return values) or explicitly (with std::move()). std::move() means I no longer need this value here. It marks the object as movable. An object marked with std::move() is not (partially) destroyed (the destructor still will be called). By declaring a function with a non-const rvalue reference (such as std::string\u0026\u0026), you define an interface where the caller semantically claims that it no longer needs the passed value. The implementer of the function can use this information to optimize its task by “stealing” the value or do any other modification with the passed argument. Usually, the implementer also has to ensure that the passed argument is in a valid state after the call. Moved-from objects of the C++ standard library are still valid objects, but you no longer know their value. Copy semantics is used as a fallback for move semantics (if copy semantics is supported). If there is no implementation taking an rvalue reference, any implementation taking an ordinary const lvalue reference (such as const std::string\u0026) is used. This fallback is then used even if the object is explicitly marked with std::move(). Calling std::move() for a const object usually has no effect. If you return by value (not by reference), do not declare the return value as a whole to be const. Moved-from objects Valid but Unspecified State\nfoo(std::move(s)); // keeps s in a valid but unclear state std::cout \u003c\u003c s \u003c\u003c '\\n'; // OK (don’t know which value is written) std::cout \u003c\u003c s.size() \u003c\u003c '\\n'; // OK (writes current number of characters) std::cout \u003c\u003c s[0] \u003c\u003c '\\n'; // ERROR (potentially undefined behavior) std::cout \u003c\u003c s.front() \u003c\u003c '\\n'; // ERROR (potentially undefined behavior) s = \"new value\"; // OK 有什么用：\nstd::vector\u003cstd::string\u003e allRows; std::string row; while (std::getline(myStream, row)) { // read next line into row allRows.push_back(std::move(row)); // and move it to somewhere } struct Customer { std::string name; double height; }; using Customers = soa_vector\u003cCustomer\u003e; Customers.emplace_back(\"example_name\", 173.6); std::tuple\u003cstd::string\u0026, double\u0026 height\u003e Customers[0]; ",
+  "wordCount" : "396",
+  "inLanguage": "en",
+  "datePublished": "2023-10-17T23:38:14Z",
+  "dateModified": "2023-10-17T23:38:14Z",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://caaatch22.github.io/posts/back2basics-cpp-move-sematic/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Mingjie's Home",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://caaatch22.github.io/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+
+<body class="" id="top">
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    } else if (localStorage.getItem("pref-theme") === "light") {
+        document.body.classList.remove('dark')
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+    }
+
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://caaatch22.github.io/" accesskey="h" title="Mingjie&#39;s Home (Alt + H)">Mingjie&#39;s Home</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+                <ul class="lang-switch"><li>|</li>
+                </ul>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://caaatch22.github.io/about/" title="About">
+                    <span>About</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://caaatch22.github.io/cv/" title="CV">
+                    <span>CV</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://caaatch22.github.io/archives/" title="Archives">
+                    <span>Archives</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://caaatch22.github.io/search/" title="Search (Alt &#43; /)" accesskey=/>
+                    <span>Search</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    <div class="breadcrumbs"><a href="https://caaatch22.github.io/">Home</a>&nbsp;»&nbsp;<a href="https://caaatch22.github.io/posts/">Posts</a></div>
+    <h1 class="post-title">
+      Back to Basics -- c&#43;&#43; move sematics
+    </h1>
+    <div class="post-meta">&lt;span title=&#39;2023-10-17 23:38:14 &#43;0000 UTC&#39;&gt;October 17, 2023&lt;/span&gt;&amp;nbsp;·&amp;nbsp;2 min
+
+</div>
+  </header> <aside id="toc-container" class="toc-container wide">
+    <div class="toc">
+        <details  open>
+            <summary accesskey="c" title="(Alt + C)">
+                <span class="details">Table of Contents</span>
+            </summary>
+
+            <div class="inner"><ul>
+                    <li>
+                        <a href="#summary" aria-label="Summary">Summary</a>
+                    </li>
+                </ul>
+            </div>
+        </details>
+    </div>
+</aside>
+<script>
+    let activeElement;
+    let elements;
+    window.addEventListener('DOMContentLoaded', function (event) {
+        checkTocPosition();
+
+        elements = document.querySelectorAll('h1[id],h2[id],h3[id],h4[id],h5[id],h6[id]');
+         
+         activeElement = elements[0];
+         const id = encodeURI(activeElement.getAttribute('id')).toLowerCase();
+         document.querySelector(`.inner ul li a[href="#${id}"]`).classList.add('active');
+     }, false);
+
+    window.addEventListener('resize', function(event) {
+        checkTocPosition();
+    }, false);
+
+    window.addEventListener('scroll', () => {
+        
+        activeElement = Array.from(elements).find((element) => {
+            if ((getOffsetTop(element) - window.pageYOffset) > 0 && 
+                (getOffsetTop(element) - window.pageYOffset) < window.innerHeight/2) {
+                return element;
+            }
+        }) || activeElement
+
+        elements.forEach(element => {
+             const id = encodeURI(element.getAttribute('id')).toLowerCase();
+             if (element === activeElement){
+                 document.querySelector(`.inner ul li a[href="#${id}"]`).classList.add('active');
+             } else {
+                 document.querySelector(`.inner ul li a[href="#${id}"]`).classList.remove('active');
+             }
+         })
+     }, false);
+
+    const main = parseInt(getComputedStyle(document.body).getPropertyValue('--article-width'), 10);
+    const toc = parseInt(getComputedStyle(document.body).getPropertyValue('--toc-width'), 10);
+    const gap = parseInt(getComputedStyle(document.body).getPropertyValue('--gap'), 10);
+
+    function checkTocPosition() {
+        const width = document.body.scrollWidth;
+
+        if (width - main - (toc * 2) - (gap * 4) > 0) {
+            document.getElementById("toc-container").classList.add("wide");
+        } else {
+            document.getElementById("toc-container").classList.remove("wide");
+        }
+    }
+
+    function getOffsetTop(element) {
+        if (!element.getClientRects().length) {
+            return 0;
+        }
+        let rect = element.getBoundingClientRect();
+        let win = element.ownerDocument.defaultView;
+        return rect.top + win.pageYOffset;   
+    }
+</script>
+
+  <div class="post-content"><p>1.3 Copying as a Fallback</p>
+<p>1.4 <code>const</code> Return Values
+const std::string get_value();不再是guideline，因为<code>const</code> disables 移动语义
+例如：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">const</span> std<span style="color:#f92672">::</span>string getValue();
+</span></span><span style="display:flex;"><span>std<span style="color:#f92672">::</span>vector<span style="color:#f92672">&lt;</span>std<span style="color:#f92672">::</span>string<span style="color:#f92672">&gt;</span> coll;
+</span></span><span style="display:flex;"><span>coll.push_back(getValue()); <span style="color:#75715e">// copies(because the return value is const)
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">const</span> std<span style="color:#f92672">::</span>string getValue(); <span style="color:#75715e">// BAD: disables move semantics for return values
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span><span style="color:#66d9ef">const</span> std<span style="color:#f92672">::</span>string<span style="color:#f92672">&amp;</span> getRef(); <span style="color:#75715e">// OK
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span><span style="color:#66d9ef">const</span> std<span style="color:#f92672">::</span>string<span style="color:#f92672">*</span> getPtr(); <span style="color:#75715e">// OK
+</span></span></span></code></pre></div><h4 id="summary">Summary<a hidden class="anchor" aria-hidden="true" href="#summary">#</a></h4>
+<ul>
+<li>Move semantics allows us to optimize the copying of objects, where we no longer need the value. It can be used implicitly (for unnamed temporary objects or local return values) or explicitly (with std::move()).</li>
+<li>std::move() means I no longer need this value here. It marks the object as movable. An object marked with std::move() is not (partially) destroyed (the destructor still will be called).</li>
+<li>By declaring a function with a non-const rvalue reference (such as std::string&amp;&amp;), you define an interface where the caller semantically claims that it no longer needs the passed value. The implementer of the function can use this information to optimize its task by “stealing” the value or do any other modification with the passed argument. Usually, the implementer also has to ensure that the passed argument is in a valid state after the call.</li>
+<li>Moved-from objects of the C++ standard library are still valid objects, but you no longer know their value.</li>
+<li>Copy semantics is used as a fallback for move semantics (if copy semantics is supported). If there is no implementation taking an rvalue reference, any implementation taking an ordinary const lvalue reference (such as const std::string&amp;) is used. This fallback is then used even if the object is explicitly marked with std::move().</li>
+<li>Calling std::move() for a const object usually has no effect.</li>
+<li>If you return by value (not by reference), do not declare the return value as a whole to be const.</li>
+</ul>
+<p>Moved-from objects
+<strong>Valid but Unspecified State</strong></p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>foo(std<span style="color:#f92672">::</span>move(s)); <span style="color:#75715e">// keeps s in a valid but unclear state
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>std<span style="color:#f92672">::</span>cout <span style="color:#f92672">&lt;&lt;</span> s <span style="color:#f92672">&lt;&lt;</span> <span style="color:#e6db74">&#39;\n&#39;</span>; <span style="color:#75715e">// OK (don’t know which value is written)
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>std<span style="color:#f92672">::</span>cout <span style="color:#f92672">&lt;&lt;</span> s.size() <span style="color:#f92672">&lt;&lt;</span> <span style="color:#e6db74">&#39;\n&#39;</span>; <span style="color:#75715e">// OK (writes current number of characters)
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>std<span style="color:#f92672">::</span>cout <span style="color:#f92672">&lt;&lt;</span> s[<span style="color:#ae81ff">0</span>] <span style="color:#f92672">&lt;&lt;</span> <span style="color:#e6db74">&#39;\n&#39;</span>; <span style="color:#75715e">// ERROR (potentially undefined behavior)
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>std<span style="color:#f92672">::</span>cout <span style="color:#f92672">&lt;&lt;</span> s.front() <span style="color:#f92672">&lt;&lt;</span> <span style="color:#e6db74">&#39;\n&#39;</span>; <span style="color:#75715e">// ERROR (potentially undefined behavior)
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>s <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;new value&#34;</span>; <span style="color:#75715e">// OK
+</span></span></span></code></pre></div><p>有什么用：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>std<span style="color:#f92672">::</span>vector<span style="color:#f92672">&lt;</span>std<span style="color:#f92672">::</span>string<span style="color:#f92672">&gt;</span> allRows;
+</span></span><span style="display:flex;"><span>std<span style="color:#f92672">::</span>string row;
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">while</span> (std<span style="color:#f92672">::</span>getline(myStream, row)) { <span style="color:#75715e">// read next line into row
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  allRows.push_back(std<span style="color:#f92672">::</span>move(row)); <span style="color:#75715e">// and move it to somewhere
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>}
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">Customer</span> {
+</span></span><span style="display:flex;"><span>  std<span style="color:#f92672">::</span>string name;
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">double</span> height; 
+</span></span><span style="display:flex;"><span>};
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">using</span> Customers <span style="color:#f92672">=</span> soa_vector<span style="color:#f92672">&lt;</span>Customer<span style="color:#f92672">&gt;</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Customers.emplace_back(<span style="color:#e6db74">&#34;example_name&#34;</span>, <span style="color:#ae81ff">173.6</span>);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>std<span style="color:#f92672">::</span>tuple<span style="color:#f92672">&lt;</span>std<span style="color:#f92672">::</span>string<span style="color:#f92672">&amp;</span>, <span style="color:#66d9ef">double</span><span style="color:#f92672">&amp;</span> height<span style="color:#f92672">&gt;</span> Customers[<span style="color:#ae81ff">0</span>];
+</span></span></code></pre></div>
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="https://caaatch22.github.io/tags/cpp/">Cpp</a></li>
+    </ul>
+<nav class="paginav">
+  <a class="prev" href="https://caaatch22.github.io/posts/cuda/">
+    <span class="title">« Prev</span>
+    <br>
+    <span>CUDA编程模型</span>
+  </a>
+  <a class="next" href="https://caaatch22.github.io/posts/branch-prediction/">
+    <span class="title">Next »</span>
+    <br>
+    <span>Computer Architecture —— 分支预测</span>
+  </a>
+</nav>
+
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+    <span>&copy; 2024 <a href="https://caaatch22.github.io/">Mingjie&#39;s Home</a></span>
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>

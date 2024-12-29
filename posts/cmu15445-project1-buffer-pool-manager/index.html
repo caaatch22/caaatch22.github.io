@@ -7,11 +7,22 @@
 <meta name="robots" content="index, follow">
 <title>CMU15445-project1 Buffer Pool Manager | Mingjie&#39;s Home</title>
 <meta name="keywords" content="database, cmu15445">
-<meta name="description" content="Buffer Pool Manager cmu15445 是一门关于数据库管理系统（DBMS）设计与实现的经典公开课，是很多dba和内核开发人员的入门课程。开课教授Andy Pavlo 非常风趣幽默，他有自己上课的DJ，他曾在浴缸里录课，且时常语出惊人。这门课的实验项目BusTub非常有挑战性，并对所有人开放评测资源。
-Overview BusTub是一个面向磁盘的 DBMS(Database Management System)。由于磁盘上的数据不支持字节粒度的访问，这就需要一个管理页的中间层，而 Andy 坚持&ldquo;The OS is not your friend&rdquo;， 反对使用 mmap 进行页操作，因此实验一的目标便在于通过实现 Buffer Pool Manager 主动管理磁盘中的页（page）在内存中的缓存，从而，最小化磁盘访问次数（时间上）、最大化相关数据连续（空间上）。
+<meta name="description" content="Buffer Pool Manager
+
+cmu15445 是一门关于数据库管理系统（DBMS）设计与实现的经典公开课，是很多dba和内核开发人员的入门课程。开课教授Andy Pavlo 非常风趣幽默，他有自己上课的DJ，他曾在浴缸里录课，且时常语出惊人。这门课的实验项目BusTub非常有挑战性，并对所有人开放评测资源。
+
+Overview
+BusTub是一个面向磁盘的 DBMS(Database Management System)。由于磁盘上的数据不支持字节粒度的访问，这就需要一个管理页的中间层，而 Andy 坚持&ldquo;The OS is not your friend&rdquo;， 反对使用 mmap 进行页操作，因此实验一的目标便在于通过实现 Buffer Pool Manager 主动管理磁盘中的页（page）在内存中的缓存，从而，最小化磁盘访问次数（时间上）、最大化相关数据连续（空间上）。
 这次实验有三个子任务，分别是
-Task #1: Extendible Hash Table Task #2: LRU-K Replacer Task #3: Buffer Pool Manager Instance 可拓展哈希表是这个是实验中相对独立的模块。这里不会讲它的细节，后面的两个任务中需要用到哈希表的地方我直接用std::unordered_map替代，而且效率还更高。应该是因为 Extendible Hash Table 要求线程安全，为了方便在我在每个函数入口都加了大锁。 想要 Extendible Hash Table 具体细节的可以看这个b站视频。关于它的优化，我想可以进行更细粒度的锁管理甚至写一个无锁(lockfree)的哈希表。
-Buffer Pool Manager 在后两个实验开始之前，我建议先将Task #2和Task #3的实验材料完整的看完在开始写代码。因为 replacer 和 buffer pool manager 有较大程度的耦合。很多API设计需要对照两个组件才能知道自己应该维护的数据与功能的边界。为了更符合直觉，我会先阐述 buffer pool manager 的设计，同时会穿插着 LRU-k 的API什么时候，在哪用。">
+
+Task #1: Extendible Hash Table
+Task #2: LRU-K Replacer
+Task #3: Buffer Pool Manager Instance
+
+可拓展哈希表是这个是实验中相对独立的模块。这里不会讲它的细节，后面的两个任务中需要用到哈希表的地方我直接用std::unordered_map替代，而且效率还更高。应该是因为 Extendible Hash Table 要求线程安全，为了方便在我在每个函数入口都加了大锁。
+想要 Extendible Hash Table 具体细节的可以看这个b站视频。关于它的优化，我想可以进行更细粒度的锁管理甚至写一个无锁(lockfree)的哈希表。
+Buffer Pool Manager
+在后两个实验开始之前，我建议先将Task #2和Task #3的实验材料完整的看完在开始写代码。因为 replacer 和 buffer pool manager 有较大程度的耦合。很多API设计需要对照两个组件才能知道自己应该维护的数据与功能的边界。为了更符合直觉，我会先阐述 buffer pool manager 的设计，同时会穿插着 LRU-k 的API什么时候，在哪用。">
 <meta name="author" content="">
 <link rel="canonical" href="https://caaatch22.github.io/posts/cmu15445-project1-buffer-pool-manager/">
 <link crossorigin="anonymous" href="/assets/css/stylesheet.678b5c47efa744d2e0dd0d61101075e6aecdc9a0631e7ad8538f4ec0cca79273.css" integrity="sha256-Z4tcR&#43;&#43;nRNLg3Q1hEBB15q7NyaBjHnrYU49OwMynknM=" rel="preload stylesheet" as="style">
@@ -24,6 +35,7 @@ Buffer Pool Manager 在后两个实验开始之前，我建议先将Task #2和Ta
 <link rel="mask-icon" href="https://caaatch22.github.io/safari-pinned-tab.svg">
 <meta name="theme-color" content="#2e2e33">
 <meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://caaatch22.github.io/posts/cmu15445-project1-buffer-pool-manager/">
 <noscript>
     <style>
         #theme-toggle,
@@ -82,22 +94,36 @@ Buffer Pool Manager 在后两个实验开始之前，我建议先将Task #2和Ta
 </script>
 
 
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-WEG841BBW9"></script>
-<script>
-var doNotTrack = false;
-if (!doNotTrack) {
-	window.dataLayer = window.dataLayer || [];
-	function gtag(){dataLayer.push(arguments);}
-	gtag('js', new Date());
-	gtag('config', 'G-WEG841BBW9', { 'anonymize_ip': false });
-}
-</script>
-<meta property="og:title" content="CMU15445-project1 Buffer Pool Manager" />
-<meta property="og:description" content="Buffer Pool Manager cmu15445 是一门关于数据库管理系统（DBMS）设计与实现的经典公开课，是很多dba和内核开发人员的入门课程。开课教授Andy Pavlo 非常风趣幽默，他有自己上课的DJ，他曾在浴缸里录课，且时常语出惊人。这门课的实验项目BusTub非常有挑战性，并对所有人开放评测资源。
-Overview BusTub是一个面向磁盘的 DBMS(Database Management System)。由于磁盘上的数据不支持字节粒度的访问，这就需要一个管理页的中间层，而 Andy 坚持&ldquo;The OS is not your friend&rdquo;， 反对使用 mmap 进行页操作，因此实验一的目标便在于通过实现 Buffer Pool Manager 主动管理磁盘中的页（page）在内存中的缓存，从而，最小化磁盘访问次数（时间上）、最大化相关数据连续（空间上）。
+      <script async src="https://www.googletagmanager.com/gtag/js?id=G-WEG841BBW9"></script>
+      <script>
+        var doNotTrack = false;
+        if ( false ) {
+          var dnt = (navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack);
+          var doNotTrack = (dnt == "1" || dnt == "yes");
+        }
+        if (!doNotTrack) {
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-WEG841BBW9');
+        }
+      </script><meta property="og:title" content="CMU15445-project1 Buffer Pool Manager" />
+<meta property="og:description" content="Buffer Pool Manager
+
+cmu15445 是一门关于数据库管理系统（DBMS）设计与实现的经典公开课，是很多dba和内核开发人员的入门课程。开课教授Andy Pavlo 非常风趣幽默，他有自己上课的DJ，他曾在浴缸里录课，且时常语出惊人。这门课的实验项目BusTub非常有挑战性，并对所有人开放评测资源。
+
+Overview
+BusTub是一个面向磁盘的 DBMS(Database Management System)。由于磁盘上的数据不支持字节粒度的访问，这就需要一个管理页的中间层，而 Andy 坚持&ldquo;The OS is not your friend&rdquo;， 反对使用 mmap 进行页操作，因此实验一的目标便在于通过实现 Buffer Pool Manager 主动管理磁盘中的页（page）在内存中的缓存，从而，最小化磁盘访问次数（时间上）、最大化相关数据连续（空间上）。
 这次实验有三个子任务，分别是
-Task #1: Extendible Hash Table Task #2: LRU-K Replacer Task #3: Buffer Pool Manager Instance 可拓展哈希表是这个是实验中相对独立的模块。这里不会讲它的细节，后面的两个任务中需要用到哈希表的地方我直接用std::unordered_map替代，而且效率还更高。应该是因为 Extendible Hash Table 要求线程安全，为了方便在我在每个函数入口都加了大锁。 想要 Extendible Hash Table 具体细节的可以看这个b站视频。关于它的优化，我想可以进行更细粒度的锁管理甚至写一个无锁(lockfree)的哈希表。
-Buffer Pool Manager 在后两个实验开始之前，我建议先将Task #2和Task #3的实验材料完整的看完在开始写代码。因为 replacer 和 buffer pool manager 有较大程度的耦合。很多API设计需要对照两个组件才能知道自己应该维护的数据与功能的边界。为了更符合直觉，我会先阐述 buffer pool manager 的设计，同时会穿插着 LRU-k 的API什么时候，在哪用。" />
+
+Task #1: Extendible Hash Table
+Task #2: LRU-K Replacer
+Task #3: Buffer Pool Manager Instance
+
+可拓展哈希表是这个是实验中相对独立的模块。这里不会讲它的细节，后面的两个任务中需要用到哈希表的地方我直接用std::unordered_map替代，而且效率还更高。应该是因为 Extendible Hash Table 要求线程安全，为了方便在我在每个函数入口都加了大锁。
+想要 Extendible Hash Table 具体细节的可以看这个b站视频。关于它的优化，我想可以进行更细粒度的锁管理甚至写一个无锁(lockfree)的哈希表。
+Buffer Pool Manager
+在后两个实验开始之前，我建议先将Task #2和Task #3的实验材料完整的看完在开始写代码。因为 replacer 和 buffer pool manager 有较大程度的耦合。很多API设计需要对照两个组件才能知道自己应该维护的数据与功能的边界。为了更符合直觉，我会先阐述 buffer pool manager 的设计，同时会穿插着 LRU-k 的API什么时候，在哪用。" />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://caaatch22.github.io/posts/cmu15445-project1-buffer-pool-manager/" />
 <meta property="og:image" content="https://caaatch22.github.io/img/busTub/bustub.png" /><meta property="article:section" content="posts" />
@@ -107,27 +133,38 @@ Buffer Pool Manager 在后两个实验开始之前，我建议先将Task #2和Ta
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:image" content="https://caaatch22.github.io/img/busTub/bustub.png" />
 <meta name="twitter:title" content="CMU15445-project1 Buffer Pool Manager"/>
-<meta name="twitter:description" content="Buffer Pool Manager cmu15445 是一门关于数据库管理系统（DBMS）设计与实现的经典公开课，是很多dba和内核开发人员的入门课程。开课教授Andy Pavlo 非常风趣幽默，他有自己上课的DJ，他曾在浴缸里录课，且时常语出惊人。这门课的实验项目BusTub非常有挑战性，并对所有人开放评测资源。
-Overview BusTub是一个面向磁盘的 DBMS(Database Management System)。由于磁盘上的数据不支持字节粒度的访问，这就需要一个管理页的中间层，而 Andy 坚持&ldquo;The OS is not your friend&rdquo;， 反对使用 mmap 进行页操作，因此实验一的目标便在于通过实现 Buffer Pool Manager 主动管理磁盘中的页（page）在内存中的缓存，从而，最小化磁盘访问次数（时间上）、最大化相关数据连续（空间上）。
+<meta name="twitter:description" content="Buffer Pool Manager
+
+cmu15445 是一门关于数据库管理系统（DBMS）设计与实现的经典公开课，是很多dba和内核开发人员的入门课程。开课教授Andy Pavlo 非常风趣幽默，他有自己上课的DJ，他曾在浴缸里录课，且时常语出惊人。这门课的实验项目BusTub非常有挑战性，并对所有人开放评测资源。
+
+Overview
+BusTub是一个面向磁盘的 DBMS(Database Management System)。由于磁盘上的数据不支持字节粒度的访问，这就需要一个管理页的中间层，而 Andy 坚持&ldquo;The OS is not your friend&rdquo;， 反对使用 mmap 进行页操作，因此实验一的目标便在于通过实现 Buffer Pool Manager 主动管理磁盘中的页（page）在内存中的缓存，从而，最小化磁盘访问次数（时间上）、最大化相关数据连续（空间上）。
 这次实验有三个子任务，分别是
-Task #1: Extendible Hash Table Task #2: LRU-K Replacer Task #3: Buffer Pool Manager Instance 可拓展哈希表是这个是实验中相对独立的模块。这里不会讲它的细节，后面的两个任务中需要用到哈希表的地方我直接用std::unordered_map替代，而且效率还更高。应该是因为 Extendible Hash Table 要求线程安全，为了方便在我在每个函数入口都加了大锁。 想要 Extendible Hash Table 具体细节的可以看这个b站视频。关于它的优化，我想可以进行更细粒度的锁管理甚至写一个无锁(lockfree)的哈希表。
-Buffer Pool Manager 在后两个实验开始之前，我建议先将Task #2和Task #3的实验材料完整的看完在开始写代码。因为 replacer 和 buffer pool manager 有较大程度的耦合。很多API设计需要对照两个组件才能知道自己应该维护的数据与功能的边界。为了更符合直觉，我会先阐述 buffer pool manager 的设计，同时会穿插着 LRU-k 的API什么时候，在哪用。"/>
+
+Task #1: Extendible Hash Table
+Task #2: LRU-K Replacer
+Task #3: Buffer Pool Manager Instance
+
+可拓展哈希表是这个是实验中相对独立的模块。这里不会讲它的细节，后面的两个任务中需要用到哈希表的地方我直接用std::unordered_map替代，而且效率还更高。应该是因为 Extendible Hash Table 要求线程安全，为了方便在我在每个函数入口都加了大锁。
+想要 Extendible Hash Table 具体细节的可以看这个b站视频。关于它的优化，我想可以进行更细粒度的锁管理甚至写一个无锁(lockfree)的哈希表。
+Buffer Pool Manager
+在后两个实验开始之前，我建议先将Task #2和Task #3的实验材料完整的看完在开始写代码。因为 replacer 和 buffer pool manager 有较大程度的耦合。很多API设计需要对照两个组件才能知道自己应该维护的数据与功能的边界。为了更符合直觉，我会先阐述 buffer pool manager 的设计，同时会穿插着 LRU-k 的API什么时候，在哪用。"/>
 
 
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "BreadcrumbList",
-  "itemListElement": [, 
+  "itemListElement": [
     {
       "@type": "ListItem",
-      "position":  2 ,
+      "position":  1 ,
       "name": "Posts",
       "item": "https://caaatch22.github.io/posts/"
     }, 
     {
       "@type": "ListItem",
-      "position":  3 ,
+      "position":  2 ,
       "name": "CMU15445-project1 Buffer Pool Manager",
       "item": "https://caaatch22.github.io/posts/cmu15445-project1-buffer-pool-manager/"
     }
@@ -140,7 +177,7 @@ Buffer Pool Manager 在后两个实验开始之前，我建议先将Task #2和Ta
   "@type": "BlogPosting",
   "headline": "CMU15445-project1 Buffer Pool Manager",
   "name": "CMU15445-project1 Buffer Pool Manager",
-  "description": "Buffer Pool Manager cmu15445 是一门关于数据库管理系统（DBMS）设计与实现的经典公开课，是很多dba和内核开发人员的入门课程。开课教授Andy Pavlo 非常风趣幽默，他有自己上课的DJ，他曾在浴缸里录课，且时常语出惊人。这门课的实验项目BusTub非常有挑战性，并对所有人开放评测资源。\nOverview BusTub是一个面向磁盘的 DBMS(Database Management System)。由于磁盘上的数据不支持字节粒度的访问，这就需要一个管理页的中间层，而 Andy 坚持\u0026ldquo;The OS is not your friend\u0026rdquo;， 反对使用 mmap 进行页操作，因此实验一的目标便在于通过实现 Buffer Pool Manager 主动管理磁盘中的页（page）在内存中的缓存，从而，最小化磁盘访问次数（时间上）、最大化相关数据连续（空间上）。\n这次实验有三个子任务，分别是\nTask #1: Extendible Hash Table Task #2: LRU-K Replacer Task #3: Buffer Pool Manager Instance 可拓展哈希表是这个是实验中相对独立的模块。这里不会讲它的细节，后面的两个任务中需要用到哈希表的地方我直接用std::unordered_map替代，而且效率还更高。应该是因为 Extendible Hash Table 要求线程安全，为了方便在我在每个函数入口都加了大锁。 想要 Extendible Hash Table 具体细节的可以看这个b站视频。关于它的优化，我想可以进行更细粒度的锁管理甚至写一个无锁(lockfree)的哈希表。\nBuffer Pool Manager 在后两个实验开始之前，我建议先将Task #2和Task #3的实验材料完整的看完在开始写代码。因为 replacer 和 buffer pool manager 有较大程度的耦合。很多API设计需要对照两个组件才能知道自己应该维护的数据与功能的边界。为了更符合直觉，我会先阐述 buffer pool manager 的设计，同时会穿插着 LRU-k 的API什么时候，在哪用。",
+  "description": "Buffer Pool Manager cmu15445 是一门关于数据库管理系统（DBMS）设计与实现的经典公开课，是很多dba和内核开发人员的入门课程。开课教授Andy Pavlo 非常风趣幽默，他有自己上课的DJ，他曾在浴缸里录课，且时常语出惊人。这门课的实验项目BusTub非常有挑战性，并对所有人开放评测资源。\nOverview BusTub是一个面向磁盘的 DBMS(Database Management System)。由于磁盘上的数据不支持字节粒度的访问，这就需要一个管理页的中间层，而 Andy 坚持\u0026ldquo;The OS is not your friend\u0026rdquo;， 反对使用 mmap 进行页操作，因此实验一的目标便在于通过实现 Buffer Pool Manager 主动管理磁盘中的页（page）在内存中的缓存，从而，最小化磁盘访问次数（时间上）、最大化相关数据连续（空间上）。\n这次实验有三个子任务，分别是\nTask #1: Extendible Hash Table Task #2: LRU-K Replacer Task #3: Buffer Pool Manager Instance 可拓展哈希表是这个是实验中相对独立的模块。这里不会讲它的细节，后面的两个任务中需要用到哈希表的地方我直接用std::unordered_map替代，而且效率还更高。应该是因为 Extendible Hash Table 要求线程安全，为了方便在我在每个函数入口都加了大锁。 想要 Extendible Hash Table 具体细节的可以看这个b站视频。关于它的优化，我想可以进行更细粒度的锁管理甚至写一个无锁(lockfree)的哈希表。\nBuffer Pool Manager 在后两个实验开始之前，我建议先将Task #2和Task #3的实验材料完整的看完在开始写代码。因为 replacer 和 buffer pool manager 有较大程度的耦合。很多API设计需要对照两个组件才能知道自己应该维护的数据与功能的边界。为了更符合直觉，我会先阐述 buffer pool manager 的设计，同时会穿插着 LRU-k 的API什么时候，在哪用。\n",
   "keywords": [
     "database", "cmu15445"
   ],
@@ -180,7 +217,7 @@ Buffer Pool Manager 在后两个实验开始之前，我建议先将Task #2和Ta
 <header class="header">
     <nav class="nav">
         <div class="logo">
-            <a href="https://caaatch22.github.io" accesskey="h" title="Mingjie&#39;s Home (Alt + H)">Mingjie&#39;s Home</a>
+            <a href="https://caaatch22.github.io/" accesskey="h" title="Mingjie&#39;s Home (Alt + H)">Mingjie&#39;s Home</a>
             <div class="logo-switches">
                 <button id="theme-toggle" accesskey="t" title="(Alt + T)">
                     <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
@@ -202,6 +239,8 @@ Buffer Pool Manager 在后两个实验开始之前，我建议先将Task #2和Ta
                         <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
                     </svg>
                 </button>
+                <ul class="lang-switch"><li>|</li>
+                </ul>
             </div>
         </div>
         <ul id="menu">
@@ -232,11 +271,11 @@ Buffer Pool Manager 在后两个实验开始之前，我建议先将Task #2和Ta
 
 <article class="post-single">
   <header class="post-header">
-    <div class="breadcrumbs"><a href="https://caaatch22.github.io">Home</a>&nbsp;»&nbsp;<a href="https://caaatch22.github.io/posts/">Posts</a></div>
+    <div class="breadcrumbs"><a href="https://caaatch22.github.io/">Home</a>&nbsp;»&nbsp;<a href="https://caaatch22.github.io/posts/">Posts</a></div>
     <h1 class="post-title">
       CMU15445-project1 Buffer Pool Manager
     </h1>
-    <div class="post-meta"><span title='2022-12-22 15:37:34 +0000 UTC'>December 22, 2022</span>&nbsp;·&nbsp;3 min
+    <div class="post-meta">&lt;span title=&#39;2022-12-22 15:37:34 &#43;0000 UTC&#39;&gt;December 22, 2022&lt;/span&gt;&amp;nbsp;·&amp;nbsp;3 min
 
 </div>
   </header> <aside id="toc-container" class="toc-container wide">
@@ -449,8 +488,8 @@ Buffer Pool Manager 在后两个实验开始之前，我建议先将Task #2和Ta
 
   <footer class="post-footer">
     <ul class="post-tags">
-      <li><a href="https://caaatch22.github.io/tags/database/">database</a></li>
-      <li><a href="https://caaatch22.github.io/tags/cmu15445/">cmu15445</a></li>
+      <li><a href="https://caaatch22.github.io/tags/database/">Database</a></li>
+      <li><a href="https://caaatch22.github.io/tags/cmu15445/">Cmu15445</a></li>
     </ul>
 <nav class="paginav">
   <a class="prev" href="https://caaatch22.github.io/posts/cmu15445-project2-concurrent-b-tree/">
@@ -470,7 +509,7 @@ Buffer Pool Manager 在后两个实验开始之前，我建议先将Task #2和Ta
     </main>
     
 <footer class="footer">
-    <span>&copy; 2024 <a href="https://caaatch22.github.io">Mingjie&#39;s Home</a></span>
+    <span>&copy; 2024 <a href="https://caaatch22.github.io/">Mingjie&#39;s Home</a></span>
     <span>
         Powered by
         <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &

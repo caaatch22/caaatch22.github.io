@@ -19,6 +19,7 @@
 <meta name="theme-color" content="#2e2e33">
 <meta name="msapplication-TileColor" content="#2e2e33">
 <link rel="alternate" type="application/rss+xml" href="https://caaatch22.github.io/tags/c&#43;&#43;/index.xml">
+<link rel="alternate" hreflang="en" href="https://caaatch22.github.io/tags/c&#43;&#43;/">
 <noscript>
     <style>
         #theme-toggle,
@@ -56,17 +57,20 @@
 
     </style>
 </noscript>
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-WEG841BBW9"></script>
-<script>
-var doNotTrack = false;
-if (!doNotTrack) {
-	window.dataLayer = window.dataLayer || [];
-	function gtag(){dataLayer.push(arguments);}
-	gtag('js', new Date());
-	gtag('config', 'G-WEG841BBW9', { 'anonymize_ip': false });
-}
-</script>
-<meta property="og:title" content="C&#43;&#43;" />
+      <script async src="https://www.googletagmanager.com/gtag/js?id=G-WEG841BBW9"></script>
+      <script>
+        var doNotTrack = false;
+        if ( false ) {
+          var dnt = (navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack);
+          var doNotTrack = (dnt == "1" || dnt == "yes");
+        }
+        if (!doNotTrack) {
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-WEG841BBW9');
+        }
+      </script><meta property="og:title" content="C&#43;&#43;" />
 <meta property="og:description" content="" />
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://caaatch22.github.io/tags/c&#43;&#43;/" />
@@ -92,7 +96,7 @@ if (!doNotTrack) {
 <header class="header">
     <nav class="nav">
         <div class="logo">
-            <a href="https://caaatch22.github.io" accesskey="h" title="Mingjie&#39;s Home (Alt + H)">Mingjie&#39;s Home</a>
+            <a href="https://caaatch22.github.io/" accesskey="h" title="Mingjie&#39;s Home (Alt + H)">Mingjie&#39;s Home</a>
             <div class="logo-switches">
                 <button id="theme-toggle" accesskey="t" title="(Alt + T)">
                     <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
@@ -114,6 +118,8 @@ if (!doNotTrack) {
                         <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
                     </svg>
                 </button>
+                <ul class="lang-switch"><li>|</li>
+                </ul>
             </div>
         </div>
         <ul id="menu">
@@ -141,7 +147,7 @@ if (!doNotTrack) {
     </nav>
 </header>
 <main class="main"> 
-<header class="page-header"><div class="breadcrumbs"><a href="https://caaatch22.github.io">Home</a>&nbsp;»&nbsp;<a href="https://caaatch22.github.io/tags/">Tags</a></div>
+<header class="page-header"><div class="breadcrumbs"><a href="https://caaatch22.github.io/">Home</a>&nbsp;»&nbsp;<a href="https://caaatch22.github.io/tags/">Tags</a></div>
   <h1>
     C&#43;&#43;
   </h1>
@@ -153,7 +159,7 @@ if (!doNotTrack) {
     </h2>
   </header>
   <div class="entry-content">
-    <p>介绍 什么是内存模型(Memory Model)呢？这里介绍的内存模型并非C&#43;&#43;对象的内存排布模型，而是一个非编程语言层面的概念。我们知道在C&#43;&#43;11中，标准引入了 std::atomic&lt;&gt;原子对象，同时还引入了
+    <p> 介绍 什么是内存模型(Memory Model)呢？这里介绍的内存模型并非C&#43;&#43;对象的内存排布模型，而是一个非编程语言层面的概念。我们知道在C&#43;&#43;11中，标准引入了 std::atomic&lt;&gt;原子对象，同时还引入了
 memory_order_relaxed memory_order_consume memory_order_acquire memory_order_release memory_order_acq_rel memory_order_seq_cst 这六种 memory order。引入可以让我们进行无锁编程，而如果你想要更高性能的程序，你就必须深挖这六种内存模型的含义并正确应用。（当然，在不显式指明memory order的情况下，你能保证获得正确的代码，但存在性能损失）
 内存模型 在介绍C&#43;&#43; memory order之前，我们先回答另一个问题。你的计算机执行的程序就是你写的程序吗? —— 显然不是的。
 原因也很简单，为了更高效的执行指令，编译器、CPU结构、缓存及其他硬件系统都会对指令进行增删，修改，重排。但要回答具体进行了什么样的修改，又是一个极其复杂的问题。或者说，整个现代体系结构，就是在保证程序正确性的前提下利用各种手段对程序优化。我们可以粗略的将其分成几个部分：
@@ -161,9 +167,9 @@ source code order: 程序员在源代码中指定的顺序 program code order: �
 这些优化的一个主要原因在于 掩盖memory access操作与CPU执行速度上的巨大鸿沟。如果没有cache，CPU每个访存指令都需要stall一两百个时钟周期，这是不可接受的。但是引入cache的同时又会带来 cache coherence等问题，这也是造成x初始为0，两个线程同时执行 x&#43;&#43;，而x最终不一定为 2的元凶。而一个内存模型则对上述并发程序的同一块内存进行了一定的限制，它给出了在并发程序下，任意一组写操作时，可能读到的值。 不同体系结构(x86, arm, power…)通过不同的内存模型来保证程序的正确性。
 bonus question: 不同等级的cache latency？
 answer: l1: 1ns, l2: 5ns, l3: 50~100ns, main memory: 200ns
-Sequential Consistency(SC) SC是最严格的内存模型，也被称作non-weak memory model。在该模型下，多线程程序执行的可做如下分析：对于每一步，随机选择一个线程，并执行该线程执行中的下一步（例如，按程序或编译的顺序）。重复这个过程，直到整个程序终止。这实际上等效于按照（程序或编译的）顺序执行所有线程的所有步骤，并以某种方式交错它们，从而产生所有步骤的单一总顺序。SC不允许重新排列线程的步骤。因此，每当访问对象时，都会检索该顺序中存储在对象中的最后一个值。（注意，内存模型中说的重新排列与编译器层面无关，编译器自然是可以讲没有data dependance的读写操作进行重排的，只要保证程序的正确性即可。内存模型中的重排指的是在硬件执行阶段，由于cache hierarchy等引发的一些问题导致指令物理执行顺序被改变）。...</p>
+...</p>
   </div>
-  <footer class="entry-footer"><span title='2023-09-01 15:51:19 +0000 UTC'>September 1, 2023</span>&nbsp;·&nbsp;3 min</footer>
+  <footer class="entry-footer">&lt;span title=&#39;2023-09-01 15:51:19 &#43;0000 UTC&#39;&gt;September 1, 2023&lt;/span&gt;&amp;nbsp;·&amp;nbsp;3 min</footer>
   <a class="entry-link" aria-label="post link to C&#43;&#43;内存模型 —— 现代Architecture的妥协" href="https://caaatch22.github.io/posts/c-%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B--%E7%8E%B0%E4%BB%A3architecture%E7%9A%84%E5%A6%A5%E5%8D%8F/"></a>
 </article>
 
@@ -173,19 +179,20 @@ Sequential Consistency(SC) SC是最严格的内存模型，也被称作non-weak 
     </h2>
   </header>
   <div class="entry-content">
-    <p>原先只是了解这个名词，想着C&#43;&#43;20后静态多态直接用 concept来实现就好了就没细看，没必要整这些模板元编程的奇技淫巧。没想到面试某量化C&#43;&#43;开发的时候被狠狠拷打…….
+    <p> 原先只是了解这个名词，想着C&#43;&#43;20后静态多态直接用 concept来实现就好了就没细看，没必要整这些模板元编程的奇技淫巧。没想到面试某量化C&#43;&#43;开发的时候被狠狠拷打…….
 CRTP (curiously recurring template pattern) 一般认为，CRTP可以用来实现静态多态
 template &lt;typename T&gt; class Base { void func() { static_cast&lt;T*&gt;(this)-&gt;funcImpl(); } }; class Derived : public Base&lt;Derived&gt; { void funcImpl() { // do works here } }; 通过CRTP可以使得类具有类似于虚函数的效果，同时又没有虚函数调用时的开销(虚函数调用需要通过虚函数指针查找虚函数表进行调用)，同时类的对象的体积相比使用虚函数也会减少(不需要存储虚函数指针)，但是缺点是无法动态绑定，感觉有点过于鸡肋。
 有什么用呢？可以用来向纯虚类一样做接口：（以下类似的代码在大量数学库中出现）
-template &lt;typename ChildType&gt; struct VectorBase { ChildType &amp;underlying() { return static_cast&lt;ChildType &amp;&gt;(*this); } inline ChildType &amp;operator&#43;=(const ChildType &amp;rhs) { this-&gt;underlying() = this-&gt;underlying() &#43; rhs; return this-&gt;underlying(); } }; struct Vec3f : public VectorBase&lt;Vec3f&gt; { float x{}, y{}, z{}; Vec3f() = default; Vec3f(float x, float y, float z) : x(x), y(y), z(z) {} }; inline Vec3f operator&#43;(const Vec3f &amp;lhs, const Vec3f &amp;rhs) { Vec3f result; result....</p>
+template &lt;typename ChildType&gt; struct VectorBase { ChildType &amp;underlying() { return static_cast&lt;ChildType &amp;&gt;(*this); } inline ChildType &amp;operator&#43;=(const ChildType &amp;rhs) { this-&gt;underlying() = this-&gt;underlying() &#43; rhs; return this-&gt;underlying(); } }; struct Vec3f : public VectorBase&lt;Vec3f&gt; { float x{}, y{}, z{}; Vec3f() = default; Vec3f(float x, float y, float z) : x(x), y(y), z(z) {} }; inline Vec3f operator&#43;(const Vec3f &amp;lhs, const Vec3f &amp;rhs) { Vec3f result; result.x = lhs.x &#43; rhs.x; result.y = lhs.y &#43; rhs.y; result.z = lhs.z &#43; rhs.z; return result; } 定义好VectorBase后，Vec3f, Vec4f等直接实现接口就好。相比虚函数的形式，在空间和runtime都有优势。
+...</p>
   </div>
-  <footer class="entry-footer"><span title='2023-05-20 17:33:40 +0000 UTC'>May 20, 2023</span>&nbsp;·&nbsp;2 min</footer>
+  <footer class="entry-footer">&lt;span title=&#39;2023-05-20 17:33:40 &#43;0000 UTC&#39;&gt;May 20, 2023&lt;/span&gt;&amp;nbsp;·&amp;nbsp;2 min</footer>
   <a class="entry-link" aria-label="post link to C&#43;&#43; CRTP" href="https://caaatch22.github.io/posts/c-crtp/"></a>
 </article>
     </main>
     
 <footer class="footer">
-    <span>&copy; 2024 <a href="https://caaatch22.github.io">Mingjie&#39;s Home</a></span>
+    <span>&copy; 2024 <a href="https://caaatch22.github.io/">Mingjie&#39;s Home</a></span>
     <span>
         Powered by
         <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &

@@ -19,6 +19,7 @@
 <meta name="theme-color" content="#2e2e33">
 <meta name="msapplication-TileColor" content="#2e2e33">
 <link rel="alternate" type="application/rss+xml" href="https://caaatch22.github.io/tags/computerarchitecture/index.xml">
+<link rel="alternate" hreflang="en" href="https://caaatch22.github.io/tags/computerarchitecture/">
 <noscript>
     <style>
         #theme-toggle,
@@ -56,17 +57,20 @@
 
     </style>
 </noscript>
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-WEG841BBW9"></script>
-<script>
-var doNotTrack = false;
-if (!doNotTrack) {
-	window.dataLayer = window.dataLayer || [];
-	function gtag(){dataLayer.push(arguments);}
-	gtag('js', new Date());
-	gtag('config', 'G-WEG841BBW9', { 'anonymize_ip': false });
-}
-</script>
-<meta property="og:title" content="ComputerArchitecture" />
+      <script async src="https://www.googletagmanager.com/gtag/js?id=G-WEG841BBW9"></script>
+      <script>
+        var doNotTrack = false;
+        if ( false ) {
+          var dnt = (navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack);
+          var doNotTrack = (dnt == "1" || dnt == "yes");
+        }
+        if (!doNotTrack) {
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-WEG841BBW9');
+        }
+      </script><meta property="og:title" content="ComputerArchitecture" />
 <meta property="og:description" content="" />
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://caaatch22.github.io/tags/computerarchitecture/" />
@@ -92,7 +96,7 @@ if (!doNotTrack) {
 <header class="header">
     <nav class="nav">
         <div class="logo">
-            <a href="https://caaatch22.github.io" accesskey="h" title="Mingjie&#39;s Home (Alt + H)">Mingjie&#39;s Home</a>
+            <a href="https://caaatch22.github.io/" accesskey="h" title="Mingjie&#39;s Home (Alt + H)">Mingjie&#39;s Home</a>
             <div class="logo-switches">
                 <button id="theme-toggle" accesskey="t" title="(Alt + T)">
                     <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
@@ -114,6 +118,8 @@ if (!doNotTrack) {
                         <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
                     </svg>
                 </button>
+                <ul class="lang-switch"><li>|</li>
+                </ul>
             </div>
         </div>
         <ul id="menu">
@@ -141,7 +147,7 @@ if (!doNotTrack) {
     </nav>
 </header>
 <main class="main"> 
-<header class="page-header"><div class="breadcrumbs"><a href="https://caaatch22.github.io">Home</a>&nbsp;»&nbsp;<a href="https://caaatch22.github.io/tags/">Tags</a></div>
+<header class="page-header"><div class="breadcrumbs"><a href="https://caaatch22.github.io/">Home</a>&nbsp;»&nbsp;<a href="https://caaatch22.github.io/tags/">Tags</a></div>
   <h1>
     ComputerArchitecture
   </h1>
@@ -153,13 +159,14 @@ if (!doNotTrack) {
     </h2>
   </header>
   <div class="entry-content">
-    <p>H&amp;P那本关于分支预测的部分比较简短且表述有点晦涩，（顺便吐槽一下第五版的中文翻译，建议看英文原版）本文主要参考超标量处理器设计，国人写的，用语符合习惯，强烈推荐！
+    <p> H&amp;P那本关于分支预测的部分比较简短且表述有点晦涩，（顺便吐槽一下第五版的中文翻译，建议看英文原版）本文主要参考超标量处理器设计，国人写的，用语符合习惯，强烈推荐！
 Motivation 在处理器中，除了cache之外，另一个重要的内容就是分支预测，它和cache一起左右处理器的性能。以SPECint95作为benchmark，完美的cache和BP(branch-predictor)能使IPC提高两倍左右： 图片来自论文SSMT。当然，这是21世纪之前的结果了。现代处理器分支预测普遍能达到97%~98%以上的精度，在多数浮点benchmark中基本都是99%的准确率。
 为什么需要这么高的精度呢？ 一般情况下，分支指令的占比通常在 15% 到 30% 之间。对于经典五级流水线无分支预测cpu，一个branch会造成一次stall；而对于现代的superscalar且流水线级数远高于5的（一般是二十级以上）cpu，其misprediction penalty是 $M * N$ 的（M = fetch group内指令数, N = branch resolution latency，就是决定分支最终是否跳转需要多少周期）。如下图所示： 我们再做一个定量实验： 假设我们有一个
 $ N = 20 (20\ pipe stages), W = 5 (5\ wide fetch) $ 1 out of 5 instructions is a branch Each 5 instruction-block ends with a branch 的CPU，那么我们取出500条指令需要多少个周期呢？
-100% 预测正确率 100 个时钟周期 (all instructions fetched on the correct path) 无额外工作 99% 预测正确率 100 (correct path) &#43; 20 (wrong path) = 120 个时钟周期 20% 额外指令被取出 98% 预测正确率 100 (correct path) &#43; 20 * 2 (wrong path) = 140 个时钟周期 40% 额外指令被取出 95% 预测正确率 100 (correct path) &#43; 20 * 5 (wrong path) = 200 个时钟周期 100% 额外指令被取出 可以看出，分支预测失败在现代的超标量多流水线cpu中的penalty被极大的放大了。所以分支预测的正确性就显得额外重要。...</p>
+100% 预测正确率 100 个时钟周期 (all instructions fetched on the correct path) 无额外工作 99% 预测正确率 100 (correct path) &#43; 20 (wrong path) = 120 个时钟周期 20% 额外指令被取出 98% 预测正确率 100 (correct path) &#43; 20 * 2 (wrong path) = 140 个时钟周期 40% 额外指令被取出 95% 预测正确率 100 (correct path) &#43; 20 * 5 (wrong path) = 200 个时钟周期 100% 额外指令被取出 可以看出，分支预测失败在现代的超标量多流水线cpu中的penalty被极大的放大了。所以分支预测的正确性就显得额外重要。
+...</p>
   </div>
-  <footer class="entry-footer"><span title='2023-10-17 23:38:14 +0000 UTC'>October 17, 2023</span>&nbsp;·&nbsp;3 min</footer>
+  <footer class="entry-footer">&lt;span title=&#39;2023-10-17 23:38:14 &#43;0000 UTC&#39;&gt;October 17, 2023&lt;/span&gt;&amp;nbsp;·&amp;nbsp;3 min</footer>
   <a class="entry-link" aria-label="post link to Computer Architecture —— 分支预测" href="https://caaatch22.github.io/posts/branch-prediction/"></a>
 </article>
 
@@ -169,7 +176,7 @@ $ N = 20 (20\ pipe stages), W = 5 (5\ wide fetch) $ 1 out of 5 instructions is a
     </h2>
   </header>
   <div class="entry-content">
-    <p>介绍 什么是内存模型(Memory Model)呢？这里介绍的内存模型并非C&#43;&#43;对象的内存排布模型，而是一个非编程语言层面的概念。我们知道在C&#43;&#43;11中，标准引入了 std::atomic&lt;&gt;原子对象，同时还引入了
+    <p> 介绍 什么是内存模型(Memory Model)呢？这里介绍的内存模型并非C&#43;&#43;对象的内存排布模型，而是一个非编程语言层面的概念。我们知道在C&#43;&#43;11中，标准引入了 std::atomic&lt;&gt;原子对象，同时还引入了
 memory_order_relaxed memory_order_consume memory_order_acquire memory_order_release memory_order_acq_rel memory_order_seq_cst 这六种 memory order。引入可以让我们进行无锁编程，而如果你想要更高性能的程序，你就必须深挖这六种内存模型的含义并正确应用。（当然，在不显式指明memory order的情况下，你能保证获得正确的代码，但存在性能损失）
 内存模型 在介绍C&#43;&#43; memory order之前，我们先回答另一个问题。你的计算机执行的程序就是你写的程序吗? —— 显然不是的。
 原因也很简单，为了更高效的执行指令，编译器、CPU结构、缓存及其他硬件系统都会对指令进行增删，修改，重排。但要回答具体进行了什么样的修改，又是一个极其复杂的问题。或者说，整个现代体系结构，就是在保证程序正确性的前提下利用各种手段对程序优化。我们可以粗略的将其分成几个部分：
@@ -177,9 +184,9 @@ source code order: 程序员在源代码中指定的顺序 program code order: �
 这些优化的一个主要原因在于 掩盖memory access操作与CPU执行速度上的巨大鸿沟。如果没有cache，CPU每个访存指令都需要stall一两百个时钟周期，这是不可接受的。但是引入cache的同时又会带来 cache coherence等问题，这也是造成x初始为0，两个线程同时执行 x&#43;&#43;，而x最终不一定为 2的元凶。而一个内存模型则对上述并发程序的同一块内存进行了一定的限制，它给出了在并发程序下，任意一组写操作时，可能读到的值。 不同体系结构(x86, arm, power…)通过不同的内存模型来保证程序的正确性。
 bonus question: 不同等级的cache latency？
 answer: l1: 1ns, l2: 5ns, l3: 50~100ns, main memory: 200ns
-Sequential Consistency(SC) SC是最严格的内存模型，也被称作non-weak memory model。在该模型下，多线程程序执行的可做如下分析：对于每一步，随机选择一个线程，并执行该线程执行中的下一步（例如，按程序或编译的顺序）。重复这个过程，直到整个程序终止。这实际上等效于按照（程序或编译的）顺序执行所有线程的所有步骤，并以某种方式交错它们，从而产生所有步骤的单一总顺序。SC不允许重新排列线程的步骤。因此，每当访问对象时，都会检索该顺序中存储在对象中的最后一个值。（注意，内存模型中说的重新排列与编译器层面无关，编译器自然是可以讲没有data dependance的读写操作进行重排的，只要保证程序的正确性即可。内存模型中的重排指的是在硬件执行阶段，由于cache hierarchy等引发的一些问题导致指令物理执行顺序被改变）。...</p>
+...</p>
   </div>
-  <footer class="entry-footer"><span title='2023-09-01 15:51:19 +0000 UTC'>September 1, 2023</span>&nbsp;·&nbsp;3 min</footer>
+  <footer class="entry-footer">&lt;span title=&#39;2023-09-01 15:51:19 &#43;0000 UTC&#39;&gt;September 1, 2023&lt;/span&gt;&amp;nbsp;·&amp;nbsp;3 min</footer>
   <a class="entry-link" aria-label="post link to C&#43;&#43;内存模型 —— 现代Architecture的妥协" href="https://caaatch22.github.io/posts/c-%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B--%E7%8E%B0%E4%BB%A3architecture%E7%9A%84%E5%A6%A5%E5%8D%8F/"></a>
 </article>
 
@@ -189,7 +196,7 @@ Sequential Consistency(SC) SC是最严格的内存模型，也被称作non-weak 
     </h2>
   </header>
   <div class="entry-content">
-    <p>本文不会介绍cache的组织形式等基本内容，但也算不上什么&#34;Advanced&#34;。主要包含一些从硬件层面优化cache的手段。
+    <p> 本文不会介绍cache的组织形式等基本内容，但也算不上什么&#34;Advanced&#34;。主要包含一些从硬件层面优化cache的手段。
 优化cache的几种方法 pipeline caches 上图为教科书上经常出现的cache形式(2-way associative为例)，它很精炼的解释了cache的实现。但也稍微引入了些“误导”：
 图中v、tag和data部分画在连续的一行上，仿佛硬件上他们就是同一块 SRAM 的不同bit 图中识别tag与data是并行完成的，这很好，某种意义上能降低时延；但我们经常遗忘一个事实，只有读cache的时候我们才能这么操作（或者说在写cache时，读取data block是没有意义的） 对于第一点，在实际的实现当中，tag和data部分都是分开放置的，tag一般是由一种叫CAM(Context-Addressable Memory)的材料构成。当然，这与pi不pipeline没什么关系；
 读cache主要就两个部分：比较tag，获取data；我们暂且不考虑以pipeline的方式优化，那么serial的先比较tag再读data一定不如parallel的方式进行吗？当我们并行的读取tag和data的时候，我们会发现，读出来的data有可能没用（没有匹配的tag）；并且，在n-way set associate cache中，我们会浪费的读出$n-1$个data项；这给我们什么启示呢？如果我们串行的读cache，那么我们可以在比较tag阶段就知道我们想要的数据在不在cache当中；更有意义的是，根据tag比较的结果，我们就知道哪一路的数据是需要被访问的（提前知道了在n-way中的哪一way），那么我们访问data block时，就无需多路选择器，直接访问指定的way，将其他way的data访问的使能信号置为无效，这种做法的优点在于有效减小功耗。
@@ -199,17 +206,15 @@ serial的做法肯定比parallel的延时要大，若这时访问cache处于处�
 由此可以看出，对写D-Cache使用流水线之后，不仅增加了流水线本身的硬件，也带来了其他一些额外的硬件开销。其实。不仅在Cache中有这种现象，在处理器的其他部分增加流水线的级数，也会伴随着其他方面的硬件需求,因此过深的流水线带来的硬件复杂度是非常高的，就像Intel的Pentium 4处理器，并不会从过深的流水线中得到预想的好处。当然，cache的流水线化已经是一种广泛使用的用于降低latency的方法了。
 write buffers 我愿称之为buffer of buffer，本来cache就起buffer的作用了，但我们再加一个buffer，如下图所示： 这和多一级的cache有什么不同呢？这是一个专门为写操作设计的buffer（注意：load也可能造成写操作）。原因在于我们知道写通常比读更慢，特别对于write-through来说；其次，当上层cache满后，需要先将dirty cache line写回下层cache，再读取下层cache中的数据。若下层cache只有一个读写端口，那么这种串行的过程导致D-Cache发生缺失的处理时间变得很长，此时就可以采用write buffer来解决这个问题。脏状态的cache-line会首先放到写级存中，等到下级存储器有空闲的时候，才会将写缓存中的数据写到下级存储器中。
 对于write buffer，我们还可以对其进行 合并(merging) 操作。所谓merging，指的是将在同一个cache-line上的数据一并写入下层cache中，而非多次写入同一个cache-line。 上图中的右侧表示了一个采用了merging write buffer策略的写缓冲区。
-critial word first and early restart 先来看一下cache miss时的cpu： 图中展示了一个blocking cache在cache miss时，cpu stall，而后cache将需要取得的cache-line放入后，cpu resume的timeline。我们可以发现，若我们只需要cache-line中的第3个word，cpu完全可以提早resume。如下图所示： 这就是early restart，而critial word first指的是，是在此基础上，在取cache-block时，不按照0~7 word的顺序而是按照3,4,5,6,7,0,1,2的顺序获取，配合early restart以减小miss penalty。
-当然，这种优化手段一般在cache-block size越大的时候效果越好。
-non-blocking caches 本节主要参考了超标量处理器设计9.6.2...</p>
+critial word first and early restart 先来看一下cache miss时的cpu： 图中展示了一个blocking cache在cache miss时，cpu stall，而后cache将需要取得的cache-line放入后，cpu resume的timeline。我们可以发现，若我们只需要cache-line中的第3个word，cpu完全可以提早resume。如下图所示： ...</p>
   </div>
-  <footer class="entry-footer"><span title='2023-08-23 23:38:14 +0000 UTC'>August 23, 2023</span>&nbsp;·&nbsp;2 min</footer>
+  <footer class="entry-footer">&lt;span title=&#39;2023-08-23 23:38:14 &#43;0000 UTC&#39;&gt;August 23, 2023&lt;/span&gt;&amp;nbsp;·&amp;nbsp;2 min</footer>
   <a class="entry-link" aria-label="post link to Computer Architecture —— 高级缓存技术" href="https://caaatch22.github.io/posts/advanced-cache/"></a>
 </article>
     </main>
     
 <footer class="footer">
-    <span>&copy; 2024 <a href="https://caaatch22.github.io">Mingjie&#39;s Home</a></span>
+    <span>&copy; 2024 <a href="https://caaatch22.github.io/">Mingjie&#39;s Home</a></span>
     <span>
         Powered by
         <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &

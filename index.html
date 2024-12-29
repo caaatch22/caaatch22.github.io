@@ -2,7 +2,7 @@
 <html lang="en" dir="auto">
 
 <head>
-	<meta name="generator" content="Hugo 0.119.0"><meta charset="utf-8">
+	<meta name="generator" content="Hugo 0.140.1"><meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <meta name="robots" content="index, follow">
@@ -21,6 +21,7 @@
 <meta name="msapplication-TileColor" content="#2e2e33">
 <link rel="alternate" type="application/rss+xml" href="https://caaatch22.github.io/index.xml">
 <link rel="alternate" type="application/json" href="https://caaatch22.github.io/index.json">
+<link rel="alternate" hreflang="en" href="https://caaatch22.github.io/">
 <noscript>
     <style>
         #theme-toggle,
@@ -58,17 +59,20 @@
 
     </style>
 </noscript>
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-WEG841BBW9"></script>
-<script>
-var doNotTrack = false;
-if (!doNotTrack) {
-	window.dataLayer = window.dataLayer || [];
-	function gtag(){dataLayer.push(arguments);}
-	gtag('js', new Date());
-	gtag('config', 'G-WEG841BBW9', { 'anonymize_ip': false });
-}
-</script>
-<meta property="og:title" content="Mingjie&#39;s Home" />
+      <script async src="https://www.googletagmanager.com/gtag/js?id=G-WEG841BBW9"></script>
+      <script>
+        var doNotTrack = false;
+        if ( false ) {
+          var dnt = (navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack);
+          var doNotTrack = (dnt == "1" || dnt == "yes");
+        }
+        if (!doNotTrack) {
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-WEG841BBW9');
+        }
+      </script><meta property="og:title" content="Mingjie&#39;s Home" />
 <meta property="og:description" content="" />
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://caaatch22.github.io/" />
@@ -82,7 +86,7 @@ if (!doNotTrack) {
   "@context": "https://schema.org",
   "@type": "Organization",
   "name": "Mingjie's Home",
-  "url": "https://caaatch22.github.io",
+  "url": "https://caaatch22.github.io/",
   "description": "",
   "thumbnailUrl": "https://caaatch22.github.io/favicon.ico",
   "sameAs": [
@@ -107,7 +111,7 @@ if (!doNotTrack) {
 <header class="header">
     <nav class="nav">
         <div class="logo">
-            <a href="https://caaatch22.github.io" accesskey="h" title="Mingjie&#39;s Home (Alt + H)">Mingjie&#39;s Home</a>
+            <a href="https://caaatch22.github.io/" accesskey="h" title="Mingjie&#39;s Home (Alt + H)">Mingjie&#39;s Home</a>
             <div class="logo-switches">
                 <button id="theme-toggle" accesskey="t" title="(Alt + T)">
                     <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
@@ -129,6 +133,8 @@ if (!doNotTrack) {
                         <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
                     </svg>
                 </button>
+                <ul class="lang-switch"><li>|</li>
+                </ul>
             </div>
         </div>
         <ul id="menu">
@@ -217,9 +223,10 @@ if (!doNotTrack) {
 $$ s = \frac{r_{max} - r_{min}}{q_{max} - q_{min}} $$ $r_{max}$就是这个tensor的最大值，$r_{min}$是最小值，$q_{max}$和$q_{min}$是我们指定的量化后的最大最小值。如下图所示： 有了scale, 容易得到 $z = q_{min} - \frac{r_{min}}{s}$。在实际操作中，z一般会被round到最近的整数$z = round(q_{min} - \frac{r_{min}}{s})$（有很多不同的round规则，这个有具体实现决定）。
 得到量化方程： $$ q = clip(round(\frac{r}{s}) &#43; z, q_{min}, q_{max}) $$
 代码示意如下：（实际会用pytorch已有的quantize api或者其他推理框架）
-def get_quantized_range(bitwidth): quantized_max = (1 &lt;&lt; (bitwidth - 1)) - 1 quantized_min = -(1 &lt;&lt; (bitwidth - 1)) return quantized_min, quantized_max def linear_quantize(fp_tensor, bitwidth, scale, zero_point, dtype=torch....</p>
+def get_quantized_range(bitwidth): quantized_max = (1 &lt;&lt; (bitwidth - 1)) - 1 quantized_min = -(1 &lt;&lt; (bitwidth - 1)) return quantized_min, quantized_max def linear_quantize(fp_tensor, bitwidth, scale, zero_point, dtype=torch.int8) -&gt; torch.Tensor: rounded_tensor = torch.round(fp_tensor / scale).to(dtype) shifted_tensor = rounded_tensor &#43; zero_point quantized_min, quantized_max = get_quantized_range(bitwidth) quantized_tensor = shifted_tensor.clamp_(quantized_min, quantized_max) return quantized_tensor 上述过程被称为非对称量化(asymmetric quantization)。
+...</p>
   </div>
-  <footer class="entry-footer"><span title='2024-02-27 22:19:21 +0000 UTC'>February 27, 2024</span>&nbsp;·&nbsp;3 min</footer>
+  <footer class="entry-footer">&lt;span title=&#39;2024-02-27 22:19:21 &#43;0000 UTC&#39;&gt;February 27, 2024&lt;/span&gt;&amp;nbsp;·&amp;nbsp;3 min</footer>
   <a class="entry-link" aria-label="post link to TinyMl —— 模型量化(quantization)" href="https://caaatch22.github.io/posts/tinyml-quantization/"></a>
 </article>
 
@@ -229,15 +236,16 @@ def get_quantized_range(bitwidth): quantized_max = (1 &lt;&lt; (bitwidth - 1)) -
     </h2>
   </header>
   <div class="entry-content">
-    <p>最近正在学习 MIT 6.5940, 韩松老师的课，做deep learning compression的应该都只知道。课程分为三个部分，efficient inference, domain-specific optimization, efficient training。有完整的课件，视频和实验。最后一个lab是将llama2部署在个人电脑上，非常有意思（谁不想要个自己的大模型呢）。其余lab也都可以白嫖google colab的gpu
+    <p> 最近正在学习 MIT 6.5940, 韩松老师的课，做deep learning compression的应该都只知道。课程分为三个部分，efficient inference, domain-specific optimization, efficient training。有完整的课件，视频和实验。最后一个lab是将llama2部署在个人电脑上，非常有意思（谁不想要个自己的大模型呢）。其余lab也都可以白嫖google colab的gpu
 Introduction 正式介绍pruning and sparsity之前，我们先来聊聊为什么要做model compression这个事情。 Today’s Model is Too Big!
 随着Large language model的出现，如GPT-3，如今的模型参数量已经达到了上百billion，别说训练，我们甚至无法在一个gpu上对其进行推理。更别提如果我们想要将其部署在其他边缘设备上。
 所以当前在做inference之前，一般都会有个model-compression的过程，包括pruning（剪枝），quantization（量化），distillation（蒸馏）等。这些方法都是为了减少模型的大小，加速推理过程。这些方法也被广泛地集成到了各种加速卡，gpu中。例如nv的A100就支持structured sparsity（[N:M]形式的，具体含义下文会详细介绍）。
 Efficiency Metrics 我们再来看看一些 efficiency metrics，这也是我们在做inference过程中需要考虑的指标：
 Memory-Related Metrics # parameters model size total/peak #activations Computation-Related Metrics MACs FLOP, FLOPs # parameters 下表是一些常见结构的参数数量：
-Model #Parameters Linear Layer(FC) $feature_{in} * feature_{out}$ Conv Layer $c_{i} * c_{o} * k_{h} * k_{w} $ Grouped Conv Layer $c_{i} * c_{o} * k_{h} * k_{w} / g$ Depthwise Conv Layer $c_{o} * k_{h} * k_{w}$ 其中，Grouped Conv指的是将输入在channel维度进行分组，然后分别进行卷积，最后concatenate。Depthwise Conv是分组个数 $g$ 等于输入channel数的情况。...</p>
+Model #Parameters Linear Layer(FC) $feature_{in} * feature_{out}$ Conv Layer $c_{i} * c_{o} * k_{h} * k_{w} $ Grouped Conv Layer $c_{i} * c_{o} * k_{h} * k_{w} / g$ Depthwise Conv Layer $c_{o} * k_{h} * k_{w}$ 其中，Grouped Conv指的是将输入在channel维度进行分组，然后分别进行卷积，最后concatenate。Depthwise Conv是分组个数 $g$ 等于输入channel数的情况。
+...</p>
   </div>
-  <footer class="entry-footer"><span title='2024-02-20 15:35:59 +0000 UTC'>February 20, 2024</span>&nbsp;·&nbsp;3 min</footer>
+  <footer class="entry-footer">&lt;span title=&#39;2024-02-20 15:35:59 &#43;0000 UTC&#39;&gt;February 20, 2024&lt;/span&gt;&amp;nbsp;·&amp;nbsp;3 min</footer>
   <a class="entry-link" aria-label="post link to TinyMl —— 模型剪枝(pruning)" href="https://caaatch22.github.io/posts/tinyml-pruning/"></a>
 </article>
 
@@ -247,12 +255,27 @@ Model #Parameters Linear Layer(FC) $feature_{in} * feature_{out}$ Conv Layer $c_
     </h2>
   </header>
   <div class="entry-content">
-    <p>本系列笔记主要参考了 “Programming massively parallel processors&#34;这本书，以及网上相关资料；不会特别详细，当作个人整理的面经
+    <p> 本系列笔记主要参考了 “Programming massively parallel processors&#34;这本书，以及网上相关资料；不会特别详细，当作个人整理的面经
 CUDA软件架构 CUDA从软件层面上提供了三层结构包括grid, block和thread。每个kernal内启动的所有线程在一个grid内。启动kernel时指定«&lt;dimGrid, dimBlock»&gt;，都是一个dim3结构。
-gridDim的最大值范围： (x,y,z): (2^31 - 1, 65535, 65535) blockDim的最大值范围：(x,y,z): (1024, 1024, 64) 且还要同时满足：一个block内的threads数量不能超过1024(从kepler开始)。即：$ blockDim.x * blockDim.y * blockDim.z &lt;= 1024 $ CUDA内存架构 变量声明 所在内存 作用域 生命周期 kernel内除了array的变量 register thread grid kernel内的array 变量 local thread grid __shared__ 修饰的kernel内的变量 shared block grid __device__ 修饰的全局变量 global grid application __device__ __constant__ 修饰的全局变量 constant grid application 其中 寄存器是GPU上运行速度最快的内存空间，延迟为1个时钟周期。 接下来是共享内存，共享内存是GPU上可受用户控制的一级缓存 。共享内存类似于CPU的缓存，不过与CPU的缓存不同，GPU的共享内存可以有CUDA内核直接编程控制。延迟为1～32个时钟周期。 local memory实际上就在global memory上，只是通过编译器处理成私有的、每个线程独立的一块内存区域。一般一个kernal内的数组会被处理成local memory。延迟和global memory类似。 还有texture memeory，但是和科学计算相关不大。 CUDA硬件结构 一个GPU可以看作是SM(streaming multiprocessor)的集合，每个SM包含多个SP(streaming processor，或者现在一般叫CUDA cores)。 例如，在一个A100中，一共有108个SMs，每个SM有64个CUDA cores。 从软件调度上，一个grid对应整个GPU(多个SM)，block对应SM，warp/thread级别对应一个CUDA core。 一个block内的threads一定被分配到同一个SM中，但有可能多个block都被分配到同一个SM中。(且可能同时分给一个SM超出硬件cores的线程，A100为例子 2048 threads == 32warps，只是真正同时运行某些warp，其余的可以用作hidding latency等) 每个SM上都有一个control，一个shared_memory。软件上可以通过__syncthreads()同步一个block内的所有线程。...</p>
+gridDim的最大值范围： (x,y,z): (2^31 - 1, 65535, 65535) blockDim的最大值范围：(x,y,z): (1024, 1024, 64) 且还要同时满足：一个block内的threads数量不能超过1024(从kepler开始)。即：$ blockDim.x * blockDim.y * blockDim.z &lt;= 1024 $ CUDA内存架构 变量声明 所在内存 作用域 生命周期 kernel内除了array的变量 register thread grid kernel内的array 变量 local thread grid __shared__ 修饰的kernel内的变量 shared block grid __device__ 修饰的全局变量 global grid application __device__ __constant__ 修饰的全局变量 constant grid application 其中 寄存器是GPU上运行速度最快的内存空间，延迟为1个时钟周期。 接下来是共享内存，共享内存是GPU上可受用户控制的一级缓存 。共享内存类似于CPU的缓存，不过与CPU的缓存不同，GPU的共享内存可以有CUDA内核直接编程控制。延迟为1～32个时钟周期。 local memory实际上就在global memory上，只是通过编译器处理成私有的、每个线程独立的一块内存区域。一般一个kernal内的数组会被处理成local memory。延迟和global memory类似。 还有texture memeory，但是和科学计算相关不大。 CUDA硬件结构 一个GPU可以看作是SM(streaming multiprocessor)的集合，每个SM包含多个SP(streaming processor，或者现在一般叫CUDA cores)。 ...</p>
   </div>
-  <footer class="entry-footer"><span title='2024-01-26 22:35:22 +0000 UTC'>January 26, 2024</span>&nbsp;·&nbsp;2 min</footer>
+  <footer class="entry-footer">&lt;span title=&#39;2024-01-26 22:35:22 &#43;0000 UTC&#39;&gt;January 26, 2024&lt;/span&gt;&amp;nbsp;·&amp;nbsp;2 min</footer>
   <a class="entry-link" aria-label="post link to CUDA编程模型" href="https://caaatch22.github.io/posts/cuda/"></a>
+</article>
+
+<article class="post-entry"> 
+  <header class="entry-header">
+    <h2>Back to Basics -- c&#43;&#43; move sematics
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>1.3 Copying as a Fallback
+1.4 const Return Values const std::string get_value();不再是guideline，因为const disables 移动语义 例如：
+const std::string getValue(); std::vector&lt;std::string&gt; coll; coll.push_back(getValue()); // copies(because the return value is const) const std::string getValue(); // BAD: disables move semantics for return values const std::string&amp; getRef(); // OK const std::string* getPtr(); // OK Summary Move semantics allows us to optimize the copying of objects, where we no longer need the value. It can be used implicitly (for unnamed temporary objects or local return values) or explicitly (with std::move()). std::move() means I no longer need this value here. It marks the object as movable. An object marked with std::move() is not (partially) destroyed (the destructor still will be called). By declaring a function with a non-const rvalue reference (such as std::string&amp;&amp;), you define an interface where the caller semantically claims that it no longer needs the passed value. The implementer of the function can use this information to optimize its task by “stealing” the value or do any other modification with the passed argument. Usually, the implementer also has to ensure that the passed argument is in a valid state after the call. Moved-from objects of the C&#43;&#43; standard library are still valid objects, but you no longer know their value. Copy semantics is used as a fallback for move semantics (if copy semantics is supported). If there is no implementation taking an rvalue reference, any implementation taking an ordinary const lvalue reference (such as const std::string&amp;) is used. This fallback is then used even if the object is explicitly marked with std::move(). Calling std::move() for a const object usually has no effect. If you return by value (not by reference), do not declare the return value as a whole to be const. Moved-from objects Valid but Unspecified State
+...</p>
+  </div>
+  <footer class="entry-footer">&lt;span title=&#39;2023-10-17 23:38:14 &#43;0000 UTC&#39;&gt;October 17, 2023&lt;/span&gt;&amp;nbsp;·&amp;nbsp;2 min</footer>
+  <a class="entry-link" aria-label="post link to Back to Basics -- c&#43;&#43; move sematics" href="https://caaatch22.github.io/posts/back2basics-cpp-move-sematic/"></a>
 </article>
 
 <article class="post-entry"> 
@@ -261,13 +284,14 @@ gridDim的最大值范围： (x,y,z): (2^31 - 1, 65535, 65535) blockDim的最大
     </h2>
   </header>
   <div class="entry-content">
-    <p>H&amp;P那本关于分支预测的部分比较简短且表述有点晦涩，（顺便吐槽一下第五版的中文翻译，建议看英文原版）本文主要参考超标量处理器设计，国人写的，用语符合习惯，强烈推荐！
+    <p> H&amp;P那本关于分支预测的部分比较简短且表述有点晦涩，（顺便吐槽一下第五版的中文翻译，建议看英文原版）本文主要参考超标量处理器设计，国人写的，用语符合习惯，强烈推荐！
 Motivation 在处理器中，除了cache之外，另一个重要的内容就是分支预测，它和cache一起左右处理器的性能。以SPECint95作为benchmark，完美的cache和BP(branch-predictor)能使IPC提高两倍左右： 图片来自论文SSMT。当然，这是21世纪之前的结果了。现代处理器分支预测普遍能达到97%~98%以上的精度，在多数浮点benchmark中基本都是99%的准确率。
 为什么需要这么高的精度呢？ 一般情况下，分支指令的占比通常在 15% 到 30% 之间。对于经典五级流水线无分支预测cpu，一个branch会造成一次stall；而对于现代的superscalar且流水线级数远高于5的（一般是二十级以上）cpu，其misprediction penalty是 $M * N$ 的（M = fetch group内指令数, N = branch resolution latency，就是决定分支最终是否跳转需要多少周期）。如下图所示： 我们再做一个定量实验： 假设我们有一个
 $ N = 20 (20\ pipe stages), W = 5 (5\ wide fetch) $ 1 out of 5 instructions is a branch Each 5 instruction-block ends with a branch 的CPU，那么我们取出500条指令需要多少个周期呢？
-100% 预测正确率 100 个时钟周期 (all instructions fetched on the correct path) 无额外工作 99% 预测正确率 100 (correct path) &#43; 20 (wrong path) = 120 个时钟周期 20% 额外指令被取出 98% 预测正确率 100 (correct path) &#43; 20 * 2 (wrong path) = 140 个时钟周期 40% 额外指令被取出 95% 预测正确率 100 (correct path) &#43; 20 * 5 (wrong path) = 200 个时钟周期 100% 额外指令被取出 可以看出，分支预测失败在现代的超标量多流水线cpu中的penalty被极大的放大了。所以分支预测的正确性就显得额外重要。...</p>
+100% 预测正确率 100 个时钟周期 (all instructions fetched on the correct path) 无额外工作 99% 预测正确率 100 (correct path) &#43; 20 (wrong path) = 120 个时钟周期 20% 额外指令被取出 98% 预测正确率 100 (correct path) &#43; 20 * 2 (wrong path) = 140 个时钟周期 40% 额外指令被取出 95% 预测正确率 100 (correct path) &#43; 20 * 5 (wrong path) = 200 个时钟周期 100% 额外指令被取出 可以看出，分支预测失败在现代的超标量多流水线cpu中的penalty被极大的放大了。所以分支预测的正确性就显得额外重要。
+...</p>
   </div>
-  <footer class="entry-footer"><span title='2023-10-17 23:38:14 +0000 UTC'>October 17, 2023</span>&nbsp;·&nbsp;3 min</footer>
+  <footer class="entry-footer">&lt;span title=&#39;2023-10-17 23:38:14 &#43;0000 UTC&#39;&gt;October 17, 2023&lt;/span&gt;&amp;nbsp;·&amp;nbsp;3 min</footer>
   <a class="entry-link" aria-label="post link to Computer Architecture —— 分支预测" href="https://caaatch22.github.io/posts/branch-prediction/"></a>
 </article>
 
@@ -277,7 +301,7 @@ $ N = 20 (20\ pipe stages), W = 5 (5\ wide fetch) $ 1 out of 5 instructions is a
     </h2>
   </header>
   <div class="entry-content">
-    <p>介绍 什么是内存模型(Memory Model)呢？这里介绍的内存模型并非C&#43;&#43;对象的内存排布模型，而是一个非编程语言层面的概念。我们知道在C&#43;&#43;11中，标准引入了 std::atomic&lt;&gt;原子对象，同时还引入了
+    <p> 介绍 什么是内存模型(Memory Model)呢？这里介绍的内存模型并非C&#43;&#43;对象的内存排布模型，而是一个非编程语言层面的概念。我们知道在C&#43;&#43;11中，标准引入了 std::atomic&lt;&gt;原子对象，同时还引入了
 memory_order_relaxed memory_order_consume memory_order_acquire memory_order_release memory_order_acq_rel memory_order_seq_cst 这六种 memory order。引入可以让我们进行无锁编程，而如果你想要更高性能的程序，你就必须深挖这六种内存模型的含义并正确应用。（当然，在不显式指明memory order的情况下，你能保证获得正确的代码，但存在性能损失）
 内存模型 在介绍C&#43;&#43; memory order之前，我们先回答另一个问题。你的计算机执行的程序就是你写的程序吗? —— 显然不是的。
 原因也很简单，为了更高效的执行指令，编译器、CPU结构、缓存及其他硬件系统都会对指令进行增删，修改，重排。但要回答具体进行了什么样的修改，又是一个极其复杂的问题。或者说，整个现代体系结构，就是在保证程序正确性的前提下利用各种手段对程序优化。我们可以粗略的将其分成几个部分：
@@ -285,9 +309,9 @@ source code order: 程序员在源代码中指定的顺序 program code order: �
 这些优化的一个主要原因在于 掩盖memory access操作与CPU执行速度上的巨大鸿沟。如果没有cache，CPU每个访存指令都需要stall一两百个时钟周期，这是不可接受的。但是引入cache的同时又会带来 cache coherence等问题，这也是造成x初始为0，两个线程同时执行 x&#43;&#43;，而x最终不一定为 2的元凶。而一个内存模型则对上述并发程序的同一块内存进行了一定的限制，它给出了在并发程序下，任意一组写操作时，可能读到的值。 不同体系结构(x86, arm, power…)通过不同的内存模型来保证程序的正确性。
 bonus question: 不同等级的cache latency？
 answer: l1: 1ns, l2: 5ns, l3: 50~100ns, main memory: 200ns
-Sequential Consistency(SC) SC是最严格的内存模型，也被称作non-weak memory model。在该模型下，多线程程序执行的可做如下分析：对于每一步，随机选择一个线程，并执行该线程执行中的下一步（例如，按程序或编译的顺序）。重复这个过程，直到整个程序终止。这实际上等效于按照（程序或编译的）顺序执行所有线程的所有步骤，并以某种方式交错它们，从而产生所有步骤的单一总顺序。SC不允许重新排列线程的步骤。因此，每当访问对象时，都会检索该顺序中存储在对象中的最后一个值。（注意，内存模型中说的重新排列与编译器层面无关，编译器自然是可以讲没有data dependance的读写操作进行重排的，只要保证程序的正确性即可。内存模型中的重排指的是在硬件执行阶段，由于cache hierarchy等引发的一些问题导致指令物理执行顺序被改变）。...</p>
+...</p>
   </div>
-  <footer class="entry-footer"><span title='2023-09-01 15:51:19 +0000 UTC'>September 1, 2023</span>&nbsp;·&nbsp;3 min</footer>
+  <footer class="entry-footer">&lt;span title=&#39;2023-09-01 15:51:19 &#43;0000 UTC&#39;&gt;September 1, 2023&lt;/span&gt;&amp;nbsp;·&amp;nbsp;3 min</footer>
   <a class="entry-link" aria-label="post link to C&#43;&#43;内存模型 —— 现代Architecture的妥协" href="https://caaatch22.github.io/posts/c-%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B--%E7%8E%B0%E4%BB%A3architecture%E7%9A%84%E5%A6%A5%E5%8D%8F/"></a>
 </article>
 
@@ -297,7 +321,7 @@ Sequential Consistency(SC) SC是最严格的内存模型，也被称作non-weak 
     </h2>
   </header>
   <div class="entry-content">
-    <p>本文不会介绍cache的组织形式等基本内容，但也算不上什么&#34;Advanced&#34;。主要包含一些从硬件层面优化cache的手段。
+    <p> 本文不会介绍cache的组织形式等基本内容，但也算不上什么&#34;Advanced&#34;。主要包含一些从硬件层面优化cache的手段。
 优化cache的几种方法 pipeline caches 上图为教科书上经常出现的cache形式(2-way associative为例)，它很精炼的解释了cache的实现。但也稍微引入了些“误导”：
 图中v、tag和data部分画在连续的一行上，仿佛硬件上他们就是同一块 SRAM 的不同bit 图中识别tag与data是并行完成的，这很好，某种意义上能降低时延；但我们经常遗忘一个事实，只有读cache的时候我们才能这么操作（或者说在写cache时，读取data block是没有意义的） 对于第一点，在实际的实现当中，tag和data部分都是分开放置的，tag一般是由一种叫CAM(Context-Addressable Memory)的材料构成。当然，这与pi不pipeline没什么关系；
 读cache主要就两个部分：比较tag，获取data；我们暂且不考虑以pipeline的方式优化，那么serial的先比较tag再读data一定不如parallel的方式进行吗？当我们并行的读取tag和data的时候，我们会发现，读出来的data有可能没用（没有匹配的tag）；并且，在n-way set associate cache中，我们会浪费的读出$n-1$个data项；这给我们什么启示呢？如果我们串行的读cache，那么我们可以在比较tag阶段就知道我们想要的数据在不在cache当中；更有意义的是，根据tag比较的结果，我们就知道哪一路的数据是需要被访问的（提前知道了在n-way中的哪一way），那么我们访问data block时，就无需多路选择器，直接访问指定的way，将其他way的data访问的使能信号置为无效，这种做法的优点在于有效减小功耗。
@@ -307,12 +331,58 @@ serial的做法肯定比parallel的延时要大，若这时访问cache处于处�
 由此可以看出，对写D-Cache使用流水线之后，不仅增加了流水线本身的硬件，也带来了其他一些额外的硬件开销。其实。不仅在Cache中有这种现象，在处理器的其他部分增加流水线的级数，也会伴随着其他方面的硬件需求,因此过深的流水线带来的硬件复杂度是非常高的，就像Intel的Pentium 4处理器，并不会从过深的流水线中得到预想的好处。当然，cache的流水线化已经是一种广泛使用的用于降低latency的方法了。
 write buffers 我愿称之为buffer of buffer，本来cache就起buffer的作用了，但我们再加一个buffer，如下图所示： 这和多一级的cache有什么不同呢？这是一个专门为写操作设计的buffer（注意：load也可能造成写操作）。原因在于我们知道写通常比读更慢，特别对于write-through来说；其次，当上层cache满后，需要先将dirty cache line写回下层cache，再读取下层cache中的数据。若下层cache只有一个读写端口，那么这种串行的过程导致D-Cache发生缺失的处理时间变得很长，此时就可以采用write buffer来解决这个问题。脏状态的cache-line会首先放到写级存中，等到下级存储器有空闲的时候，才会将写缓存中的数据写到下级存储器中。
 对于write buffer，我们还可以对其进行 合并(merging) 操作。所谓merging，指的是将在同一个cache-line上的数据一并写入下层cache中，而非多次写入同一个cache-line。 上图中的右侧表示了一个采用了merging write buffer策略的写缓冲区。
-critial word first and early restart 先来看一下cache miss时的cpu： 图中展示了一个blocking cache在cache miss时，cpu stall，而后cache将需要取得的cache-line放入后，cpu resume的timeline。我们可以发现，若我们只需要cache-line中的第3个word，cpu完全可以提早resume。如下图所示： 这就是early restart，而critial word first指的是，是在此基础上，在取cache-block时，不按照0~7 word的顺序而是按照3,4,5,6,7,0,1,2的顺序获取，配合early restart以减小miss penalty。
-当然，这种优化手段一般在cache-block size越大的时候效果越好。
-non-blocking caches 本节主要参考了超标量处理器设计9.6.2...</p>
+critial word first and early restart 先来看一下cache miss时的cpu： 图中展示了一个blocking cache在cache miss时，cpu stall，而后cache将需要取得的cache-line放入后，cpu resume的timeline。我们可以发现，若我们只需要cache-line中的第3个word，cpu完全可以提早resume。如下图所示： ...</p>
   </div>
-  <footer class="entry-footer"><span title='2023-08-23 23:38:14 +0000 UTC'>August 23, 2023</span>&nbsp;·&nbsp;2 min</footer>
+  <footer class="entry-footer">&lt;span title=&#39;2023-08-23 23:38:14 &#43;0000 UTC&#39;&gt;August 23, 2023&lt;/span&gt;&amp;nbsp;·&amp;nbsp;2 min</footer>
   <a class="entry-link" aria-label="post link to Computer Architecture —— 高级缓存技术" href="https://caaatch22.github.io/posts/advanced-cache/"></a>
+</article>
+
+<article class="post-entry"> 
+  <header class="entry-header">
+    <h2>phmap —— 缓存友好的高效hashtable
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p> 众所周知，C&#43;&#43;标准库的 unordered_map在性能上向来不是一个好的选择。开源市场上有非常多的高性能哈希表可供选择，phmap继承自 absl-hashmap，有着非常好的插入、查找性能。在著名的Comprehensive C&#43;&#43; Hashmap Benchmarks 2022榜单中名列前茅。事实上，我比对了 phmap::flat_hash_map与榜单中综合性能第一的 ankerl::unordered_dense::map，我的benchmark中只有遍历哈希表时，flat_hash_map的性能低于 unordered_dense::map，其余无论是插入还是随即查找，大部分情况下 flat_hash_map的性能都更优。本文简单介绍了 flat_hash_map相关情况，以及一些使用上的建议与坑点。
+flat_hash_map 和 node_hash_map区别 phmap中有提供了两类哈希表，其内部布局示意图如下：
+由上图（忽略了bucket的细节）可以看出，flat_hash_map的最大的优点在于
+node之间的内存是连续的(虽然可能中间存在空node)，遍历的时候对cache更加友好 并且相比于 node_hash_map版少一次寻址过程（std::unordered_map的设计与 node_hash_map）相同。 而 flat_*系列的缺点就是在 rehash的时候:
+会引发原来的value失效（这里的失效指的是原来的那个对象所对应的内存失效，而不是value所包含的内容失效，例如，value是一个指针，那它的值——所指向的对象，不会受到影响）。举个例子： flat_hash_map&lt;int, Data&gt; mp; node_hash_map&lt;int, Data&gt; nodemp; mp[0] = Data(); nodemp[0] = Data(); auto&amp; mp0 = mp[0]; auto&amp; nodemp0 = nodemp[0]; // tigger rehash for (int i = 1; i &lt;= 10; i &#43;&#43;) { mp[i] = Data(); nodemp[i] = Data(); } assert(std::addressof(mp[0]) != std::addressof(mp0)); assert(std::addressof(nodemp[0]) == std::addressof(nodemp0)); 原因就是 flat_hash_map的内存布局导致的。而 node_hash_map或者 std::unordered_map就保证不会出现这种情况，因为当他们rehash的时候，只需要将bucket内的指针重新分配，指针的值还是指向原来的 node&lt;key, value&gt;.
+...</p>
+  </div>
+  <footer class="entry-footer">&lt;span title=&#39;2023-07-23 21:23:15 &#43;0000 UTC&#39;&gt;July 23, 2023&lt;/span&gt;&amp;nbsp;·&amp;nbsp;3 min</footer>
+  <a class="entry-link" aria-label="post link to phmap —— 缓存友好的高效hashtable" href="https://caaatch22.github.io/posts/phmap/"></a>
+</article>
+
+<article class="post-entry"> 
+  <header class="entry-header">
+    <h2>ICPC西安游记
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>没写记录，学弟写了，直接用
+ICPC西安邀请赛
+</p>
+  </div>
+  <footer class="entry-footer">&lt;span title=&#39;2023-05-29 13:35:22 &#43;0000 UTC&#39;&gt;May 29, 2023&lt;/span&gt;&amp;nbsp;·&amp;nbsp;1 min</footer>
+  <a class="entry-link" aria-label="post link to ICPC西安游记" href="https://caaatch22.github.io/posts/icpc%E8%A5%BF%E5%AE%89%E6%B8%B8%E8%AE%B0/"></a>
+</article>
+
+<article class="post-entry"> 
+  <header class="entry-header">
+    <h2>C&#43;&#43; CRTP
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p> 原先只是了解这个名词，想着C&#43;&#43;20后静态多态直接用 concept来实现就好了就没细看，没必要整这些模板元编程的奇技淫巧。没想到面试某量化C&#43;&#43;开发的时候被狠狠拷打…….
+CRTP (curiously recurring template pattern) 一般认为，CRTP可以用来实现静态多态
+template &lt;typename T&gt; class Base { void func() { static_cast&lt;T*&gt;(this)-&gt;funcImpl(); } }; class Derived : public Base&lt;Derived&gt; { void funcImpl() { // do works here } }; 通过CRTP可以使得类具有类似于虚函数的效果，同时又没有虚函数调用时的开销(虚函数调用需要通过虚函数指针查找虚函数表进行调用)，同时类的对象的体积相比使用虚函数也会减少(不需要存储虚函数指针)，但是缺点是无法动态绑定，感觉有点过于鸡肋。
+有什么用呢？可以用来向纯虚类一样做接口：（以下类似的代码在大量数学库中出现）
+template &lt;typename ChildType&gt; struct VectorBase { ChildType &amp;underlying() { return static_cast&lt;ChildType &amp;&gt;(*this); } inline ChildType &amp;operator&#43;=(const ChildType &amp;rhs) { this-&gt;underlying() = this-&gt;underlying() &#43; rhs; return this-&gt;underlying(); } }; struct Vec3f : public VectorBase&lt;Vec3f&gt; { float x{}, y{}, z{}; Vec3f() = default; Vec3f(float x, float y, float z) : x(x), y(y), z(z) {} }; inline Vec3f operator&#43;(const Vec3f &amp;lhs, const Vec3f &amp;rhs) { Vec3f result; result.x = lhs.x &#43; rhs.x; result.y = lhs.y &#43; rhs.y; result.z = lhs.z &#43; rhs.z; return result; } 定义好VectorBase后，Vec3f, Vec4f等直接实现接口就好。相比虚函数的形式，在空间和runtime都有优势。
+...</p>
+  </div>
+  <footer class="entry-footer">&lt;span title=&#39;2023-05-20 17:33:40 &#43;0000 UTC&#39;&gt;May 20, 2023&lt;/span&gt;&amp;nbsp;·&amp;nbsp;2 min</footer>
+  <a class="entry-link" aria-label="post link to C&#43;&#43; CRTP" href="https://caaatch22.github.io/posts/c-crtp/"></a>
 </article>
 <footer class="page-footer">
   <nav class="pagination">
@@ -323,7 +393,7 @@ non-blocking caches 本节主要参考了超标量处理器设计9.6.2...</p>
     </main>
     
 <footer class="footer">
-    <span>&copy; 2024 <a href="https://caaatch22.github.io">Mingjie&#39;s Home</a></span>
+    <span>&copy; 2024 <a href="https://caaatch22.github.io/">Mingjie&#39;s Home</a></span>
     <span>
         Powered by
         <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &

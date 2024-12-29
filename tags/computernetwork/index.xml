@@ -13,11 +13,53 @@
       <pubDate>Wed, 01 Mar 2023 19:34:21 +0000</pubDate>
       
       <guid>https://caaatch22.github.io/posts/%E5%AE%9E%E7%8E%B0%E4%B8%80%E4%B8%AA%E7%AE%80%E5%8D%95%E7%9A%84%E7%BD%91%E7%BB%9C%E5%BA%93-httpserver/</guid>
-      <description>本博客部署在两个服务器上，其中一个的 HTTP 服务就是由本文介绍的 FalconLink 提供。你可以通过IP地址 101.34.211.126:20080 尝试访问。 项目地址 https://github.com/caaatch22/FalconLink
-Overview FalconLink是一个轻量级的高并发网络库。它封装了网络编程套接字API，将其抽象成一个易用，可拓展框架。用户只需通过设置回调函数的形式注入业务逻辑。它同时也具有 HTTP 服务请求与解析的功能。
-上图是FalconLink系统架构的一个简单概括性图示。
-采用非阻塞socket配合边缘触发，及one loop per thread的主从 reactor设计 Acceptor 是专门用于处理接受新用户连接请求的模块。它守候在监听端口。收到请求后建立 Connection 分配给 EventLoop。 FalconLink 将每个 TCP连接抽象成一个 Connection，一个 Connection对应一个连接 socket 套接字。用户可以为每一条Connection注册回调函数。 每个 EventLoop 都拥有一个 Poller。 Poller 负责监听已连接的套接字，将有事件触发的连接反馈给 EventLoop。 EventLoop是该系统的核心组件, 每个都单独运行在一个线程中. 它从 Poller 中接收到有事件触发的用户连接后, 会获取并执行它们的回调函数. ThreadPool 线程池管理着系统中有多少个 EventLoop 在运行，并调度线程，防止注册过多线程导致性能下降。 支持 HTTP(GET,HEAD)请求的解析与回复，支持挂载静态 html 文件（本博客使用FalconLink的 HTTP 服务） 实现异步logger API 使用falconlink，可以轻易且优雅的在20行内实现一个 echo server。
-#include &amp;#34;falconlink.hpp&amp;#34; int main() { falconlink::InetAddr local_address(&amp;#34;0.0.0.0&amp;#34;, 8090); falconlink::Server echo_server(local_address); echo_server .</description>
+      <description>&lt;blockquote&gt;
+&lt;p&gt;本博客部署在两个服务器上，其中一个的 HTTP 服务就是由本文介绍的 FalconLink 提供。你可以通过IP地址 101.34.211.126:20080 尝试访问。 项目地址 &lt;a href=&#34;https://github.com/caaatch22/FalconLink&#34;&gt;https://github.com/caaatch22/FalconLink&lt;/a&gt;&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h2 id=&#34;overview&#34;&gt;Overview&lt;/h2&gt;
+&lt;p&gt;&lt;strong&gt;FalconLink&lt;/strong&gt;是一个轻量级的高并发网络库。它封装了网络编程套接字API，将其抽象成一个易用，可拓展框架。用户只需通过设置回调函数的形式注入业务逻辑。它同时也具有 HTTP 服务请求与解析的功能。&lt;/p&gt;
+&lt;p&gt;&lt;img loading=&#34;lazy&#34; src=&#34;https://caaatch22.github.io/img/FalconLink/falconlink-architecture.png&#34; alt=&#34;&#34;  /&gt;
+&lt;/p&gt;
+&lt;p&gt;上图是FalconLink系统架构的一个简单概括性图示。&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;采用&lt;strong&gt;非阻塞socket&lt;/strong&gt;配合&lt;strong&gt;边缘触发&lt;/strong&gt;，及&lt;em&gt;one loop per thread&lt;/em&gt;的主从 &lt;code&gt;reactor&lt;/code&gt;设计&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;Acceptor&lt;/code&gt; 是专门用于处理接受新用户连接请求的模块。它守候在监听端口。收到请求后建立 &lt;code&gt;Connection&lt;/code&gt; 分配给 EventLoop。&lt;/li&gt;
+&lt;li&gt;FalconLink 将每个 TCP连接抽象成一个 &lt;code&gt;Connection&lt;/code&gt;，一个 &lt;code&gt;Connection&lt;/code&gt;对应一个连接 socket 套接字。用户可以为每一条Connection注册回调函数。&lt;/li&gt;
+&lt;li&gt;每个 &lt;code&gt;EventLoop&lt;/code&gt; 都拥有一个 &lt;code&gt;Poller&lt;/code&gt;。 &lt;code&gt;Poller&lt;/code&gt; 负责监听已连接的套接字，将有事件触发的连接反馈给 &lt;code&gt;EventLoop&lt;/code&gt;。&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;EventLoop&lt;/code&gt;是该系统的核心组件, 每个都单独运行在一个线程中. 它从 &lt;code&gt;Poller&lt;/code&gt; 中接收到有事件触发的用户连接后, 会获取并执行它们的回调函数.&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;ThreadPool&lt;/code&gt; 线程池管理着系统中有多少个 &lt;code&gt;EventLoop&lt;/code&gt; 在运行，并调度线程，防止注册过多线程导致性能下降。&lt;/li&gt;
+&lt;li&gt;支持 HTTP(GET,HEAD)请求的解析与回复，支持挂载静态 html 文件（本博客使用FalconLink的 HTTP 服务）&lt;/li&gt;
+&lt;li&gt;实现异步logger&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;api&#34;&gt;API&lt;/h2&gt;
+&lt;p&gt;使用falconlink，可以轻易且优雅的在20行内实现一个 &lt;code&gt;echo server&lt;/code&gt;。&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-cpp&#34; data-lang=&#34;cpp&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;#include&lt;/span&gt; &lt;span style=&#34;color:#75715e&#34;&gt;&amp;#34;falconlink.hpp&amp;#34;&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;int&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;main&lt;/span&gt;() {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  falconlink&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;InetAddr local_address(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;0.0.0.0&amp;#34;&lt;/span&gt;, &lt;span style=&#34;color:#ae81ff&#34;&gt;8090&lt;/span&gt;);
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  falconlink&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;Server echo_server(local_address);
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  echo_server
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      .onHandle([&lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&lt;/span&gt;](falconlink&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;Connection&lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; client_conn) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        &lt;span style=&#34;color:#66d9ef&#34;&gt;int&lt;/span&gt; from_fd &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; client_conn&lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt;fd();
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        &lt;span style=&#34;color:#66d9ef&#34;&gt;auto&lt;/span&gt; [read, exit] &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; client_conn&lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt;recv();
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; (exit) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;          client_conn&lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt;getEventLoop()&lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt;deleteConnection(from_fd);
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;          &lt;span style=&#34;color:#75715e&#34;&gt;// client_conn ptr is invalid below here, do not touch it again
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;          &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        }
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        &lt;span style=&#34;color:#75715e&#34;&gt;// 只有以下四行是业务逻辑
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;        &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; (read) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;          client_conn&lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt;WriteToWriteBuffer(client_conn&lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt;ReadAsString());
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;          client_conn&lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt;send();
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;          client_conn&lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt;clearReadBuffer();
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        }
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      })
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      .start();
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h2 id=&#34;build--test&#34;&gt;Build &amp;amp; Test&lt;/h2&gt;
+&lt;p&gt;将代码 clone 到本地，进入主目录&lt;/p&gt;</description>
       <content:encoded><![CDATA[<blockquote>
 <p>本博客部署在两个服务器上，其中一个的 HTTP 服务就是由本文介绍的 FalconLink 提供。你可以通过IP地址 101.34.211.126:20080 尝试访问。 项目地址 <a href="https://github.com/caaatch22/FalconLink">https://github.com/caaatch22/FalconLink</a></p>
 </blockquote>
@@ -114,9 +156,19 @@ Overview FalconLink是一个轻量级的高并发网络库。它封装了网络�
       <pubDate>Mon, 09 May 2022 22:35:22 +0000</pubDate>
       
       <guid>https://caaatch22.github.io/posts/cs144-note1/</guid>
-      <description>Computer Network introduction dominant model : bidirectional, reliable byte stream connection
-http: hypertext transfer protocol : designed to be a document centric way for programs to communicate. Client &amp;mdash;&amp;gt; Server model
-Bit-Torrent: (peer-to-peer model) a client requests document from other clients, a single client can request from many others. these collections of collaborating clients are called swarms when a client wants to downloads a file, it first find torrent, usually using www and download using http.</description>
+      <description>&lt;h1 id=&#34;computer-network&#34;&gt;Computer Network&lt;/h1&gt;
+&lt;h2 id=&#34;introduction&#34;&gt;introduction&lt;/h2&gt;
+&lt;p&gt;dominant model : bidirectional, reliable byte stream connection&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;http&lt;/strong&gt;: hypertext transfer protocol : designed to be a document centric way for programs to communicate.
+Client  &amp;mdash;&amp;gt;  Server  model&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;Bit-Torrent&lt;/strong&gt;: (peer-to-peer model) a client requests document from other clients, a single client can request from many others.
+these collections of collaborating clients are called &lt;strong&gt;swarms&lt;/strong&gt;
+when a client wants to downloads a file, it first find &lt;code&gt;torrent&lt;/code&gt;, usually using www and download using http.
+&lt;strong&gt;torrent&lt;/strong&gt; file describes information about data file, also tells bit-torrent about the &lt;strong&gt;tracker&lt;/strong&gt; (a node keeps track names of clients of the swarm)&lt;/p&gt;</description>
       <content:encoded><![CDATA[<h1 id="computer-network">Computer Network</h1>
 <h2 id="introduction">introduction</h2>
 <p>dominant model : bidirectional, reliable byte stream connection</p>
@@ -173,30 +225,30 @@ a packet is a self-contained unit consisting of the data we want to be delivered
 <!-- raw HTML omitted -->
 <h2 id="ip-service-model">IP Service model</h2>
 <table>
-<thead>
-<tr>
-<th>Property</th>
-<th>behavior</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Datagram</td>
-<td>Individually routed packets.</td>
-</tr>
-<tr>
-<td>Unreliable</td>
-<td>packet might be dropped</td>
-</tr>
-<tr>
-<td>Best effort</td>
-<td>only if necessary</td>
-</tr>
-<tr>
-<td>Connectionless</td>
-<td>No per-flow state.</td>
-</tr>
-</tbody>
+  <thead>
+      <tr>
+          <th>Property</th>
+          <th>behavior</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>Datagram</td>
+          <td>Individually routed packets.</td>
+      </tr>
+      <tr>
+          <td>Unreliable</td>
+          <td>packet might be dropped</td>
+      </tr>
+      <tr>
+          <td>Best effort</td>
+          <td>only if necessary</td>
+      </tr>
+      <tr>
+          <td>Connectionless</td>
+          <td>No per-flow state.</td>
+      </tr>
+  </tbody>
 </table>
 <p><strong>IP is &ldquo;simple&rdquo;</strong></p>
 <ul>

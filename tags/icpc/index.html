@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <meta name="robots" content="index, follow">
-<title>icpc | Mingjie&#39;s Home</title>
+<title>Icpc | Mingjie&#39;s Home</title>
 <meta name="keywords" content="">
 <meta name="description" content="">
 <meta name="author" content="">
@@ -19,6 +19,7 @@
 <meta name="theme-color" content="#2e2e33">
 <meta name="msapplication-TileColor" content="#2e2e33">
 <link rel="alternate" type="application/rss+xml" href="https://caaatch22.github.io/tags/icpc/index.xml">
+<link rel="alternate" hreflang="en" href="https://caaatch22.github.io/tags/icpc/">
 <noscript>
     <style>
         #theme-toggle,
@@ -56,23 +57,26 @@
 
     </style>
 </noscript>
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-WEG841BBW9"></script>
-<script>
-var doNotTrack = false;
-if (!doNotTrack) {
-	window.dataLayer = window.dataLayer || [];
-	function gtag(){dataLayer.push(arguments);}
-	gtag('js', new Date());
-	gtag('config', 'G-WEG841BBW9', { 'anonymize_ip': false });
-}
-</script>
-<meta property="og:title" content="icpc" />
+      <script async src="https://www.googletagmanager.com/gtag/js?id=G-WEG841BBW9"></script>
+      <script>
+        var doNotTrack = false;
+        if ( false ) {
+          var dnt = (navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack);
+          var doNotTrack = (dnt == "1" || dnt == "yes");
+        }
+        if (!doNotTrack) {
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-WEG841BBW9');
+        }
+      </script><meta property="og:title" content="Icpc" />
 <meta property="og:description" content="" />
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://caaatch22.github.io/tags/icpc/" />
 
 <meta name="twitter:card" content="summary"/>
-<meta name="twitter:title" content="icpc"/>
+<meta name="twitter:title" content="Icpc"/>
 <meta name="twitter:description" content=""/>
 
 </head>
@@ -92,7 +96,7 @@ if (!doNotTrack) {
 <header class="header">
     <nav class="nav">
         <div class="logo">
-            <a href="https://caaatch22.github.io" accesskey="h" title="Mingjie&#39;s Home (Alt + H)">Mingjie&#39;s Home</a>
+            <a href="https://caaatch22.github.io/" accesskey="h" title="Mingjie&#39;s Home (Alt + H)">Mingjie&#39;s Home</a>
             <div class="logo-switches">
                 <button id="theme-toggle" accesskey="t" title="(Alt + T)">
                     <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
@@ -114,6 +118,8 @@ if (!doNotTrack) {
                         <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
                     </svg>
                 </button>
+                <ul class="lang-switch"><li>|</li>
+                </ul>
             </div>
         </div>
         <ul id="menu">
@@ -141,9 +147,9 @@ if (!doNotTrack) {
     </nav>
 </header>
 <main class="main"> 
-<header class="page-header"><div class="breadcrumbs"><a href="https://caaatch22.github.io">Home</a>&nbsp;»&nbsp;<a href="https://caaatch22.github.io/tags/">Tags</a></div>
+<header class="page-header"><div class="breadcrumbs"><a href="https://caaatch22.github.io/">Home</a>&nbsp;»&nbsp;<a href="https://caaatch22.github.io/tags/">Tags</a></div>
   <h1>
-    icpc
+    Icpc
   </h1>
 </header>
 
@@ -154,9 +160,10 @@ if (!doNotTrack) {
   </header>
   <div class="entry-content">
     <p>没写记录，学弟写了，直接用
-ICPC西安邀请赛</p>
+ICPC西安邀请赛
+</p>
   </div>
-  <footer class="entry-footer"><span title='2023-05-29 13:35:22 +0000 UTC'>May 29, 2023</span>&nbsp;·&nbsp;1 min</footer>
+  <footer class="entry-footer">&lt;span title=&#39;2023-05-29 13:35:22 &#43;0000 UTC&#39;&gt;May 29, 2023&lt;/span&gt;&amp;nbsp;·&amp;nbsp;1 min</footer>
   <a class="entry-link" aria-label="post link to ICPC西安游记" href="https://caaatch22.github.io/posts/icpc%E8%A5%BF%E5%AE%89%E6%B8%B8%E8%AE%B0/"></a>
 </article>
 
@@ -173,9 +180,10 @@ ICPC西安邀请赛</p>
 假设我们有一长为 $n$ 的序列 $A[0…n - 1]$ 。在算法竞赛中，典型的数据量是 $n = 1e5, |A[i]| &lt;= 1e9$
 区间 $[L, R)$ 中元素$x$的出现次数 区间 $[L, R)$ 中的第k小数 区间 $[L, R)$ 上 小于等于x的数的个数 … 以上问题都可以通过可持久化线段树在解决。那为什么还需要wavelet tree呢，我们都知道可持久化线段树的常数很大，并且十分消耗空间，在有些苛刻的题目下可能会被卡 好吧应该都是金牌题，不是我该考虑的 。利用wavelet tree可以在$log(\sigma)$时间内完成的同时（且优秀的常数），若使用bitvector优化空间，空间上大概比可持久化线段树少一个量级。最重要的一点是，我个人觉得他比主席树更加直观易懂。 $\sigma$ = | $\Sigma = {1, 2, \cdots, \sigma}$| （用于序列上时是值域大小）。
 用wavelet tree的缺点就是带修改操作比较难写，码量较大，一般不会在比赛时使用。
-Wavelet Tree 该图给出了用序列 $A = [7, 3, 5, 6, 1, 3, 2, 7, 8, 4]$ 构建的wavelet tree的形态。对于树上的每个节点，我们会将其按照值域分成两个部分$[low, mid), [mid, high)$。通过 稳定划分（stable_partition，即不改变相对顺序的情况下划分）将该节点上的序列中小于 $mid$的划分到左子树中，大于等于mid的划分到右子树中，递归直至节点中只有一种值时为叶节点。需要注意的是，我们并不会在叶子节点中直接存储序列的值，而是通过某个方法使得我们能够使用较小的空间的情况下得到足够的信息。...</p>
+Wavelet Tree 该图给出了用序列 $A = [7, 3, 5, 6, 1, 3, 2, 7, 8, 4]$ 构建的wavelet tree的形态。对于树上的每个节点，我们会将其按照值域分成两个部分$[low, mid), [mid, high)$。通过 稳定划分（stable_partition，即不改变相对顺序的情况下划分）将该节点上的序列中小于 $mid$的划分到左子树中，大于等于mid的划分到右子树中，递归直至节点中只有一种值时为叶节点。需要注意的是，我们并不会在叶子节点中直接存储序列的值，而是通过某个方法使得我们能够使用较小的空间的情况下得到足够的信息。
+...</p>
   </div>
-  <footer class="entry-footer"><span title='2023-01-10 16:18:32 +0000 UTC'>January 10, 2023</span>&nbsp;·&nbsp;4 min</footer>
+  <footer class="entry-footer">&lt;span title=&#39;2023-01-10 16:18:32 &#43;0000 UTC&#39;&gt;January 10, 2023&lt;/span&gt;&amp;nbsp;·&amp;nbsp;4 min</footer>
   <a class="entry-link" aria-label="post link to 将Wavelet Tree用于算法竞赛" href="https://caaatch22.github.io/posts/%E7%AE%97%E6%B3%95%E7%AB%9E%E8%B5%9B%E4%B8%AD%E7%9A%84wavelet-tree/"></a>
 </article>
 
@@ -188,15 +196,15 @@ Wavelet Tree 该图给出了用序列 $A = [7, 3, 5, 6, 1, 3, 2, 7, 8, 4]$ 构�
   </header>
   <div class="entry-content">
     <p>icpc模板 Previous Next     / [pdf] View the PDF file here. algorithm-template Competitive Programming template
-basic algorithm 双指针 离散化，去重 前缀和与差分 二分 单调栈 单调队列 尺取法 归并排序，快速排序，第k小 树的中心 拓扑排序 math 素数，筛素数，素性测试， 反素数 质因数分解，预处理质因数 欧拉函数 组合数 拓展欧几里得，线性同余方程 中国剩余定理 容斥原理 高斯消元，高斯异或 矩阵乘法 博弈论，Nim游戏 莫比乌斯反演 BSGS FFT 生成函数 线性基 date strcture 并查集 Sparse table Trie, 01Trie 树状数组 线段树，扫描线 树链剖分 可持久化线段树，kth number, 主席树 splay 分块 莫队 点分治 kdtree Graph Floyd bellman-ford, spfa，判负环 dijkstra， 拆点 分层图最短路 差分约束 最小生成树 prim, kruskal 瓶颈生成树 kruskal重构树 lca 二分图匹配 欧拉回路欧拉路径 强连通分量 2-sat 网络流相关 string 字符串hash KMP， 前缀函数 Z-algorithm ac自动机 SA SAM dp 01pack, 完全背包，多重背包及优化，分组背包 线性dp, LCS, LIS, 编辑距离 区间dp 字符串压缩 数位dp 状压dp 树形dp 基环树dp 单调队列优化dp 斜率优化dp Geometry 常用模板 二维凸包 github地址 https://github....</p>
+...</p>
   </div>
-  <footer class="entry-footer"><span title='2022-03-17 23:38:14 +0000 UTC'>March 17, 2022</span>&nbsp;·&nbsp;1 min</footer>
+  <footer class="entry-footer">&lt;span title=&#39;2022-03-17 23:38:14 &#43;0000 UTC&#39;&gt;March 17, 2022&lt;/span&gt;&amp;nbsp;·&amp;nbsp;1 min</footer>
   <a class="entry-link" aria-label="post link to xcpc template" href="https://caaatch22.github.io/posts/xcpc-template/"></a>
 </article>
     </main>
     
 <footer class="footer">
-    <span>&copy; 2024 <a href="https://caaatch22.github.io">Mingjie&#39;s Home</a></span>
+    <span>&copy; 2024 <a href="https://caaatch22.github.io/">Mingjie&#39;s Home</a></span>
     <span>
         Powered by
         <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &

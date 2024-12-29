@@ -6,20 +6,45 @@
     <description>Recent content in Posts on Mingjie&#39;s Home</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>zh-cn</language>
-    <lastBuildDate>Tue, 27 Feb 2024 22:19:21 +0000</lastBuildDate><atom:link href="https://caaatch22.github.io/posts/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Mon, 29 Apr 2024 09:38:10 +0000</lastBuildDate><atom:link href="https://caaatch22.github.io/posts/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>TinyMl —— 模型量化(quantization)</title>
       <link>https://caaatch22.github.io/posts/tinyml-quantization/</link>
       <pubDate>Tue, 27 Feb 2024 22:19:21 +0000</pubDate>
       
       <guid>https://caaatch22.github.io/posts/tinyml-quantization/</guid>
-      <description>Overview 模型量化（quantization）指的是用更少的bit表示模型参数，从而减少模型的大小，加速推理过程的技术。
-一种常见的量化方式是线性量化(linear quantization)，也叫仿射量化(affine quantization)。其实就是按比例将tensor（一般为fp32）放缩到 $2^{bitwidth}$ 的范围内，比如8bit等。我们很容易给出量化公式： $$ r = s(q - z) $$ 其中，r(real value)值得是量化前的值，q(quantized value)是量化后的值，s(scale)是放缩比例，z(zero point)相当于是一个偏移量。
-如何求出$s$和$z$呢？一种简单且常见的方式是通过最大最小值来估计，即：
-$$ s = \frac{r_{max} - r_{min}}{q_{max} - q_{min}} $$ $r_{max}$就是这个tensor的最大值，$r_{min}$是最小值，$q_{max}$和$q_{min}$是我们指定的量化后的最大最小值。如下图所示： 有了scale, 容易得到 $z = q_{min} - \frac{r_{min}}{s}$。在实际操作中，z一般会被round到最近的整数$z = round(q_{min} - \frac{r_{min}}{s})$（有很多不同的round规则，这个有具体实现决定）。
-得到量化方程： $$ q = clip(round(\frac{r}{s}) + z, q_{min}, q_{max}) $$
-代码示意如下：（实际会用pytorch已有的quantize api或者其他推理框架）
-def get_quantized_range(bitwidth): quantized_max = (1 &amp;lt;&amp;lt; (bitwidth - 1)) - 1 quantized_min = -(1 &amp;lt;&amp;lt; (bitwidth - 1)) return quantized_min, quantized_max def linear_quantize(fp_tensor, bitwidth, scale, zero_point, dtype=torch.</description>
+      <description>&lt;h2 id=&#34;overview&#34;&gt;Overview&lt;/h2&gt;
+&lt;p&gt;模型量化（quantization）指的是用更少的bit表示模型参数，从而减少模型的大小，加速推理过程的技术。&lt;/p&gt;
+&lt;p&gt;一种常见的量化方式是线性量化(linear quantization)，也叫仿射量化(affine quantization)。其实就是按比例将tensor（一般为fp32）放缩到 $2^{bitwidth}$ 的范围内，比如8bit等。我们很容易给出量化公式：
+$$
+r = s(q - z)
+$$
+其中，r(real value)值得是量化前的值，q(quantized value)是量化后的值，s(scale)是放缩比例，z(zero point)相当于是一个偏移量。&lt;/p&gt;
+&lt;p&gt;如何求出$s$和$z$呢？一种简单且常见的方式是通过最大最小值来估计，即：&lt;/p&gt;
+&lt;p&gt;$$
+s = \frac{r_{max} - r_{min}}{q_{max} - q_{min}}
+$$
+$r_{max}$就是这个tensor的最大值，$r_{min}$是最小值，$q_{max}$和$q_{min}$是我们指定的量化后的最大最小值。如下图所示：
+&lt;img loading=&#34;lazy&#34; src=&#34;https://caaatch22.github.io/img/tinyml/quantization/quantization.png&#34; alt=&#34;image&#34;  /&gt;
+&lt;/p&gt;
+&lt;p&gt;有了scale, 容易得到 $z = q_{min} - \frac{r_{min}}{s}$。在实际操作中，z一般会被round到最近的整数$z = round(q_{min} - \frac{r_{min}}{s})$（有很多不同的round规则，这个有具体实现决定）。&lt;/p&gt;
+&lt;p&gt;得到量化方程：
+$$
+q = clip(round(\frac{r}{s}) + z, q_{min}, q_{max})
+$$&lt;/p&gt;
+&lt;p&gt;代码示意如下：（实际会用pytorch已有的quantize api或者其他推理框架）&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;get_quantized_range&lt;/span&gt;(bitwidth):
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    quantized_max &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; (&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&amp;lt;&lt;/span&gt; (bitwidth &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;)) &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    quantized_min &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt;(&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&amp;lt;&lt;/span&gt; (bitwidth &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;))
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; quantized_min, quantized_max
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;linear_quantize&lt;/span&gt;(fp_tensor, bitwidth, scale, zero_point, dtype&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;torch&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;int8) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; torch&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;Tensor:
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    rounded_tensor &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; torch&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;round(fp_tensor &lt;span style=&#34;color:#f92672&#34;&gt;/&lt;/span&gt; scale)&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;to(dtype)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    shifted_tensor &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; rounded_tensor &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; zero_point
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    quantized_min, quantized_max &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; get_quantized_range(bitwidth)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    quantized_tensor &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; shifted_tensor&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;clamp_(quantized_min, quantized_max)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; quantized_tensor
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;上述过程被称为非对称量化(asymmetric quantization)。&lt;/p&gt;</description>
       <content:encoded><![CDATA[<h2 id="overview">Overview</h2>
 <p>模型量化（quantization）指的是用更少的bit表示模型参数，从而减少模型的大小，加速推理过程的技术。</p>
 <p>一种常见的量化方式是线性量化(linear quantization)，也叫仿射量化(affine quantization)。其实就是按比例将tensor（一般为fp32）放缩到 $2^{bitwidth}$ 的范围内，比如8bit等。我们很容易给出量化公式：
@@ -222,13 +247,62 @@ $$</p>
       <pubDate>Tue, 20 Feb 2024 15:35:59 +0000</pubDate>
       
       <guid>https://caaatch22.github.io/posts/tinyml-pruning/</guid>
-      <description>最近正在学习 MIT 6.5940, 韩松老师的课，做deep learning compression的应该都只知道。课程分为三个部分，efficient inference, domain-specific optimization, efficient training。有完整的课件，视频和实验。最后一个lab是将llama2部署在个人电脑上，非常有意思（谁不想要个自己的大模型呢）。其余lab也都可以白嫖google colab的gpu
-Introduction 正式介绍pruning and sparsity之前，我们先来聊聊为什么要做model compression这个事情。 Today&amp;rsquo;s Model is Too Big!
-随着Large language model的出现，如GPT-3，如今的模型参数量已经达到了上百billion，别说训练，我们甚至无法在一个gpu上对其进行推理。更别提如果我们想要将其部署在其他边缘设备上。
-所以当前在做inference之前，一般都会有个model-compression的过程，包括pruning（剪枝），quantization（量化），distillation（蒸馏）等。这些方法都是为了减少模型的大小，加速推理过程。这些方法也被广泛地集成到了各种加速卡，gpu中。例如nv的A100就支持structured sparsity（[N:M]形式的，具体含义下文会详细介绍）。
-Efficiency Metrics 我们再来看看一些 efficiency metrics，这也是我们在做inference过程中需要考虑的指标：
-Memory-Related Metrics # parameters model size total/peak #activations Computation-Related Metrics MACs FLOP, FLOPs # parameters 下表是一些常见结构的参数数量：
-Model #Parameters Linear Layer(FC) $feature_{in} * feature_{out}$ Conv Layer $c_{i} * c_{o} * k_{h} * k_{w} $ Grouped Conv Layer $c_{i} * c_{o} * k_{h} * k_{w} / g$ Depthwise Conv Layer $c_{o} * k_{h} * k_{w}$ 其中，Grouped Conv指的是将输入在channel维度进行分组，然后分别进行卷积，最后concatenate。Depthwise Conv是分组个数 $g$ 等于输入channel数的情况。</description>
+      <description>&lt;blockquote&gt;
+&lt;p&gt;最近正在学习 &lt;a href=&#34;https://hanlab.mit.edu/courses/2023-fall-65940&#34;&gt;MIT 6.5940&lt;/a&gt;, &lt;a href=&#34;https://hanlab.mit.edu/songhan&#34;&gt;韩松&lt;/a&gt;老师的课，做deep learning compression的应该都只知道。课程分为三个部分，&lt;strong&gt;efficient inference, domain-specific optimization, efficient training&lt;/strong&gt;。有完整的课件，视频和实验。最后一个lab是将llama2部署在个人电脑上，非常有意思（谁不想要个自己的大模型呢）。其余lab也都可以白嫖google colab的gpu&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h2 id=&#34;introduction&#34;&gt;Introduction&lt;/h2&gt;
+&lt;p&gt;正式介绍pruning and sparsity之前，我们先来聊聊为什么要做model compression这个事情。
+&lt;img loading=&#34;lazy&#34; src=&#34;https://caaatch22.github.io/img/tinyml/pruning/todays-model-size.png&#34; alt=&#34;todays-model-size&#34;  /&gt;
+&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Today&amp;rsquo;s Model is Too Big!&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;随着Large language model的出现，如GPT-3，如今的模型参数量已经达到了上百billion，别说训练，我们甚至无法在一个gpu上对其进行推理。更别提如果我们想要将其部署在其他边缘设备上。&lt;/p&gt;
+&lt;p&gt;所以当前在做inference之前，一般都会有个model-compression的过程，包括pruning（剪枝），quantization（量化），distillation（蒸馏）等。这些方法都是为了减少模型的大小，加速推理过程。这些方法也被广泛地集成到了各种加速卡，gpu中。例如nv的A100就支持structured sparsity（[N:M]形式的，具体含义下文会详细介绍）。&lt;/p&gt;
+&lt;h3 id=&#34;efficiency-metrics&#34;&gt;Efficiency Metrics&lt;/h3&gt;
+&lt;p&gt;我们再来看看一些 efficiency metrics，这也是我们在做inference过程中需要考虑的指标：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Memory-Related Metrics
+&lt;ul&gt;
+&lt;li&gt;# parameters&lt;/li&gt;
+&lt;li&gt;model size&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;total/peak #activations&lt;/li&gt;
+&lt;li&gt;Computation-Related Metrics
+&lt;ul&gt;
+&lt;li&gt;MACs&lt;/li&gt;
+&lt;li&gt;FLOP, FLOPs&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h4 id=&#34;-parameters&#34;&gt;# parameters&lt;/h4&gt;
+&lt;p&gt;下表是一些常见结构的参数数量：&lt;/p&gt;
+&lt;table&gt;
+  &lt;thead&gt;
+      &lt;tr&gt;
+          &lt;th&gt;Model&lt;/th&gt;
+          &lt;th&gt;#Parameters&lt;/th&gt;
+      &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+      &lt;tr&gt;
+          &lt;td&gt;Linear Layer(FC)&lt;/td&gt;
+          &lt;td&gt;$feature_{in} * feature_{out}$&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;Conv Layer&lt;/td&gt;
+          &lt;td&gt;$c_{i} * c_{o} * k_{h} * k_{w} $&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;Grouped Conv Layer&lt;/td&gt;
+          &lt;td&gt;$c_{i} * c_{o} * k_{h} * k_{w} / g$&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;Depthwise Conv Layer&lt;/td&gt;
+          &lt;td&gt;$c_{o} * k_{h} * k_{w}$&lt;/td&gt;
+      &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;其中，Grouped Conv指的是将输入在channel维度进行分组，然后分别进行卷积，最后concatenate。Depthwise Conv是分组个数 $g$ 等于输入channel数的情况。&lt;/p&gt;</description>
       <content:encoded><![CDATA[<blockquote>
 <p>最近正在学习 <a href="https://hanlab.mit.edu/courses/2023-fall-65940">MIT 6.5940</a>, <a href="https://hanlab.mit.edu/songhan">韩松</a>老师的课，做deep learning compression的应该都只知道。课程分为三个部分，<strong>efficient inference, domain-specific optimization, efficient training</strong>。有完整的课件，视频和实验。最后一个lab是将llama2部署在个人电脑上，非常有意思（谁不想要个自己的大模型呢）。其余lab也都可以白嫖google colab的gpu</p>
 </blockquote>
@@ -259,30 +333,30 @@ Model #Parameters Linear Layer(FC) $feature_{in} * feature_{out}$ Conv Layer $c_
 <h4 id="-parameters"># parameters</h4>
 <p>下表是一些常见结构的参数数量：</p>
 <table>
-<thead>
-<tr>
-<th>Model</th>
-<th>#Parameters</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Linear Layer(FC)</td>
-<td>$feature_{in} * feature_{out}$</td>
-</tr>
-<tr>
-<td>Conv Layer</td>
-<td>$c_{i} * c_{o} * k_{h} * k_{w} $</td>
-</tr>
-<tr>
-<td>Grouped Conv Layer</td>
-<td>$c_{i} * c_{o} * k_{h} * k_{w} / g$</td>
-</tr>
-<tr>
-<td>Depthwise Conv Layer</td>
-<td>$c_{o} * k_{h} * k_{w}$</td>
-</tr>
-</tbody>
+  <thead>
+      <tr>
+          <th>Model</th>
+          <th>#Parameters</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>Linear Layer(FC)</td>
+          <td>$feature_{in} * feature_{out}$</td>
+      </tr>
+      <tr>
+          <td>Conv Layer</td>
+          <td>$c_{i} * c_{o} * k_{h} * k_{w} $</td>
+      </tr>
+      <tr>
+          <td>Grouped Conv Layer</td>
+          <td>$c_{i} * c_{o} * k_{h} * k_{w} / g$</td>
+      </tr>
+      <tr>
+          <td>Depthwise Conv Layer</td>
+          <td>$c_{o} * k_{h} * k_{w}$</td>
+      </tr>
+  </tbody>
 </table>
 <p>其中，Grouped Conv指的是将输入在channel维度进行分组，然后分别进行卷积，最后concatenate。Depthwise Conv是分组个数 $g$ 等于输入channel数的情况。</p>
 <p>除了这些weight外，还有bias以及norm相关的参数。
@@ -306,30 +380,30 @@ $$</p>
 <p><code>MAC</code>的含义是 <strong>Multiply-Accumulate operation</strong>。例如，一个gemm(genearl matrix multiplication)的$MACs = m * n * k$（对于m * k的矩阵和k * n的矩阵相乘）。深度学习中几乎90%的时间都在做gemm，一个conv2d操作也可以由im2col转换为gemm操作。</p>
 <p>以下是常见的一些layer的MACs计算：</p>
 <table>
-<thead>
-<tr>
-<th>layer</th>
-<th>MACs(batch size = 1)</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Linear</td>
-<td>$feature_{in} * feature_{out}$</td>
-</tr>
-<tr>
-<td>Conv</td>
-<td>$c_{i}  * k_{h} * k_{w} * h_{o} * w_{o} * c_{o}$</td>
-</tr>
-<tr>
-<td>grouped conv</td>
-<td>$c_{i}/g * k_{h} * k_{w} * h_{o} * w_{o}* c_{o} $</td>
-</tr>
-<tr>
-<td>depthwise conv</td>
-<td>$c_{o} * k_{h} * k_{w} * h_{o} * w_{o}$</td>
-</tr>
-</tbody>
+  <thead>
+      <tr>
+          <th>layer</th>
+          <th>MACs(batch size = 1)</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>Linear</td>
+          <td>$feature_{in} * feature_{out}$</td>
+      </tr>
+      <tr>
+          <td>Conv</td>
+          <td>$c_{i}  * k_{h} * k_{w} * h_{o} * w_{o} * c_{o}$</td>
+      </tr>
+      <tr>
+          <td>grouped conv</td>
+          <td>$c_{i}/g * k_{h} * k_{w} * h_{o} * w_{o}* c_{o} $</td>
+      </tr>
+      <tr>
+          <td>depthwise conv</td>
+          <td>$c_{o} * k_{h} * k_{w} * h_{o} * w_{o}$</td>
+      </tr>
+  </tbody>
 </table>
 <p>（简单解释一下conv2d的MACs：对于每个输出特征图上的每个像素点，都需要进行 $c_i \times k_h \times k_w $ 次乘法运算和累加操作（假设每个卷积核和输入通道的对应部分做完整个卷积运算）。因为输出特征图有 $c_o$ 个通道，每个通道有 $h_o \times w_o$ 个像素点，所以总共的MACs数就是上面公式中的乘积。）</p>
 <h4 id="flop-and-flops">FLOP and FLOPs</h4>
@@ -487,9 +561,71 @@ $本质上是一个线性回归。</li>
       <pubDate>Fri, 26 Jan 2024 22:35:22 +0000</pubDate>
       
       <guid>https://caaatch22.github.io/posts/cuda/</guid>
-      <description>本系列笔记主要参考了 &amp;ldquo;Programming massively parallel processors&amp;quot;这本书，以及网上相关资料；不会特别详细，当作个人整理的面经
-CUDA软件架构 CUDA从软件层面上提供了三层结构包括grid, block和thread。每个kernal内启动的所有线程在一个grid内。启动kernel时指定&amp;laquo;&amp;lt;dimGrid, dimBlock&amp;raquo;&amp;gt;，都是一个dim3结构。
-gridDim的最大值范围： (x,y,z): (2^31 - 1, 65535, 65535) blockDim的最大值范围：(x,y,z): (1024, 1024, 64) 且还要同时满足：一个block内的threads数量不能超过1024(从kepler开始)。即：$ blockDim.x * blockDim.y * blockDim.z &amp;lt;= 1024 $ CUDA内存架构 变量声明 所在内存 作用域 生命周期 kernel内除了array的变量 register thread grid kernel内的array 变量 local thread grid __shared__ 修饰的kernel内的变量 shared block grid __device__ 修饰的全局变量 global grid application __device__ __constant__ 修饰的全局变量 constant grid application 其中 寄存器是GPU上运行速度最快的内存空间，延迟为1个时钟周期。 接下来是共享内存，共享内存是GPU上可受用户控制的一级缓存 。共享内存类似于CPU的缓存，不过与CPU的缓存不同，GPU的共享内存可以有CUDA内核直接编程控制。延迟为1～32个时钟周期。 local memory实际上就在global memory上，只是通过编译器处理成私有的、每个线程独立的一块内存区域。一般一个kernal内的数组会被处理成local memory。延迟和global memory类似。 还有texture memeory，但是和科学计算相关不大。 CUDA硬件结构 一个GPU可以看作是SM(streaming multiprocessor)的集合，每个SM包含多个SP(streaming processor，或者现在一般叫CUDA cores)。 例如，在一个A100中，一共有108个SMs，每个SM有64个CUDA cores。 从软件调度上，一个grid对应整个GPU(多个SM)，block对应SM，warp/thread级别对应一个CUDA core。 一个block内的threads一定被分配到同一个SM中，但有可能多个block都被分配到同一个SM中。(且可能同时分给一个SM超出硬件cores的线程，A100为例子 2048 threads == 32warps，只是真正同时运行某些warp，其余的可以用作hidding latency等) 每个SM上都有一个control，一个shared_memory。软件上可以通过__syncthreads()同步一个block内的所有线程。</description>
+      <description>&lt;blockquote&gt;
+&lt;p&gt;本系列笔记主要参考了 &amp;ldquo;Programming massively parallel processors&amp;quot;这本书，以及网上相关资料；不会特别详细，当作个人整理的面经&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h2 id=&#34;cuda软件架构&#34;&gt;CUDA软件架构&lt;/h2&gt;
+&lt;p&gt;CUDA从软件层面上提供了三层结构包括grid, block和thread。每个kernal内启动的所有线程在一个grid内。启动kernel时指定&amp;laquo;&amp;lt;dimGrid, dimBlock&amp;raquo;&amp;gt;，都是一个dim3结构。&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;gridDim的最大值范围： (x,y,z): (2^31 - 1, 65535, 65535)&lt;/li&gt;
+&lt;li&gt;blockDim的最大值范围：(x,y,z): (1024, 1024, 64)&lt;/li&gt;
+&lt;li&gt;且还要同时满足：一个block内的threads数量不能超过1024(从kepler开始)。即：$ blockDim.x * blockDim.y * blockDim.z &amp;lt;= 1024 $&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;img loading=&#34;lazy&#34; src=&#34;https://caaatch22.github.io/img/CUDA/CUDA-software-arch.png&#34; alt=&#34;CUDA software architecture&#34;  /&gt;
+&lt;/p&gt;
+&lt;h2 id=&#34;cuda内存架构&#34;&gt;CUDA内存架构&lt;/h2&gt;
+&lt;table&gt;
+  &lt;thead&gt;
+      &lt;tr&gt;
+          &lt;th&gt;变量声明&lt;/th&gt;
+          &lt;th&gt;所在内存&lt;/th&gt;
+          &lt;th&gt;作用域&lt;/th&gt;
+          &lt;th&gt;生命周期&lt;/th&gt;
+      &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+      &lt;tr&gt;
+          &lt;td&gt;kernel内除了array的变量&lt;/td&gt;
+          &lt;td&gt;register&lt;/td&gt;
+          &lt;td&gt;thread&lt;/td&gt;
+          &lt;td&gt;grid&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;kernel内的array 变量&lt;/td&gt;
+          &lt;td&gt;local&lt;/td&gt;
+          &lt;td&gt;thread&lt;/td&gt;
+          &lt;td&gt;grid&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;&lt;code&gt;__shared__&lt;/code&gt; 修饰的kernel内的变量&lt;/td&gt;
+          &lt;td&gt;shared&lt;/td&gt;
+          &lt;td&gt;block&lt;/td&gt;
+          &lt;td&gt;grid&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;&lt;code&gt;__device__&lt;/code&gt; 修饰的全局变量&lt;/td&gt;
+          &lt;td&gt;global&lt;/td&gt;
+          &lt;td&gt;grid&lt;/td&gt;
+          &lt;td&gt;application&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;&lt;code&gt;__device__ __constant__&lt;/code&gt; 修饰的全局变量&lt;/td&gt;
+          &lt;td&gt;constant&lt;/td&gt;
+          &lt;td&gt;grid&lt;/td&gt;
+          &lt;td&gt;application&lt;/td&gt;
+      &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;ul&gt;
+&lt;li&gt;其中 &lt;strong&gt;寄存器是GPU上运行速度最快的内存空间&lt;/strong&gt;，延迟为1个时钟周期。&lt;/li&gt;
+&lt;li&gt;接下来是共享内存，&lt;strong&gt;共享内存是GPU上可受用户控制的一级缓存&lt;/strong&gt; 。共享内存类似于CPU的缓存，不过与CPU的缓存不同，GPU的共享内存可以有CUDA内核直接编程控制。延迟为1～32个时钟周期。&lt;/li&gt;
+&lt;li&gt;local memory实际上就在global memory上，只是通过编译器处理成私有的、每个线程独立的一块内存区域。一般一个kernal内的数组会被处理成local memory。延迟和global memory类似。&lt;/li&gt;
+&lt;li&gt;还有texture memeory，但是和科学计算相关不大。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;cuda硬件结构&#34;&gt;CUDA硬件结构&lt;/h2&gt;
+&lt;p&gt;一个GPU可以看作是SM(streaming multiprocessor)的集合，每个SM包含多个SP(streaming processor，或者现在一般叫CUDA cores)。
+&lt;img loading=&#34;lazy&#34; src=&#34;https://caaatch22.github.io/img/CUDA/CUDA-GPU.png&#34; alt=&#34;CUDA GPU&#34;  /&gt;
+&lt;/p&gt;</description>
       <content:encoded><![CDATA[<blockquote>
 <p>本系列笔记主要参考了 &ldquo;Programming massively parallel processors&quot;这本书，以及网上相关资料；不会特别详细，当作个人整理的面经</p>
 </blockquote>
@@ -504,46 +640,46 @@ gridDim的最大值范围： (x,y,z): (2^31 - 1, 65535, 65535) blockDim的最大
 </p>
 <h2 id="cuda内存架构">CUDA内存架构</h2>
 <table>
-<thead>
-<tr>
-<th>变量声明</th>
-<th>所在内存</th>
-<th>作用域</th>
-<th>生命周期</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>kernel内除了array的变量</td>
-<td>register</td>
-<td>thread</td>
-<td>grid</td>
-</tr>
-<tr>
-<td>kernel内的array 变量</td>
-<td>local</td>
-<td>thread</td>
-<td>grid</td>
-</tr>
-<tr>
-<td><code>__shared__</code> 修饰的kernel内的变量</td>
-<td>shared</td>
-<td>block</td>
-<td>grid</td>
-</tr>
-<tr>
-<td><code>__device__</code> 修饰的全局变量</td>
-<td>global</td>
-<td>grid</td>
-<td>application</td>
-</tr>
-<tr>
-<td><code>__device__ __constant__</code> 修饰的全局变量</td>
-<td>constant</td>
-<td>grid</td>
-<td>application</td>
-</tr>
-</tbody>
+  <thead>
+      <tr>
+          <th>变量声明</th>
+          <th>所在内存</th>
+          <th>作用域</th>
+          <th>生命周期</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>kernel内除了array的变量</td>
+          <td>register</td>
+          <td>thread</td>
+          <td>grid</td>
+      </tr>
+      <tr>
+          <td>kernel内的array 变量</td>
+          <td>local</td>
+          <td>thread</td>
+          <td>grid</td>
+      </tr>
+      <tr>
+          <td><code>__shared__</code> 修饰的kernel内的变量</td>
+          <td>shared</td>
+          <td>block</td>
+          <td>grid</td>
+      </tr>
+      <tr>
+          <td><code>__device__</code> 修饰的全局变量</td>
+          <td>global</td>
+          <td>grid</td>
+          <td>application</td>
+      </tr>
+      <tr>
+          <td><code>__device__ __constant__</code> 修饰的全局变量</td>
+          <td>constant</td>
+          <td>grid</td>
+          <td>application</td>
+      </tr>
+  </tbody>
 </table>
 <ul>
 <li>其中 <strong>寄存器是GPU上运行速度最快的内存空间</strong>，延迟为1个时钟周期。</li>
@@ -620,7 +756,7 @@ gridDim的最大值范围： (x,y,z): (2^31 - 1, 65535, 65535) blockDim的最大
 <!-- raw HTML omitted -->
 <!-- raw HTML omitted -->
 <h2 id="一些并行算法">一些并行算法</h2>
-<p>TODO: reduce, gemm, transpose, softmax, layernorm</p>
+<p>TODO: reduce, gemm, transpose, softmax, layernor</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span><span style="color:#75715e">#define TILE_WIDTH 16
 </span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>__global__ <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">matrixMulKernel</span>(<span style="color:#66d9ef">float</span><span style="color:#f92672">*</span> M, <span style="color:#66d9ef">float</span><span style="color:#f92672">*</span> N, <span style="color:#66d9ef">float</span><span style="color:#f92672">*</span> P, <span style="color:#66d9ef">int</span> Width) {
 </span></span><span style="display:flex;"><span>    __shared__ <span style="color:#66d9ef">float</span> Mds[TILE_WIDTH][TILE_WIDTH];
@@ -649,16 +785,135 @@ gridDim的最大值范围： (x,y,z): (2^31 - 1, 65535, 65535) blockDim的最大
     </item>
     
     <item>
+      <title>Back to Basics -- c&#43;&#43; move sematics</title>
+      <link>https://caaatch22.github.io/posts/back2basics-cpp-move-sematic/</link>
+      <pubDate>Tue, 17 Oct 2023 23:38:14 +0000</pubDate>
+      
+      <guid>https://caaatch22.github.io/posts/back2basics-cpp-move-sematic/</guid>
+      <description>&lt;p&gt;1.3 Copying as a Fallback&lt;/p&gt;
+&lt;p&gt;1.4 &lt;code&gt;const&lt;/code&gt; Return Values
+const std::string get_value();不再是guideline，因为&lt;code&gt;const&lt;/code&gt; disables 移动语义
+例如：&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-cpp&#34; data-lang=&#34;cpp&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;const&lt;/span&gt; std&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;string getValue();
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;std&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;vector&lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt;std&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;string&lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&lt;/span&gt; coll;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;coll.push_back(getValue()); &lt;span style=&#34;color:#75715e&#34;&gt;// copies(because the return value is const)
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;const&lt;/span&gt; std&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;string getValue(); &lt;span style=&#34;color:#75715e&#34;&gt;// BAD: disables move semantics for return values
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;const&lt;/span&gt; std&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;string&lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&lt;/span&gt; getRef(); &lt;span style=&#34;color:#75715e&#34;&gt;// OK
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;const&lt;/span&gt; std&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;string&lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; getPtr(); &lt;span style=&#34;color:#75715e&#34;&gt;// OK
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h4 id=&#34;summary&#34;&gt;Summary&lt;/h4&gt;
+&lt;ul&gt;
+&lt;li&gt;Move semantics allows us to optimize the copying of objects, where we no longer need the value. It can be used implicitly (for unnamed temporary objects or local return values) or explicitly (with std::move()).&lt;/li&gt;
+&lt;li&gt;std::move() means I no longer need this value here. It marks the object as movable. An object marked with std::move() is not (partially) destroyed (the destructor still will be called).&lt;/li&gt;
+&lt;li&gt;By declaring a function with a non-const rvalue reference (such as std::string&amp;amp;&amp;amp;), you define an interface where the caller semantically claims that it no longer needs the passed value. The implementer of the function can use this information to optimize its task by “stealing” the value or do any other modification with the passed argument. Usually, the implementer also has to ensure that the passed argument is in a valid state after the call.&lt;/li&gt;
+&lt;li&gt;Moved-from objects of the C++ standard library are still valid objects, but you no longer know their value.&lt;/li&gt;
+&lt;li&gt;Copy semantics is used as a fallback for move semantics (if copy semantics is supported). If there is no implementation taking an rvalue reference, any implementation taking an ordinary const lvalue reference (such as const std::string&amp;amp;) is used. This fallback is then used even if the object is explicitly marked with std::move().&lt;/li&gt;
+&lt;li&gt;Calling std::move() for a const object usually has no effect.&lt;/li&gt;
+&lt;li&gt;If you return by value (not by reference), do not declare the return value as a whole to be const.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Moved-from objects
+&lt;strong&gt;Valid but Unspecified State&lt;/strong&gt;&lt;/p&gt;</description>
+      <content:encoded><![CDATA[<p>1.3 Copying as a Fallback</p>
+<p>1.4 <code>const</code> Return Values
+const std::string get_value();不再是guideline，因为<code>const</code> disables 移动语义
+例如：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">const</span> std<span style="color:#f92672">::</span>string getValue();
+</span></span><span style="display:flex;"><span>std<span style="color:#f92672">::</span>vector<span style="color:#f92672">&lt;</span>std<span style="color:#f92672">::</span>string<span style="color:#f92672">&gt;</span> coll;
+</span></span><span style="display:flex;"><span>coll.push_back(getValue()); <span style="color:#75715e">// copies(because the return value is const)
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">const</span> std<span style="color:#f92672">::</span>string getValue(); <span style="color:#75715e">// BAD: disables move semantics for return values
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span><span style="color:#66d9ef">const</span> std<span style="color:#f92672">::</span>string<span style="color:#f92672">&amp;</span> getRef(); <span style="color:#75715e">// OK
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span><span style="color:#66d9ef">const</span> std<span style="color:#f92672">::</span>string<span style="color:#f92672">*</span> getPtr(); <span style="color:#75715e">// OK
+</span></span></span></code></pre></div><h4 id="summary">Summary</h4>
+<ul>
+<li>Move semantics allows us to optimize the copying of objects, where we no longer need the value. It can be used implicitly (for unnamed temporary objects or local return values) or explicitly (with std::move()).</li>
+<li>std::move() means I no longer need this value here. It marks the object as movable. An object marked with std::move() is not (partially) destroyed (the destructor still will be called).</li>
+<li>By declaring a function with a non-const rvalue reference (such as std::string&amp;&amp;), you define an interface where the caller semantically claims that it no longer needs the passed value. The implementer of the function can use this information to optimize its task by “stealing” the value or do any other modification with the passed argument. Usually, the implementer also has to ensure that the passed argument is in a valid state after the call.</li>
+<li>Moved-from objects of the C++ standard library are still valid objects, but you no longer know their value.</li>
+<li>Copy semantics is used as a fallback for move semantics (if copy semantics is supported). If there is no implementation taking an rvalue reference, any implementation taking an ordinary const lvalue reference (such as const std::string&amp;) is used. This fallback is then used even if the object is explicitly marked with std::move().</li>
+<li>Calling std::move() for a const object usually has no effect.</li>
+<li>If you return by value (not by reference), do not declare the return value as a whole to be const.</li>
+</ul>
+<p>Moved-from objects
+<strong>Valid but Unspecified State</strong></p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>foo(std<span style="color:#f92672">::</span>move(s)); <span style="color:#75715e">// keeps s in a valid but unclear state
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>std<span style="color:#f92672">::</span>cout <span style="color:#f92672">&lt;&lt;</span> s <span style="color:#f92672">&lt;&lt;</span> <span style="color:#e6db74">&#39;\n&#39;</span>; <span style="color:#75715e">// OK (don’t know which value is written)
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>std<span style="color:#f92672">::</span>cout <span style="color:#f92672">&lt;&lt;</span> s.size() <span style="color:#f92672">&lt;&lt;</span> <span style="color:#e6db74">&#39;\n&#39;</span>; <span style="color:#75715e">// OK (writes current number of characters)
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>std<span style="color:#f92672">::</span>cout <span style="color:#f92672">&lt;&lt;</span> s[<span style="color:#ae81ff">0</span>] <span style="color:#f92672">&lt;&lt;</span> <span style="color:#e6db74">&#39;\n&#39;</span>; <span style="color:#75715e">// ERROR (potentially undefined behavior)
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>std<span style="color:#f92672">::</span>cout <span style="color:#f92672">&lt;&lt;</span> s.front() <span style="color:#f92672">&lt;&lt;</span> <span style="color:#e6db74">&#39;\n&#39;</span>; <span style="color:#75715e">// ERROR (potentially undefined behavior)
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>s <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;new value&#34;</span>; <span style="color:#75715e">// OK
+</span></span></span></code></pre></div><p>有什么用：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>std<span style="color:#f92672">::</span>vector<span style="color:#f92672">&lt;</span>std<span style="color:#f92672">::</span>string<span style="color:#f92672">&gt;</span> allRows;
+</span></span><span style="display:flex;"><span>std<span style="color:#f92672">::</span>string row;
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">while</span> (std<span style="color:#f92672">::</span>getline(myStream, row)) { <span style="color:#75715e">// read next line into row
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  allRows.push_back(std<span style="color:#f92672">::</span>move(row)); <span style="color:#75715e">// and move it to somewhere
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>}
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">Customer</span> {
+</span></span><span style="display:flex;"><span>  std<span style="color:#f92672">::</span>string name;
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">double</span> height; 
+</span></span><span style="display:flex;"><span>};
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">using</span> Customers <span style="color:#f92672">=</span> soa_vector<span style="color:#f92672">&lt;</span>Customer<span style="color:#f92672">&gt;</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Customers.emplace_back(<span style="color:#e6db74">&#34;example_name&#34;</span>, <span style="color:#ae81ff">173.6</span>);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>std<span style="color:#f92672">::</span>tuple<span style="color:#f92672">&lt;</span>std<span style="color:#f92672">::</span>string<span style="color:#f92672">&amp;</span>, <span style="color:#66d9ef">double</span><span style="color:#f92672">&amp;</span> height<span style="color:#f92672">&gt;</span> Customers[<span style="color:#ae81ff">0</span>];
+</span></span></code></pre></div>]]></content:encoded>
+    </item>
+    
+    <item>
       <title>Computer Architecture —— 分支预测</title>
       <link>https://caaatch22.github.io/posts/branch-prediction/</link>
       <pubDate>Tue, 17 Oct 2023 23:38:14 +0000</pubDate>
       
       <guid>https://caaatch22.github.io/posts/branch-prediction/</guid>
-      <description>H&amp;amp;P那本关于分支预测的部分比较简短且表述有点晦涩，（顺便吐槽一下第五版的中文翻译，建议看英文原版）本文主要参考超标量处理器设计，国人写的，用语符合习惯，强烈推荐！
-Motivation 在处理器中，除了cache之外，另一个重要的内容就是分支预测，它和cache一起左右处理器的性能。以SPECint95作为benchmark，完美的cache和BP(branch-predictor)能使IPC提高两倍左右： 图片来自论文SSMT。当然，这是21世纪之前的结果了。现代处理器分支预测普遍能达到97%~98%以上的精度，在多数浮点benchmark中基本都是99%的准确率。
-为什么需要这么高的精度呢？ 一般情况下，分支指令的占比通常在 15% 到 30% 之间。对于经典五级流水线无分支预测cpu，一个branch会造成一次stall；而对于现代的superscalar且流水线级数远高于5的（一般是二十级以上）cpu，其misprediction penalty是 $M * N$ 的（M = fetch group内指令数, N = branch resolution latency，就是决定分支最终是否跳转需要多少周期）。如下图所示： 我们再做一个定量实验： 假设我们有一个
-$ N = 20 (20\ pipe stages), W = 5 (5\ wide fetch) $ 1 out of 5 instructions is a branch Each 5 instruction-block ends with a branch 的CPU，那么我们取出500条指令需要多少个周期呢？
-100% 预测正确率 100 个时钟周期 (all instructions fetched on the correct path) 无额外工作 99% 预测正确率 100 (correct path) + 20 (wrong path) = 120 个时钟周期 20% 额外指令被取出 98% 预测正确率 100 (correct path) + 20 * 2 (wrong path) = 140 个时钟周期 40% 额外指令被取出 95% 预测正确率 100 (correct path) + 20 * 5 (wrong path) = 200 个时钟周期 100% 额外指令被取出 可以看出，分支预测失败在现代的超标量多流水线cpu中的penalty被极大的放大了。所以分支预测的正确性就显得额外重要。</description>
+      <description>&lt;blockquote&gt;
+&lt;p&gt;H&amp;amp;P那本关于分支预测的部分比较简短且表述有点晦涩，（顺便吐槽一下第五版的中文翻译，建议看英文原版）本文主要参考&lt;a href=&#34;https://book.douban.com/subject/26293546/&#34;&gt;超标量处理器设计&lt;/a&gt;，国人写的，用语符合习惯，强烈推荐！&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h1 id=&#34;motivation&#34;&gt;Motivation&lt;/h1&gt;
+&lt;p&gt;在处理器中，除了cache之外，另一个重要的内容就是分支预测，它和cache一起左右处理器的性能。以SPECint95作为benchmark，完美的cache和BP(branch-predictor)能使IPC提高两倍左右：
+&lt;img loading=&#34;lazy&#34; src=&#34;https://caaatch22.github.io/img/branch-prediction/IPC-enhance-with-perfect-BP-Cache.png&#34; alt=&#34;&#34;  /&gt;
+&lt;/p&gt;
+&lt;p&gt;图片来自论文&lt;a href=&#34;https://course.ece.cmu.edu/~ece742/f12/lib/exe/fetch.php?media=chappell_ssmt99.pdf&#34;&gt;SSMT&lt;/a&gt;。当然，这是21世纪之前的结果了。现代处理器分支预测普遍能达到97%~98%以上的精度，在多数浮点benchmark中基本都是99%的准确率。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;为什么需要这么高的精度呢？&lt;/strong&gt; 一般情况下，分支指令的占比通常在 &lt;strong&gt;15% 到 30%&lt;/strong&gt; 之间。对于经典五级流水线无分支预测cpu，一个branch会造成一次stall；而对于现代的superscalar且流水线级数远高于5的（一般是二十级以上）cpu，其misprediction penalty是 $M * N$ 的（M = fetch group内指令数, N = branch resolution latency，就是决定分支最终是否跳转需要多少周期）。如下图所示：
+&lt;img loading=&#34;lazy&#34; src=&#34;https://caaatch22.github.io/img/branch-prediction/mispredict-penalty.png&#34; alt=&#34;&#34;  /&gt;
+
+我们再做一个定量实验：
+假设我们有一个&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;$ N = 20 (20\ pipe stages), W = 5 (5\ wide fetch) $&lt;/li&gt;
+&lt;li&gt;1 out of 5 instructions is a branch&lt;/li&gt;
+&lt;li&gt;Each 5 instruction-block ends with a branch&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;的CPU，那么我们取出500条指令需要多少个周期呢？&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;100% 预测正确率
+&lt;ul&gt;
+&lt;li&gt;100 个时钟周期 (all instructions fetched on the correct path)&lt;/li&gt;
+&lt;li&gt;无额外工作&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;99% 预测正确率
+&lt;ul&gt;
+&lt;li&gt;100 (correct path) + 20 (wrong path) = 120 个时钟周期&lt;/li&gt;
+&lt;li&gt;20% 额外指令被取出&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;98% 预测正确率
+&lt;ul&gt;
+&lt;li&gt;100 (correct path) + 20 * 2 (wrong path) = 140 个时钟周期&lt;/li&gt;
+&lt;li&gt;40% 额外指令被取出&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;95% 预测正确率
+&lt;ul&gt;
+&lt;li&gt;100 (correct path) + 20 * 5 (wrong path) = 200 个时钟周期&lt;/li&gt;
+&lt;li&gt;100% 额外指令被取出&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;可以看出，分支预测失败在现代的超标量多流水线cpu中的penalty被极大的放大了。所以分支预测的正确性就显得额外重要。&lt;/p&gt;</description>
       <content:encoded><![CDATA[<blockquote>
 <p>H&amp;P那本关于分支预测的部分比较简短且表述有点晦涩，（顺便吐槽一下第五版的中文翻译，建议看英文原版）本文主要参考<a href="https://book.douban.com/subject/26293546/">超标量处理器设计</a>，国人写的，用语符合习惯，强烈推荐！</p>
 </blockquote>
@@ -833,15 +1088,33 @@ $target\ addr = cur\ PC + SignExd(offset)$</li>
       <pubDate>Fri, 01 Sep 2023 15:51:19 +0000</pubDate>
       
       <guid>https://caaatch22.github.io/posts/c-%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B--%E7%8E%B0%E4%BB%A3architecture%E7%9A%84%E5%A6%A5%E5%8D%8F/</guid>
-      <description>介绍 什么是内存模型(Memory Model)呢？这里介绍的内存模型并非C++对象的内存排布模型，而是一个非编程语言层面的概念。我们知道在C++11中，标准引入了 std::atomic&amp;lt;&amp;gt;原子对象，同时还引入了
-memory_order_relaxed memory_order_consume memory_order_acquire memory_order_release memory_order_acq_rel memory_order_seq_cst 这六种 memory order。引入可以让我们进行无锁编程，而如果你想要更高性能的程序，你就必须深挖这六种内存模型的含义并正确应用。（当然，在不显式指明memory order的情况下，你能保证获得正确的代码，但存在性能损失）
-内存模型 在介绍C++ memory order之前，我们先回答另一个问题。你的计算机执行的程序就是你写的程序吗? —— 显然不是的。
-原因也很简单，为了更高效的执行指令，编译器、CPU结构、缓存及其他硬件系统都会对指令进行增删，修改，重排。但要回答具体进行了什么样的修改，又是一个极其复杂的问题。或者说，整个现代体系结构，就是在保证程序正确性的前提下利用各种手段对程序优化。我们可以粗略的将其分成几个部分：
-source code order: 程序员在源代码中指定的顺序 program code order: 基本上可以看成汇编/机器码的顺序，它可以由编译器优化后得到 execution code order: CPU执行指令顺序也不见得与汇编相同，不同CPU在执行相同机器码时任然存在优化空间。 perceived order/physical order: 最终的执行顺序。即便CPU按照某种确定指令执行，物理时间上的执行顺序仍然可能不同。例如，在超标量CPU中，一次可以fetch and decode多个指令，这些指令之间的物理执行顺序就是不确定的；由于不同层级缓存之间延时不同，以及缓存之间的通信需要等带来的不确定的执行顺序等 上图简要说明了你的源代码可能经历的优化步骤。
-这些优化的一个主要原因在于 掩盖memory access操作与CPU执行速度上的巨大鸿沟。如果没有cache，CPU每个访存指令都需要stall一两百个时钟周期，这是不可接受的。但是引入cache的同时又会带来 cache coherence等问题，这也是造成x初始为0，两个线程同时执行 x++，而x最终不一定为 2的元凶。而一个内存模型则对上述并发程序的同一块内存进行了一定的限制，它给出了在并发程序下，任意一组写操作时，可能读到的值。 不同体系结构(x86, arm, power&amp;hellip;)通过不同的内存模型来保证程序的正确性。
-bonus question: 不同等级的cache latency？
-answer: l1: 1ns, l2: 5ns, l3: 50~100ns, main memory: 200ns
-Sequential Consistency(SC) SC是最严格的内存模型，也被称作non-weak memory model。在该模型下，多线程程序执行的可做如下分析：对于每一步，随机选择一个线程，并执行该线程执行中的下一步（例如，按程序或编译的顺序）。重复这个过程，直到整个程序终止。这实际上等效于按照（程序或编译的）顺序执行所有线程的所有步骤，并以某种方式交错它们，从而产生所有步骤的单一总顺序。SC不允许重新排列线程的步骤。因此，每当访问对象时，都会检索该顺序中存储在对象中的最后一个值。（注意，内存模型中说的重新排列与编译器层面无关，编译器自然是可以讲没有data dependance的读写操作进行重排的，只要保证程序的正确性即可。内存模型中的重排指的是在硬件执行阶段，由于cache hierarchy等引发的一些问题导致指令物理执行顺序被改变）。</description>
+      <description>&lt;!-- raw HTML omitted --&gt;
+&lt;!-- raw HTML omitted --&gt;
+&lt;h2 id=&#34;介绍&#34;&gt;介绍&lt;/h2&gt;
+&lt;p&gt;什么是内存模型(Memory Model)呢？这里介绍的内存模型并非&lt;a href=&#34;https://citeseerx.ist.psu.edu/document?repid=rep1&amp;amp;type=pdf&amp;amp;doi=160489e8b12cd9a44cbff0cd85fb6aa05437d1ac&#34;&gt;C++对象的内存排布模型&lt;/a&gt;，而是一个非编程语言层面的概念。我们知道在C++11中，标准引入了 &lt;code&gt;std::atomic&amp;lt;&amp;gt;&lt;/code&gt;原子对象，同时还引入了&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-cpp&#34; data-lang=&#34;cpp&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;memory_order_relaxed
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;memory_order_consume
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;memory_order_acquire
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;memory_order_release
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;memory_order_acq_rel
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;memory_order_seq_cst
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;这六种 &lt;code&gt;memory order&lt;/code&gt;。引入可以让我们进行&lt;strong&gt;无锁编程&lt;/strong&gt;，而如果你想要更高性能的程序，你就必须深挖这六种内存模型的含义并正确应用。（当然，在不显式指明memory order的情况下，你能保证获得正确的代码，但存在性能损失）&lt;/p&gt;
+&lt;h2 id=&#34;内存模型&#34;&gt;内存模型&lt;/h2&gt;
+&lt;p&gt;在介绍C++ memory order之前，我们先回答另一个问题。&lt;em&gt;你的计算机执行的程序就是你写的程序吗? —— 显然不是的。&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;原因也很简单，为了更高效的执行指令，编译器、CPU结构、缓存及其他硬件系统都会对指令进行增删，修改，重排。但要回答具体进行了什么样的修改，又是一个极其复杂的问题。或者说，整个现代体系结构，就是在保证程序正确性的前提下利用各种手段对程序优化。我们可以粗略的将其分成几个部分：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;&lt;strong&gt;source code order:&lt;/strong&gt; 程序员在源代码中指定的顺序&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;program code order:&lt;/strong&gt; 基本上可以看成汇编/机器码的顺序，它可以由编译器优化后得到&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;execution code order:&lt;/strong&gt; CPU执行指令顺序也不见得与汇编相同，不同CPU在执行相同机器码时任然存在优化空间。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;perceived order/physical order:&lt;/strong&gt; 最终的执行顺序。即便CPU按照某种确定指令执行，物理时间上的执行顺序仍然可能不同。例如，在超标量CPU中，一次可以fetch and decode多个指令，这些指令之间的物理执行顺序就是不确定的；由于不同层级缓存之间延时不同，以及缓存之间的通信需要等带来的不确定的执行顺序等&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;&lt;img loading=&#34;lazy&#34; src=&#34;https://caaatch22.github.io/img/memory-model/optimization-by-different-parts-of-computer.png&#34; alt=&#34;optimizations-by-compyter&#34;  /&gt;
+&lt;/p&gt;
+&lt;p&gt;上图简要说明了你的源代码可能经历的优化步骤。&lt;/p&gt;
+&lt;p&gt;这些优化的一个主要原因在于 掩盖memory access操作与CPU执行速度上的巨大鸿沟。如果没有cache，CPU每个访存指令都需要stall一两百个时钟周期，这是不可接受的。但是引入cache的同时又会带来 &lt;code&gt;cache coherence&lt;/code&gt;等问题，这也是造成x初始为0，两个线程同时执行 &lt;code&gt;x++&lt;/code&gt;，而x最终不一定为 &lt;code&gt;2&lt;/code&gt;的元凶。&lt;strong&gt;而一个内存模型则对上述并发程序的同一块内存进行了一定的限制，它给出了在并发程序下，任意一组写操作时，可能读到的值。&lt;/strong&gt; 不同体系结构(x86, arm, power&amp;hellip;)通过不同的内存模型来保证程序的正确性。&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;bonus question: 不同等级的cache latency？&lt;/p&gt;
+&lt;p&gt;answer: l1: 1ns, l2: 5ns, l3: 50~100ns, main memory: 200ns&lt;/p&gt;</description>
       <content:encoded><![CDATA[<!-- raw HTML omitted -->
 <!-- raw HTML omitted -->
 <h2 id="介绍">介绍</h2>
@@ -878,25 +1151,25 @@ Sequential Consistency(SC) SC是最严格的内存模型，也被称作non-weak 
 在这种结构中，我们隐藏了cache与store buffer的存在，或者说SC协议允许我们无视这两个硬件。
 那么，我们对于下面表格中的问题就有确定的答案：</p>
 <table>
-<thead>
-<tr>
-<th>Thread 1</th>
-<th>Thread 2</th>
-<th>main</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>x = 1</td>
-<td>y = 1</td>
-<td>x = 0, y = 0</td>
-</tr>
-<tr>
-<td>y&rsquo; = y</td>
-<td>x&rsquo; = x</td>
-<td>Spawn thread 1, 2; Wait for threads</td>
-</tr>
-</tbody>
+  <thead>
+      <tr>
+          <th>Thread 1</th>
+          <th>Thread 2</th>
+          <th>main</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>x = 1</td>
+          <td>y = 1</td>
+          <td>x = 0, y = 0</td>
+      </tr>
+      <tr>
+          <td>y&rsquo; = y</td>
+          <td>x&rsquo; = x</td>
+          <td>Spawn thread 1, 2; Wait for threads</td>
+      </tr>
+  </tbody>
 </table>
 <p>显然，在SC模型中最终的结果只可能是：</p>
 <ol>
@@ -954,38 +1227,38 @@ POWER架构还提供了一个额外的“轻量级同步”指令，称为 <code
 <h2 id="c-memory-order">C++ memory order</h2>
 <p>对于 <code>weak memory model</code>，特别是上面介绍的ARM的内存模型，想要精细的控制程序的允许重排的程度需要非常大的心智负担。（光是不同体系结构，不同等级的fence指令就令人望而却步）。因此C++11标准提供的六种memory order就是从语言层面来约束最终希望达到的对程序被优化程度的限制。现在我们再看这几种memory order就比较清晰了。（以下说法并不严谨，但是作为程序员的take away完全足够了。</p>
 <table>
-<thead>
-<tr>
-<th>Memory Order</th>
-<th>Explaination</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>memory_order_relaxed</td>
-<td>表示这个R/W操作除了原子性外没有任何其他限制，他可能会被重排到程序的任何位置（当然，编译器不会允许将他重排到同一个线程对同一个原子变量写操作的前面，这违背了正确性）</td>
-</tr>
-<tr>
-<td>memory_order_consume</td>
-<td>(只用于读) 后面依赖此原子变量的访存指令不允许重排至此条指令之前。 注意，当前标准中的memory_order_consume是<a href="https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0371r0.html%E6%89%80%E4%BB%A5%E4%B8%8D%E8%A6%81%E4%BD%BF%E7%94%A8">没有实际用处的</a>， 一般情况下不要使用</td>
-</tr>
-<tr>
-<td>memory_order_acuqire</td>
-<td>(只用于读) 后面访存指令不允许重排至此条指令之前</td>
-</tr>
-<tr>
-<td>memory_order_release</td>
-<td>(只用于写) 前面访存指令不允许重排至此条指令之后。当此条指令的结果对其他线程可见后，之前的所有指令都可见</td>
-</tr>
-<tr>
-<td>memory_order_acq_rel</td>
-<td>acquire + release语意</td>
-</tr>
-<tr>
-<td>memory_order_seq_cst</td>
-<td>满足sequential_consistency内存模型</td>
-</tr>
-</tbody>
+  <thead>
+      <tr>
+          <th>Memory Order</th>
+          <th>Explaination</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>memory_order_relaxed</td>
+          <td>表示这个R/W操作除了原子性外没有任何其他限制，他可能会被重排到程序的任何位置（当然，编译器不会允许将他重排到同一个线程对同一个原子变量写操作的前面，这违背了正确性）</td>
+      </tr>
+      <tr>
+          <td>memory_order_consume</td>
+          <td>(只用于读) 后面依赖此原子变量的访存指令不允许重排至此条指令之前。 注意，当前标准中的memory_order_consume是<a href="https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0371r0.html%E6%89%80%E4%BB%A5%E4%B8%8D%E8%A6%81%E4%BD%BF%E7%94%A8">没有实际用处的</a>， 一般情况下不要使用</td>
+      </tr>
+      <tr>
+          <td>memory_order_acuqire</td>
+          <td>(只用于读) 后面访存指令不允许重排至此条指令之前</td>
+      </tr>
+      <tr>
+          <td>memory_order_release</td>
+          <td>(只用于写) 前面访存指令不允许重排至此条指令之后。当此条指令的结果对其他线程可见后，之前的所有指令都可见</td>
+      </tr>
+      <tr>
+          <td>memory_order_acq_rel</td>
+          <td>acquire + release语意</td>
+      </tr>
+      <tr>
+          <td>memory_order_seq_cst</td>
+          <td>满足sequential_consistency内存模型</td>
+      </tr>
+  </tbody>
 </table>
 <!-- raw HTML omitted -->
 <p>在默认情况下，<code>std::atomic&lt;&gt;</code>相关函数总是选用 <code>std::memory_order_seq_cst</code>，它能有效地帮我们避免错误。但是，我们既然都使用 <code>atomic</code>而不是 <code>mutex</code>了，自然是对性能有较高要求。
@@ -1058,19 +1331,45 @@ POWER架构还提供了一个额外的“轻量级同步”指令，称为 <code
       <pubDate>Wed, 23 Aug 2023 23:38:14 +0000</pubDate>
       
       <guid>https://caaatch22.github.io/posts/advanced-cache/</guid>
-      <description>本文不会介绍cache的组织形式等基本内容，但也算不上什么&amp;quot;Advanced&amp;quot;。主要包含一些从硬件层面优化cache的手段。
-优化cache的几种方法 pipeline caches 上图为教科书上经常出现的cache形式(2-way associative为例)，它很精炼的解释了cache的实现。但也稍微引入了些“误导”：
-图中v、tag和data部分画在连续的一行上，仿佛硬件上他们就是同一块 SRAM 的不同bit 图中识别tag与data是并行完成的，这很好，某种意义上能降低时延；但我们经常遗忘一个事实，只有读cache的时候我们才能这么操作（或者说在写cache时，读取data block是没有意义的） 对于第一点，在实际的实现当中，tag和data部分都是分开放置的，tag一般是由一种叫CAM(Context-Addressable Memory)的材料构成。当然，这与pi不pipeline没什么关系；
-读cache主要就两个部分：比较tag，获取data；我们暂且不考虑以pipeline的方式优化，那么serial的先比较tag再读data一定不如parallel的方式进行吗？当我们并行的读取tag和data的时候，我们会发现，读出来的data有可能没用（没有匹配的tag）；并且，在n-way set associate cache中，我们会浪费的读出$n-1$个data项；这给我们什么启示呢？如果我们串行的读cache，那么我们可以在比较tag阶段就知道我们想要的数据在不在cache当中；更有意义的是，根据tag比较的结果，我们就知道哪一路的数据是需要被访问的（提前知道了在n-way中的哪一way），那么我们访问data block时，就无需多路选择器，直接访问指定的way，将其他way的data访问的使能信号置为无效，这种做法的优点在于有效减小功耗。
-serial的做法肯定比parallel的延时要大，若这时访问cache处于处理器的critical path(关键路径)上，我们可以再将其进行流水线化。 我们现在再来看看写cache时的情况：
-写cache时，只有通过tag比较，确认要写的地址在cache中后，才可以写data SRAM，在主频较高的处理器中，这些操作很难在一个周期内完成，这也要求我们将其流水线化。下图为对cache进行写操作使用的流水线示意图：
-在上图的实现方式中，store第一个周期读取Tag并进行比较，根据比较的结果，在第二个周期选择是否将数据写到Data SRAM中。还需要注意的是，当执行load指令时，它想要的数据可能正好在store指令的流水线寄存器中（RAW的情况；上图中的DelayedStoreData寄存器），而不是来自于Data SRAM。因此需要一种机制检测这种情况，这需要将load指令所携带的地址和store指令的流水线寄存器(即DelayedStoreAddr寄存器)进行比较，如果相等，那么就将store指令的数据作为load指令的结果。
-由此可以看出，对写D-Cache使用流水线之后，不仅增加了流水线本身的硬件，也带来了其他一些额外的硬件开销。其实。不仅在Cache中有这种现象，在处理器的其他部分增加流水线的级数，也会伴随着其他方面的硬件需求,因此过深的流水线带来的硬件复杂度是非常高的，就像Intel的Pentium 4处理器，并不会从过深的流水线中得到预想的好处。当然，cache的流水线化已经是一种广泛使用的用于降低latency的方法了。
-write buffers 我愿称之为buffer of buffer，本来cache就起buffer的作用了，但我们再加一个buffer，如下图所示： 这和多一级的cache有什么不同呢？这是一个专门为写操作设计的buffer（注意：load也可能造成写操作）。原因在于我们知道写通常比读更慢，特别对于write-through来说；其次，当上层cache满后，需要先将dirty cache line写回下层cache，再读取下层cache中的数据。若下层cache只有一个读写端口，那么这种串行的过程导致D-Cache发生缺失的处理时间变得很长，此时就可以采用write buffer来解决这个问题。脏状态的cache-line会首先放到写级存中，等到下级存储器有空闲的时候，才会将写缓存中的数据写到下级存储器中。
-对于write buffer，我们还可以对其进行 合并(merging) 操作。所谓merging，指的是将在同一个cache-line上的数据一并写入下层cache中，而非多次写入同一个cache-line。 上图中的右侧表示了一个采用了merging write buffer策略的写缓冲区。
-critial word first and early restart 先来看一下cache miss时的cpu： 图中展示了一个blocking cache在cache miss时，cpu stall，而后cache将需要取得的cache-line放入后，cpu resume的timeline。我们可以发现，若我们只需要cache-line中的第3个word，cpu完全可以提早resume。如下图所示： 这就是early restart，而critial word first指的是，是在此基础上，在取cache-block时，不按照0~7 word的顺序而是按照3,4,5,6,7,0,1,2的顺序获取，配合early restart以减小miss penalty。
-当然，这种优化手段一般在cache-block size越大的时候效果越好。
-non-blocking caches 本节主要参考了超标量处理器设计9.6.2</description>
+      <description>&lt;blockquote&gt;
+&lt;p&gt;本文不会介绍cache的组织形式等基本内容，但也算不上什么&amp;quot;Advanced&amp;quot;。主要包含一些从硬件层面优化cache的手段。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h1 id=&#34;优化cache的几种方法&#34;&gt;优化cache的几种方法&lt;/h1&gt;
+&lt;h2 id=&#34;pipeline-caches&#34;&gt;pipeline caches&lt;/h2&gt;
+&lt;p&gt;&lt;img loading=&#34;lazy&#34; src=&#34;https://caaatch22.github.io/img/advanced-cache/2way-set-associative.png&#34; alt=&#34;2way-set-associative-cache&#34;  /&gt;
+&lt;/p&gt;
+&lt;p&gt;上图为教科书上经常出现的cache形式(2-way associative为例)，它很精炼的解释了cache的实现。但也稍微引入了些“误导”：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;图中&lt;code&gt;v&lt;/code&gt;、&lt;code&gt;tag&lt;/code&gt;和&lt;code&gt;data&lt;/code&gt;部分画在连续的一行上，仿佛硬件上他们就是同一块 SRAM 的不同bit&lt;/li&gt;
+&lt;li&gt;图中识别&lt;code&gt;tag&lt;/code&gt;与&lt;code&gt;data&lt;/code&gt;是并行完成的，这很好，某种意义上能降低时延；但我们经常遗忘一个事实，只有&lt;em&gt;读cache&lt;/em&gt;的时候我们才能这么操作（或者说在写cache时，读取data block是没有意义的）&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;对于第一点，在实际的实现当中，tag和data部分都是分开放置的，tag一般是由一种叫&lt;a href=&#34;https://en.wikipedia.org/wiki/Content-addressable_memory&#34;&gt;CAM(Context-Addressable Memory)&lt;/a&gt;的材料构成。当然，这与pi不pipeline没什么关系；&lt;/p&gt;
+&lt;p&gt;读cache主要就两个部分：比较tag，获取data；我们暂且不考虑以pipeline的方式优化，那么serial的先比较tag再读data一定不如parallel的方式进行吗？当我们并行的读取tag和data的时候，我们会发现，读出来的data有可能没用（没有匹配的tag）；并且，在n-way set associate cache中，我们会浪费的读出$n-1$个data项；这给我们什么启示呢？如果我们串行的读cache，那么我们可以在比较tag阶段就知道我们想要的数据在不在cache当中；更有意义的是，根据tag比较的结果，我们就知道哪一路的数据是需要被访问的（提前知道了在n-way中的哪一way），那么我们访问data block时，就无需多路选择器，直接访问指定的way，将其他way的data访问的使能信号置为无效，这种做法的优点在于&lt;strong&gt;有效减小功耗&lt;/strong&gt;。&lt;/p&gt;
+&lt;p&gt;serial的做法肯定比parallel的延时要大，若这时访问cache处于处理器的critical path(关键路径)上，我们可以再将其进行流水线化。
+&lt;img loading=&#34;lazy&#34; src=&#34;https://caaatch22.github.io/img/advanced-cache/pipelined-cache.png&#34; alt=&#34;pipeline cache&#34;  /&gt;
+&lt;/p&gt;
+&lt;p&gt;我们现在再来看看写cache时的情况：&lt;/p&gt;
+&lt;p&gt;写cache时，只有通过tag比较，确认要写的地址在cache中后，才可以写data SRAM，在主频较高的处理器中，这些操作很难在一个周期内完成，这也要求我们将其流水线化。下图为对cache进行写操作使用的流水线示意图：&lt;/p&gt;
+&lt;p&gt;&lt;img loading=&#34;lazy&#34; src=&#34;https://caaatch22.github.io/img/advanced-cache/pipelined-cache-write.png&#34; alt=&#34;pipeline cache in write&#34;  /&gt;
+&lt;/p&gt;
+&lt;p&gt;在上图的实现方式中，store第一个周期读取Tag并进行比较，根据比较的结果，在第二个周期选择是否将数据写到Data SRAM中。还需要注意的是，当执行load指令时，它想要的数据可能正好在store指令的流水线寄存器中（RAW的情况；上图中的DelayedStoreData寄存器），而不是来自于Data SRAM。因此需要一种机制检测这种情况，这需要将load指令所携带的地址和store指令的流水线寄存器(即DelayedStoreAddr寄存器)进行比较，如果相等，那么就将store指令的数据作为load指令的结果。&lt;/p&gt;
+&lt;p&gt;由此可以看出，对写D-Cache使用流水线之后，不仅增加了流水线本身的硬件，也带来了其他一些额外的硬件开销。其实。不仅在Cache中有这种现象，在处理器的其他部分增加流水线的级数，也会伴随着其他方面的硬件需求,因此过深的流水线带来的硬件复杂度是非常高的，就像Intel的Pentium 4处理器，并不会从过深的流水线中得到预想的好处。当然，cache的流水线化已经是一种广泛使用的用于降低latency的方法了。&lt;/p&gt;
+&lt;h2 id=&#34;write-buffers&#34;&gt;write buffers&lt;/h2&gt;
+&lt;p&gt;我愿称之为buffer of buffer，本来cache就起buffer的作用了，但我们再加一个buffer，如下图所示：
+&lt;img loading=&#34;lazy&#34; src=&#34;https://caaatch22.github.io/img/advanced-cache/write-buffer.png&#34; alt=&#34;write buffer&#34;  /&gt;
+
+这和多一级的cache有什么不同呢？这是一个专门为写操作设计的buffer（注意：load也可能造成写操作）。原因在于我们知道写通常比读更慢，特别对于write-through来说；其次，当上层cache满后，需要先将dirty cache line写回下层cache，再读取下层cache中的数据。若下层cache只有一个读写端口，那么这种串行的过程导致D-Cache发生缺失的处理时间变得很长，此时就可以采用write buffer来解决这个问题。脏状态的cache-line会首先放到写级存中，等到下级存储器有空闲的时候，才会将写缓存中的数据写到下级存储器中。&lt;/p&gt;
+&lt;p&gt;对于write buffer，我们还可以对其进行 &lt;strong&gt;合并(merging)&lt;/strong&gt; 操作。所谓&lt;code&gt;merging&lt;/code&gt;，指的是将在同一个cache-line上的数据一并写入下层cache中，而非多次写入同一个cache-line。
+&lt;img loading=&#34;lazy&#34; src=&#34;https://caaatch22.github.io/img/advanced-cache/merging-write-buffer.png&#34; alt=&#34;merging write buffer&#34;  /&gt;
+&lt;/p&gt;
+&lt;p&gt;上图中的右侧表示了一个采用了merging write buffer策略的写缓冲区。&lt;/p&gt;
+&lt;h2 id=&#34;critial-word-first-and-early-restart&#34;&gt;critial word first and early restart&lt;/h2&gt;
+&lt;p&gt;先来看一下cache miss时的cpu：
+&lt;img loading=&#34;lazy&#34; src=&#34;https://caaatch22.github.io/img/advanced-cache/cpu-cache-miss.png&#34; alt=&#34;timeline in cache miss&#34;  /&gt;
+
+图中展示了一个blocking cache在cache miss时，cpu stall，而后cache将需要取得的cache-line放入后，cpu resume的timeline。我们可以发现，若我们只需要cache-line中的第3个word，cpu完全可以提早resume。如下图所示：
+&lt;img loading=&#34;lazy&#34; src=&#34;https://caaatch22.github.io/img/advanced-cache/early-restart.png&#34; alt=&#34;early restart&#34;  /&gt;
+&lt;/p&gt;</description>
       <content:encoded><![CDATA[<blockquote>
 <p>本文不会介绍cache的组织形式等基本内容，但也算不上什么&quot;Advanced&quot;。主要包含一些从硬件层面优化cache的手段。</p>
 </blockquote>
@@ -1204,11 +1503,37 @@ non-blocking caches 本节主要参考了超标量处理器设计9.6.2</descript
       <pubDate>Sun, 23 Jul 2023 21:23:15 +0000</pubDate>
       
       <guid>https://caaatch22.github.io/posts/phmap/</guid>
-      <description>众所周知，C++标准库的 unordered_map在性能上向来不是一个好的选择。开源市场上有非常多的高性能哈希表可供选择，phmap继承自 absl-hashmap，有着非常好的插入、查找性能。在著名的Comprehensive C++ Hashmap Benchmarks 2022榜单中名列前茅。事实上，我比对了 phmap::flat_hash_map与榜单中综合性能第一的 ankerl::unordered_dense::map，我的benchmark中只有遍历哈希表时，flat_hash_map的性能低于 unordered_dense::map，其余无论是插入还是随即查找，大部分情况下 flat_hash_map的性能都更优。本文简单介绍了 flat_hash_map相关情况，以及一些使用上的建议与坑点。
-flat_hash_map 和 node_hash_map区别 phmap中有提供了两类哈希表，其内部布局示意图如下：
-由上图（忽略了bucket的细节）可以看出，flat_hash_map的最大的优点在于
-node之间的内存是连续的(虽然可能中间存在空node)，遍历的时候对cache更加友好 并且相比于 node_hash_map版少一次寻址过程（std::unordered_map的设计与 node_hash_map）相同。 而 flat_*系列的缺点就是在 rehash的时候:
-会引发原来的value失效（这里的失效指的是原来的那个对象所对应的内存失效，而不是value所包含的内容失效，例如，value是一个指针，那它的值——所指向的对象，不会受到影响）。举个例子： flat_hash_map&amp;lt;int, Data&amp;gt; mp; node_hash_map&amp;lt;int, Data&amp;gt; nodemp; mp[0] = Data(); nodemp[0] = Data(); auto&amp;amp; mp0 = mp[0]; auto&amp;amp; nodemp0 = nodemp[0]; // tigger rehash for (int i = 1; i &amp;lt;= 10; i ++) { mp[i] = Data(); nodemp[i] = Data(); } assert(std::addressof(mp[0]) != std::addressof(mp0)); assert(std::addressof(nodemp[0]) == std::addressof(nodemp0)); 原因就是 flat_hash_map的内存布局导致的。而 node_hash_map或者 std::unordered_map就保证不会出现这种情况，因为当他们rehash的时候，只需要将bucket内的指针重新分配，指针的值还是指向原来的 node&amp;lt;key, value&amp;gt;.</description>
+      <description>&lt;blockquote&gt;
+&lt;p&gt;众所周知，C++标准库的 &lt;code&gt;unordered_map&lt;/code&gt;在性能上向来不是一个好的选择。开源市场上有非常多的高性能哈希表可供选择，&lt;a href=&#34;https://github.com/greg7mdp/parallel-hashmap&#34;&gt;phmap&lt;/a&gt;继承自 &lt;code&gt;absl-hashmap&lt;/code&gt;，有着非常好的插入、查找性能。在著名的&lt;a href=&#34;https://martin.ankerl.com/2022/08/27/hashmap-bench-01/#benchmark-results-table&#34;&gt;Comprehensive C++ Hashmap Benchmarks 2022&lt;/a&gt;榜单中名列前茅。事实上，我比对了 &lt;code&gt;phmap::flat_hash_map&lt;/code&gt;与榜单中综合性能第一的 &lt;code&gt;ankerl::unordered_dense::map&lt;/code&gt;，我的benchmark中只有遍历哈希表时，&lt;code&gt;flat_hash_map&lt;/code&gt;的性能低于 &lt;code&gt;unordered_dense::map&lt;/code&gt;，其余无论是插入还是随即查找，大部分情况下 &lt;code&gt;flat_hash_map&lt;/code&gt;的性能都更优。本文简单介绍了 &lt;code&gt;flat_hash_map&lt;/code&gt;相关情况，以及一些使用上的建议与坑点。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h3 id=&#34;flat_hash_map-和-node_hash_map区别&#34;&gt;flat_hash_map 和 node_hash_map区别&lt;/h3&gt;
+&lt;p&gt;phmap中有提供了两类哈希表，其内部布局示意图如下：&lt;/p&gt;
+&lt;p&gt;&lt;img loading=&#34;lazy&#34; src=&#34;https://caaatch22.github.io/img/phmap/flat_hash_map-vs-node_hash_map.png&#34; alt=&#34;&#34;  /&gt;
+&lt;/p&gt;
+&lt;p&gt;由上图（忽略了bucket的细节）可以看出，&lt;code&gt;flat_hash_map&lt;/code&gt;的最大的优点在于&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;node之间的内存是连续的(虽然可能中间存在空node)，遍历的时候对cache更加友好&lt;/li&gt;
+&lt;li&gt;并且相比于 &lt;code&gt;node_hash_map&lt;/code&gt;版少一次寻址过程（&lt;code&gt;std::unordered_map&lt;/code&gt;的设计与 &lt;code&gt;node_hash_map&lt;/code&gt;）相同。&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;而 &lt;code&gt;flat_*&lt;/code&gt;系列的缺点就是在 &lt;code&gt;rehash&lt;/code&gt;的时候:&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;会引发原来的value&lt;strong&gt;失效&lt;/strong&gt;（这里的失效指的是原来的那个对象所对应的内存失效，而不是value所包含的内容失效，例如，value是一个指针，那它的值——所指向的对象，不会受到影响）。举个例子：&lt;/li&gt;
+&lt;/ol&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-cpp&#34; data-lang=&#34;cpp&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;flat_hash_map&lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;int&lt;/span&gt;, Data&lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&lt;/span&gt; mp;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;node_hash_map&lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;int&lt;/span&gt;, Data&lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&lt;/span&gt; nodemp;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;mp[&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;] &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; Data();
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;nodemp[&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;] &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; Data();
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;auto&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&lt;/span&gt; mp0 &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; mp[&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;];
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;auto&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&lt;/span&gt; nodemp0 &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; nodemp[&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;];
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;// tigger rehash
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; (&lt;span style=&#34;color:#66d9ef&#34;&gt;int&lt;/span&gt; i &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;; i &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;10&lt;/span&gt;; i &lt;span style=&#34;color:#f92672&#34;&gt;++&lt;/span&gt;) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;	mp[i] &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; Data();
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;	nodemp[i] &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; Data(); 
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;assert(std&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;addressof(mp[&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;]) &lt;span style=&#34;color:#f92672&#34;&gt;!=&lt;/span&gt; std&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;addressof(mp0));
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;assert(std&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;addressof(nodemp[&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;]) &lt;span style=&#34;color:#f92672&#34;&gt;==&lt;/span&gt; std&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;addressof(nodemp0));
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;原因就是 &lt;code&gt;flat_hash_map&lt;/code&gt;的内存布局导致的。而 &lt;code&gt;node_hash_map&lt;/code&gt;或者 &lt;code&gt;std::unordered_map&lt;/code&gt;就保证不会出现这种情况，因为当他们rehash的时候，只需要将bucket内的指针重新分配，指针的值还是指向原来的 &lt;code&gt;node&amp;lt;key, value&amp;gt;&lt;/code&gt;.&lt;/p&gt;</description>
       <content:encoded><![CDATA[<blockquote>
 <p>众所周知，C++标准库的 <code>unordered_map</code>在性能上向来不是一个好的选择。开源市场上有非常多的高性能哈希表可供选择，<a href="https://github.com/greg7mdp/parallel-hashmap">phmap</a>继承自 <code>absl-hashmap</code>，有着非常好的插入、查找性能。在著名的<a href="https://martin.ankerl.com/2022/08/27/hashmap-bench-01/#benchmark-results-table">Comprehensive C++ Hashmap Benchmarks 2022</a>榜单中名列前茅。事实上，我比对了 <code>phmap::flat_hash_map</code>与榜单中综合性能第一的 <code>ankerl::unordered_dense::map</code>，我的benchmark中只有遍历哈希表时，<code>flat_hash_map</code>的性能低于 <code>unordered_dense::map</code>，其余无论是插入还是随即查找，大部分情况下 <code>flat_hash_map</code>的性能都更优。本文简单介绍了 <code>flat_hash_map</code>相关情况，以及一些使用上的建议与坑点。</p>
 </blockquote>
@@ -1326,116 +1651,116 @@ node之间的内存是连续的(虽然可能中间存在空node)，遍历的时�
 <p>以下操作的个数都为 <code>1'000'000</code>次，最后一列string-&gt;string 插入次数为 <code>100'000</code>次</p>
 <p><em>vector作为baseline插入pair&lt;K,V&gt;进行比较</em></p>
 <table>
-<thead>
-<tr>
-<th>benchmarks(insert)</th>
-<th>insert ints</th>
-<th>insert ints(reserve first)</th>
-<th>insert string(sso)-&gt;ptr</th>
-<th>insert int-&gt;LargeData</th>
-<th>insert string(8)-&gt;string(4096)</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>std::vector</td>
-<td>17ms</td>
-<td>7ms</td>
-<td>33ms</td>
-<td>102ms</td>
-<td>153ms</td>
-</tr>
-<tr>
-<td>std::unordered_map</td>
-<td>170ms</td>
-<td>72ms</td>
-<td>343ms</td>
-<td>249ms</td>
-<td>213ms</td>
-</tr>
-<tr>
-<td>flat_hash_map</td>
-<td>47ms</td>
-<td>34ms</td>
-<td>90ms</td>
-<td>462ms</td>
-<td>182ms</td>
-</tr>
-<tr>
-<td>node_hash_map</td>
-<td>152ms</td>
-<td>68ms</td>
-<td>182ms</td>
-<td>236ms</td>
-<td>183ms</td>
-</tr>
-</tbody>
+  <thead>
+      <tr>
+          <th>benchmarks(insert)</th>
+          <th>insert ints</th>
+          <th>insert ints(reserve first)</th>
+          <th>insert string(sso)-&gt;ptr</th>
+          <th>insert int-&gt;LargeData</th>
+          <th>insert string(8)-&gt;string(4096)</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>std::vector</td>
+          <td>17ms</td>
+          <td>7ms</td>
+          <td>33ms</td>
+          <td>102ms</td>
+          <td>153ms</td>
+      </tr>
+      <tr>
+          <td>std::unordered_map</td>
+          <td>170ms</td>
+          <td>72ms</td>
+          <td>343ms</td>
+          <td>249ms</td>
+          <td>213ms</td>
+      </tr>
+      <tr>
+          <td>flat_hash_map</td>
+          <td>47ms</td>
+          <td>34ms</td>
+          <td>90ms</td>
+          <td>462ms</td>
+          <td>182ms</td>
+      </tr>
+      <tr>
+          <td>node_hash_map</td>
+          <td>152ms</td>
+          <td>68ms</td>
+          <td>182ms</td>
+          <td>236ms</td>
+          <td>183ms</td>
+      </tr>
+  </tbody>
 </table>
 <table>
-<thead>
-<tr>
-<th>benchmarks(read)</th>
-<th>iterate ints</th>
-<th>find int</th>
-<th>iterate string</th>
-<th>find string</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>std::vector</td>
-<td>0ms</td>
-<td>*</td>
-<td>3ms</td>
-<td>*</td>
-</tr>
-<tr>
-<td>std::unordered_map</td>
-<td>20ms</td>
-<td>52ms</td>
-<td>55ms</td>
-<td>152ms</td>
-</tr>
-<tr>
-<td>flat_hash_map</td>
-<td>3ms</td>
-<td>23ms</td>
-<td>8ms</td>
-<td>71ms</td>
-</tr>
-<tr>
-<td>node_hash_map</td>
-<td>14ms</td>
-<td>38ms</td>
-<td>14ms</td>
-<td>108ms</td>
-</tr>
-</tbody>
+  <thead>
+      <tr>
+          <th>benchmarks(read)</th>
+          <th>iterate ints</th>
+          <th>find int</th>
+          <th>iterate string</th>
+          <th>find string</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>std::vector</td>
+          <td>0ms</td>
+          <td>*</td>
+          <td>3ms</td>
+          <td>*</td>
+      </tr>
+      <tr>
+          <td>std::unordered_map</td>
+          <td>20ms</td>
+          <td>52ms</td>
+          <td>55ms</td>
+          <td>152ms</td>
+      </tr>
+      <tr>
+          <td>flat_hash_map</td>
+          <td>3ms</td>
+          <td>23ms</td>
+          <td>8ms</td>
+          <td>71ms</td>
+      </tr>
+      <tr>
+          <td>node_hash_map</td>
+          <td>14ms</td>
+          <td>38ms</td>
+          <td>14ms</td>
+          <td>108ms</td>
+      </tr>
+  </tbody>
 </table>
 <p><em>About parallel_flat_hash_map</em></p>
 <table>
-<thead>
-<tr>
-<th>inserting 1000000 ints</th>
-<th>1-thread</th>
-<th>8-threads</th>
-<th>8-threads</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>flat_hash_map</td>
-<td>31ms</td>
-<td>23ms(no lock)</td>
-<td>214ms(mutex manually)</td>
-</tr>
-<tr>
-<td>parallel_flat_hash_map</td>
-<td>35ms</td>
-<td>*</td>
-<td>70ms(mutex/shared_mutex)</td>
-</tr>
-</tbody>
+  <thead>
+      <tr>
+          <th>inserting 1000000 ints</th>
+          <th>1-thread</th>
+          <th>8-threads</th>
+          <th>8-threads</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>flat_hash_map</td>
+          <td>31ms</td>
+          <td>23ms(no lock)</td>
+          <td>214ms(mutex manually)</td>
+      </tr>
+      <tr>
+          <td>parallel_flat_hash_map</td>
+          <td>35ms</td>
+          <td>*</td>
+          <td>70ms(mutex/shared_mutex)</td>
+      </tr>
+  </tbody>
 </table>
 <h3 id="一个小问题">一个小问题</h3>
 <p>在测试的时候发现，无论是 <code>flat_hash_map</code>还是 <code>node_hash_map</code>都没法插入 <code>None-moveable</code>的数据，但是 <code>std::unordered_map</code>可以。</p>
@@ -1495,8 +1820,8 @@ node之间的内存是连续的(虽然可能中间存在空node)，遍历的时�
       <pubDate>Mon, 29 May 2023 13:35:22 +0000</pubDate>
       
       <guid>https://caaatch22.github.io/posts/icpc%E8%A5%BF%E5%AE%89%E6%B8%B8%E8%AE%B0/</guid>
-      <description>没写记录，学弟写了，直接用
-ICPC西安邀请赛</description>
+      <description>&lt;p&gt;&lt;del&gt;没写记录，学弟写了，直接用&lt;/del&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&#34;https://tthac09.github.io/2023/05/24/icpc2023-xian-invitational-notes/&#34;&gt;ICPC西安邀请赛&lt;/a&gt;&lt;/p&gt;</description>
       <content:encoded><![CDATA[<p><del>没写记录，学弟写了，直接用</del></p>
 <p><a href="https://tthac09.github.io/2023/05/24/icpc2023-xian-invitational-notes/">ICPC西安邀请赛</a></p>
 ]]></content:encoded>
@@ -1508,11 +1833,47 @@ ICPC西安邀请赛</description>
       <pubDate>Sat, 20 May 2023 17:33:40 +0000</pubDate>
       
       <guid>https://caaatch22.github.io/posts/c-crtp/</guid>
-      <description>原先只是了解这个名词，想着C++20后静态多态直接用 concept来实现就好了就没细看，没必要整这些模板元编程的奇技淫巧。没想到面试某量化C++开发的时候被狠狠拷打&amp;hellip;&amp;hellip;.
-CRTP (curiously recurring template pattern) 一般认为，CRTP可以用来实现静态多态
-template &amp;lt;typename T&amp;gt; class Base { void func() { static_cast&amp;lt;T*&amp;gt;(this)-&amp;gt;funcImpl(); } }; class Derived : public Base&amp;lt;Derived&amp;gt; { void funcImpl() { // do works here } }; 通过CRTP可以使得类具有类似于虚函数的效果，同时又没有虚函数调用时的开销(虚函数调用需要通过虚函数指针查找虚函数表进行调用)，同时类的对象的体积相比使用虚函数也会减少(不需要存储虚函数指针)，但是缺点是无法动态绑定，感觉有点过于鸡肋。
-有什么用呢？可以用来向纯虚类一样做接口：（以下类似的代码在大量数学库中出现）
-template &amp;lt;typename ChildType&amp;gt; struct VectorBase { ChildType &amp;amp;underlying() { return static_cast&amp;lt;ChildType &amp;amp;&amp;gt;(*this); } inline ChildType &amp;amp;operator+=(const ChildType &amp;amp;rhs) { this-&amp;gt;underlying() = this-&amp;gt;underlying() + rhs; return this-&amp;gt;underlying(); } }; struct Vec3f : public VectorBase&amp;lt;Vec3f&amp;gt; { float x{}, y{}, z{}; Vec3f() = default; Vec3f(float x, float y, float z) : x(x), y(y), z(z) {} }; inline Vec3f operator+(const Vec3f &amp;amp;lhs, const Vec3f &amp;amp;rhs) { Vec3f result; result.</description>
+      <description>&lt;blockquote&gt;
+&lt;p&gt;原先只是了解这个名词，想着C++20后静态多态直接用 &lt;code&gt;concept&lt;/code&gt;来实现就好了就没细看，没必要整这些模板元编程的奇技淫巧。没想到面试某量化C++开发的时候被狠狠拷打&amp;hellip;&amp;hellip;.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h2 id=&#34;crtp-curiously-recurring-template-pattern&#34;&gt;CRTP (&lt;strong&gt;curiously recurring template pattern&lt;/strong&gt;)&lt;/h2&gt;
+&lt;p&gt;一般认为，CRTP可以用来实现静态多态&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-cpp&#34; data-lang=&#34;cpp&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;template&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;typename&lt;/span&gt; T&lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;class&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;Base&lt;/span&gt; {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#66d9ef&#34;&gt;void&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;func&lt;/span&gt;() {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;static_cast&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt;T&lt;span style=&#34;color:#f92672&#34;&gt;*&amp;gt;&lt;/span&gt;(&lt;span style=&#34;color:#66d9ef&#34;&gt;this&lt;/span&gt;)&lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt;funcImpl();
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  }
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;};
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;class&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;Derived&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;:&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;public&lt;/span&gt; Base&lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt;Derived&lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&lt;/span&gt; {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#66d9ef&#34;&gt;void&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;funcImpl&lt;/span&gt;() {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#75715e&#34;&gt;// do works here
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;  }
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;};
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;通过CRTP可以使得类具有类似于虚函数的效果，同时又没有虚函数调用时的开销(虚函数调用需要通过虚函数指针查找虚函数表进行调用)，同时类的对象的体积相比使用虚函数也会减少(不需要存储虚函数指针)，但是缺点是无法动态绑定，感觉有点过于鸡肋。&lt;/p&gt;
+&lt;p&gt;有什么用呢？可以用来向纯虚类一样做接口：（以下类似的代码在大量数学库中出现）&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-cpp&#34; data-lang=&#34;cpp&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;template&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;typename&lt;/span&gt; ChildType&lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&lt;/span&gt; 
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;struct&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;VectorBase&lt;/span&gt; {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  ChildType &lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&lt;/span&gt;underlying() { &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;static_cast&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt;ChildType &lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&amp;gt;&lt;/span&gt;(&lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;this&lt;/span&gt;); }
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#66d9ef&#34;&gt;inline&lt;/span&gt; ChildType &lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;operator&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;+=&lt;/span&gt;(&lt;span style=&#34;color:#66d9ef&#34;&gt;const&lt;/span&gt; ChildType &lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&lt;/span&gt;rhs) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;this&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt;underlying() &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;this&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt;underlying() &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; rhs;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;this&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt;underlying();
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  }
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;};
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;struct&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;Vec3f&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;:&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;public&lt;/span&gt; VectorBase&lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt;Vec3f&lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&lt;/span&gt; {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#66d9ef&#34;&gt;float&lt;/span&gt; x{}, y{}, z{};
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  Vec3f() &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;default&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  Vec3f(&lt;span style=&#34;color:#66d9ef&#34;&gt;float&lt;/span&gt; x, &lt;span style=&#34;color:#66d9ef&#34;&gt;float&lt;/span&gt; y, &lt;span style=&#34;color:#66d9ef&#34;&gt;float&lt;/span&gt; z) &lt;span style=&#34;color:#f92672&#34;&gt;:&lt;/span&gt; x(x), y(y), z(z) {}
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;};
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;inline&lt;/span&gt; Vec3f &lt;span style=&#34;color:#66d9ef&#34;&gt;operator&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt;(&lt;span style=&#34;color:#66d9ef&#34;&gt;const&lt;/span&gt; Vec3f &lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&lt;/span&gt;lhs, &lt;span style=&#34;color:#66d9ef&#34;&gt;const&lt;/span&gt; Vec3f &lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&lt;/span&gt;rhs) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  Vec3f result;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  result.x &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; lhs.x &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; rhs.x;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  result.y &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; lhs.y &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; rhs.y;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  result.z &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; lhs.z &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; rhs.z;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; result;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;定义好VectorBase后，Vec3f, Vec4f等直接实现接口就好。相比虚函数的形式，在空间和runtime都有优势。&lt;/p&gt;</description>
       <content:encoded><![CDATA[<blockquote>
 <p>原先只是了解这个名词，想着C++20后静态多态直接用 <code>concept</code>来实现就好了就没细看，没必要整这些模板元编程的奇技淫巧。没想到面试某量化C++开发的时候被狠狠拷打&hellip;&hellip;.</p>
 </blockquote>
@@ -1627,11 +1988,53 @@ template &amp;lt;typename ChildType&amp;gt; struct VectorBase { ChildType &amp;a
       <pubDate>Wed, 01 Mar 2023 19:34:21 +0000</pubDate>
       
       <guid>https://caaatch22.github.io/posts/%E5%AE%9E%E7%8E%B0%E4%B8%80%E4%B8%AA%E7%AE%80%E5%8D%95%E7%9A%84%E7%BD%91%E7%BB%9C%E5%BA%93-httpserver/</guid>
-      <description>本博客部署在两个服务器上，其中一个的 HTTP 服务就是由本文介绍的 FalconLink 提供。你可以通过IP地址 101.34.211.126:20080 尝试访问。 项目地址 https://github.com/caaatch22/FalconLink
-Overview FalconLink是一个轻量级的高并发网络库。它封装了网络编程套接字API，将其抽象成一个易用，可拓展框架。用户只需通过设置回调函数的形式注入业务逻辑。它同时也具有 HTTP 服务请求与解析的功能。
-上图是FalconLink系统架构的一个简单概括性图示。
-采用非阻塞socket配合边缘触发，及one loop per thread的主从 reactor设计 Acceptor 是专门用于处理接受新用户连接请求的模块。它守候在监听端口。收到请求后建立 Connection 分配给 EventLoop。 FalconLink 将每个 TCP连接抽象成一个 Connection，一个 Connection对应一个连接 socket 套接字。用户可以为每一条Connection注册回调函数。 每个 EventLoop 都拥有一个 Poller。 Poller 负责监听已连接的套接字，将有事件触发的连接反馈给 EventLoop。 EventLoop是该系统的核心组件, 每个都单独运行在一个线程中. 它从 Poller 中接收到有事件触发的用户连接后, 会获取并执行它们的回调函数. ThreadPool 线程池管理着系统中有多少个 EventLoop 在运行，并调度线程，防止注册过多线程导致性能下降。 支持 HTTP(GET,HEAD)请求的解析与回复，支持挂载静态 html 文件（本博客使用FalconLink的 HTTP 服务） 实现异步logger API 使用falconlink，可以轻易且优雅的在20行内实现一个 echo server。
-#include &amp;#34;falconlink.hpp&amp;#34; int main() { falconlink::InetAddr local_address(&amp;#34;0.0.0.0&amp;#34;, 8090); falconlink::Server echo_server(local_address); echo_server .</description>
+      <description>&lt;blockquote&gt;
+&lt;p&gt;本博客部署在两个服务器上，其中一个的 HTTP 服务就是由本文介绍的 FalconLink 提供。你可以通过IP地址 101.34.211.126:20080 尝试访问。 项目地址 &lt;a href=&#34;https://github.com/caaatch22/FalconLink&#34;&gt;https://github.com/caaatch22/FalconLink&lt;/a&gt;&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h2 id=&#34;overview&#34;&gt;Overview&lt;/h2&gt;
+&lt;p&gt;&lt;strong&gt;FalconLink&lt;/strong&gt;是一个轻量级的高并发网络库。它封装了网络编程套接字API，将其抽象成一个易用，可拓展框架。用户只需通过设置回调函数的形式注入业务逻辑。它同时也具有 HTTP 服务请求与解析的功能。&lt;/p&gt;
+&lt;p&gt;&lt;img loading=&#34;lazy&#34; src=&#34;https://caaatch22.github.io/img/FalconLink/falconlink-architecture.png&#34; alt=&#34;&#34;  /&gt;
+&lt;/p&gt;
+&lt;p&gt;上图是FalconLink系统架构的一个简单概括性图示。&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;采用&lt;strong&gt;非阻塞socket&lt;/strong&gt;配合&lt;strong&gt;边缘触发&lt;/strong&gt;，及&lt;em&gt;one loop per thread&lt;/em&gt;的主从 &lt;code&gt;reactor&lt;/code&gt;设计&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;Acceptor&lt;/code&gt; 是专门用于处理接受新用户连接请求的模块。它守候在监听端口。收到请求后建立 &lt;code&gt;Connection&lt;/code&gt; 分配给 EventLoop。&lt;/li&gt;
+&lt;li&gt;FalconLink 将每个 TCP连接抽象成一个 &lt;code&gt;Connection&lt;/code&gt;，一个 &lt;code&gt;Connection&lt;/code&gt;对应一个连接 socket 套接字。用户可以为每一条Connection注册回调函数。&lt;/li&gt;
+&lt;li&gt;每个 &lt;code&gt;EventLoop&lt;/code&gt; 都拥有一个 &lt;code&gt;Poller&lt;/code&gt;。 &lt;code&gt;Poller&lt;/code&gt; 负责监听已连接的套接字，将有事件触发的连接反馈给 &lt;code&gt;EventLoop&lt;/code&gt;。&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;EventLoop&lt;/code&gt;是该系统的核心组件, 每个都单独运行在一个线程中. 它从 &lt;code&gt;Poller&lt;/code&gt; 中接收到有事件触发的用户连接后, 会获取并执行它们的回调函数.&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;ThreadPool&lt;/code&gt; 线程池管理着系统中有多少个 &lt;code&gt;EventLoop&lt;/code&gt; 在运行，并调度线程，防止注册过多线程导致性能下降。&lt;/li&gt;
+&lt;li&gt;支持 HTTP(GET,HEAD)请求的解析与回复，支持挂载静态 html 文件（本博客使用FalconLink的 HTTP 服务）&lt;/li&gt;
+&lt;li&gt;实现异步logger&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;api&#34;&gt;API&lt;/h2&gt;
+&lt;p&gt;使用falconlink，可以轻易且优雅的在20行内实现一个 &lt;code&gt;echo server&lt;/code&gt;。&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-cpp&#34; data-lang=&#34;cpp&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;#include&lt;/span&gt; &lt;span style=&#34;color:#75715e&#34;&gt;&amp;#34;falconlink.hpp&amp;#34;&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;int&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;main&lt;/span&gt;() {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  falconlink&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;InetAddr local_address(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;0.0.0.0&amp;#34;&lt;/span&gt;, &lt;span style=&#34;color:#ae81ff&#34;&gt;8090&lt;/span&gt;);
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  falconlink&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;Server echo_server(local_address);
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  echo_server
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      .onHandle([&lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&lt;/span&gt;](falconlink&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;Connection&lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; client_conn) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        &lt;span style=&#34;color:#66d9ef&#34;&gt;int&lt;/span&gt; from_fd &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; client_conn&lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt;fd();
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        &lt;span style=&#34;color:#66d9ef&#34;&gt;auto&lt;/span&gt; [read, exit] &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; client_conn&lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt;recv();
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; (exit) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;          client_conn&lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt;getEventLoop()&lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt;deleteConnection(from_fd);
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;          &lt;span style=&#34;color:#75715e&#34;&gt;// client_conn ptr is invalid below here, do not touch it again
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;          &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        }
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        &lt;span style=&#34;color:#75715e&#34;&gt;// 只有以下四行是业务逻辑
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;        &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; (read) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;          client_conn&lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt;WriteToWriteBuffer(client_conn&lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt;ReadAsString());
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;          client_conn&lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt;send();
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;          client_conn&lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt;clearReadBuffer();
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        }
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      })
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      .start();
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h2 id=&#34;build--test&#34;&gt;Build &amp;amp; Test&lt;/h2&gt;
+&lt;p&gt;将代码 clone 到本地，进入主目录&lt;/p&gt;</description>
       <content:encoded><![CDATA[<blockquote>
 <p>本博客部署在两个服务器上，其中一个的 HTTP 服务就是由本文介绍的 FalconLink 提供。你可以通过IP地址 101.34.211.126:20080 尝试访问。 项目地址 <a href="https://github.com/caaatch22/FalconLink">https://github.com/caaatch22/FalconLink</a></p>
 </blockquote>
@@ -1728,13 +2131,34 @@ Overview FalconLink是一个轻量级的高并发网络库。它封装了网络�
       <pubDate>Tue, 17 Jan 2023 23:45:12 +0000</pubDate>
       
       <guid>https://caaatch22.github.io/posts/cmu15445-project3-query-execution/</guid>
-      <description>Overview 在这次实验写完后，我们已经能使用bustub-shell完成执行 sql 语句了，还是挺有成就感的。同时，TA 为我们准备了浏览器上的bustub ，方便和我们写的对比调试。你也可以使用 explain 来查看他的优化策略与执行步骤。
-这次实验的主要难点在于读代码，理清 bustub 的执行引擎的数据流以及代码中的实现。搞懂了之后各个算子的实现就很简单了（相对 B+树）。
-上图是 bustub 的整体架构。
-Parser sql 语句的解析就像其他编程语言一样，同样需要翻译成比较结构化的东西。Parser 阶段会生成一个抽象语法树(AST, Abstract Syntax Tree)。 这并不是数据库核心部分，bustub 直接使用了 PostgreSQL 的 parser 库 libpg_query。
-Binder 得到 AST 后，需要将这些词语绑定到数据库实体上，这就是 Binder 的工作。例如有这样一条 sql：
-SELECT table1.y, table2.x FROM table1 INNER JOIN table2 ON table1.x = table2.y; 其中 SELECT 和 FROM 是关键字，x 和 table1 是标识符。我们可以使用 explain 来看看 binder 层（bustub-shell 未完成时也可以使用 explain）：
-=== BINDER === BoundSelec { table=BoundJoin { type=Inner, left=BoundBaseTableRef { table=table1, oid=25 }, right=BoundBaseTableRef { table=table2, oid=26 }, condition=(table1.</description>
+      <description>&lt;h2 id=&#34;overview&#34;&gt;Overview&lt;/h2&gt;
+&lt;blockquote&gt;
+&lt;p&gt;在这次实验写完后，我们已经能使用bustub-shell完成执行 sql 语句了，还是挺有成就感的。同时，TA 为我们准备了&lt;a href=&#34;https://15445.courses.cs.cmu.edu/fall2022/bustub/&#34;&gt;浏览器上的bustub&lt;/a&gt; ，方便和我们写的对比调试。你也可以使用 &lt;code&gt;explain&lt;/code&gt; 来查看他的优化策略与执行步骤。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;这次实验的主要难点在于读代码，理清 bustub 的执行引擎的数据流以及代码中的实现。搞懂了之后各个算子的实现就很简单了（相对 B+树）。&lt;/p&gt;
+&lt;p&gt;&lt;img loading=&#34;lazy&#34; src=&#34;https://caaatch22.github.io/img/busTub/query_excution/project-structure.png&#34; alt=&#34;&#34;  /&gt;
+&lt;/p&gt;
+&lt;p&gt;上图是 bustub 的整体架构。&lt;/p&gt;
+&lt;h3 id=&#34;parser&#34;&gt;Parser&lt;/h3&gt;
+&lt;p&gt;sql 语句的解析就像其他编程语言一样，同样需要翻译成比较结构化的东西。Parser 阶段会生成一个&lt;em&gt;抽象语法树(AST, Abstract Syntax Tree)&lt;/em&gt;。 这并不是数据库核心部分，bustub 直接使用了 PostgreSQL 的 parser 库 libpg_query。&lt;/p&gt;
+&lt;h3 id=&#34;binder&#34;&gt;Binder&lt;/h3&gt;
+&lt;p&gt;得到 AST 后，需要将这些词语绑定到数据库实体上，这就是 Binder 的工作。例如有这样一条 sql：&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-sql&#34; data-lang=&#34;sql&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;SELECT&lt;/span&gt; table1.y, table2.x &lt;span style=&#34;color:#66d9ef&#34;&gt;FROM&lt;/span&gt; table1 &lt;span style=&#34;color:#66d9ef&#34;&gt;INNER&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;JOIN&lt;/span&gt; table2 &lt;span style=&#34;color:#66d9ef&#34;&gt;ON&lt;/span&gt; table1.x &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; table2.y;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;其中 &lt;code&gt;SELECT&lt;/code&gt; 和 &lt;code&gt;FROM&lt;/code&gt; 是关键字，&lt;code&gt;x&lt;/code&gt; 和 &lt;code&gt;table1&lt;/code&gt; 是标识符。我们可以使用 &lt;code&gt;explain&lt;/code&gt; 来看看 &lt;code&gt;binder&lt;/code&gt; 层（bustub-shell 未完成时也可以使用 explain）：&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-shell&#34; data-lang=&#34;shell&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;===&lt;/span&gt; BINDER &lt;span style=&#34;color:#f92672&#34;&gt;===&lt;/span&gt;                                               
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt; BoundSelec &lt;span style=&#34;color:#f92672&#34;&gt;{&lt;/span&gt;                                        
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;   table&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;BoundJoin &lt;span style=&#34;color:#f92672&#34;&gt;{&lt;/span&gt; type&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;Inner, left&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;BoundBaseTableRef &lt;span style=&#34;color:#f92672&#34;&gt;{&lt;/span&gt; table&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;table1, oid&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;25&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;}&lt;/span&gt;, right&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;BoundBaseTableRef &lt;span style=&#34;color:#f92672&#34;&gt;{&lt;/span&gt; table&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;table2, oid&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;26&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;}&lt;/span&gt;, condition&lt;span style=&#34;color:#f92672&#34;&gt;=(&lt;/span&gt;table1.x&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;table2.y&lt;span style=&#34;color:#f92672&#34;&gt;)&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;}&lt;/span&gt;, 
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;   columns&lt;span style=&#34;color:#f92672&#34;&gt;=[&lt;/span&gt;table1.y, table2.x&lt;span style=&#34;color:#f92672&#34;&gt;]&lt;/span&gt;,                       
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;   groupBy&lt;span style=&#34;color:#f92672&#34;&gt;=[]&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;   having&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;,  
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;   where&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;,  
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;   limit&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;, 
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;   offset&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;   order_by&lt;span style=&#34;color:#f92672&#34;&gt;=[]&lt;/span&gt;,                                 
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;   is_distinct&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;false,         
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;   ctes&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;可以看出，binder的作用就是对AST的各个节点绑定一个（物理）实体。&lt;/p&gt;</description>
       <content:encoded><![CDATA[<h2 id="overview">Overview</h2>
 <blockquote>
 <p>在这次实验写完后，我们已经能使用bustub-shell完成执行 sql 语句了，还是挺有成就感的。同时，TA 为我们准备了<a href="https://15445.courses.cs.cmu.edu/fall2022/bustub/">浏览器上的bustub</a> ，方便和我们写的对比调试。你也可以使用 <code>explain</code> 来查看他的优化策略与执行步骤。</p>
@@ -1921,12 +2345,28 @@ SELECT table1.y, table2.x FROM table1 INNER JOIN table2 ON table1.x = table2.y; 
       <pubDate>Tue, 10 Jan 2023 16:18:32 +0000</pubDate>
       
       <guid>https://caaatch22.github.io/posts/%E7%AE%97%E6%B3%95%E7%AB%9E%E8%B5%9B%E4%B8%AD%E7%9A%84wavelet-tree/</guid>
-      <description>Wavelet Tree for Competitive Programming 最近在学FM-Index相关算法用于数据库，了解到Wavelet Tree这一数据结构，发现其还可以应用在算法竞赛中。网上相关中文资料比较少，权当自己做个学习笔记
-开始之前 在学习wavelet tree前，不妨看看他能解决什么样的问题。
-假设我们有一长为 $n$ 的序列 $A[0&amp;hellip;n - 1]$ 。在算法竞赛中，典型的数据量是 $n = 1e5, |A[i]| &amp;lt;= 1e9$
-区间 $[L, R)$ 中元素$x$的出现次数 区间 $[L, R)$ 中的第k小数 区间 $[L, R)$ 上 小于等于x的数的个数 &amp;hellip; 以上问题都可以通过可持久化线段树在解决。那为什么还需要wavelet tree呢，我们都知道可持久化线段树的常数很大，并且十分消耗空间，在有些苛刻的题目下可能会被卡 好吧应该都是金牌题，不是我该考虑的 。利用wavelet tree可以在$log(\sigma)$时间内完成的同时（且优秀的常数），若使用bitvector优化空间，空间上大概比可持久化线段树少一个量级。最重要的一点是，我个人觉得他比主席树更加直观易懂。 $\sigma$ = | $\Sigma = {1, 2, \cdots, \sigma}$| （用于序列上时是值域大小）。
-用wavelet tree的缺点就是带修改操作比较难写，码量较大，一般不会在比赛时使用。
-Wavelet Tree 该图给出了用序列 $A = [7, 3, 5, 6, 1, 3, 2, 7, 8, 4]$ 构建的wavelet tree的形态。对于树上的每个节点，我们会将其按照值域分成两个部分$[low, mid), [mid, high)$。通过 稳定划分（stable_partition，即不改变相对顺序的情况下划分）将该节点上的序列中小于 $mid$的划分到左子树中，大于等于mid的划分到右子树中，递归直至节点中只有一种值时为叶节点。需要注意的是，我们并不会在叶子节点中直接存储序列的值，而是通过某个方法使得我们能够使用较小的空间的情况下得到足够的信息。</description>
+      <description>&lt;h1 id=&#34;wavelet-tree-for-competitive-programming&#34;&gt;Wavelet Tree for Competitive Programming&lt;/h1&gt;
+&lt;blockquote&gt;
+&lt;p&gt;最近在学&lt;em&gt;FM-Index&lt;/em&gt;相关算法用于数据库，了解到Wavelet Tree这一数据结构，发现其还可以应用在算法竞赛中。网上相关中文资料比较少，权当自己做个学习笔记&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h2 id=&#34;开始之前&#34;&gt;开始之前&lt;/h2&gt;
+&lt;p&gt;在学习&lt;code&gt;wavelet tree&lt;/code&gt;前，不妨看看他能解决什么样的问题。&lt;/p&gt;
+&lt;p&gt;假设我们有一长为 $n$ 的序列 $A[0&amp;hellip;n - 1]$ 。在算法竞赛中，典型的数据量是  $n = 1e5,  |A[i]| &amp;lt;= 1e9$&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;区间 $[L, R)$ 中元素$x$的&lt;code&gt;出现次数&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;区间 $[L, R)$ 中的&lt;code&gt;第k小数&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;区间 $[L, R)$ 上 &lt;code&gt;小于等于x的数的个数&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&amp;hellip;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;以上问题都可以通过&lt;em&gt;可持久化线段树&lt;/em&gt;在解决。那为什么还需要wavelet tree呢，我们都知道可持久化线段树的常数很大，并且十分消耗空间，在有些苛刻的题目下可能会被卡  &lt;del&gt;好吧应该都是金牌题，不是我该考虑的&lt;/del&gt; 。利用wavelet tree可以在$log(\sigma)$时间内完成的同时（且优秀的常数），若使用&lt;code&gt;bitvector&lt;/code&gt;优化空间，空间上大概比可持久化线段树少一个量级。最重要的一点是，我个人觉得他比主席树更加直观易懂。
+$\sigma$ = | $\Sigma = {1, 2, \cdots, \sigma}$| （用于序列上时是值域大小）。&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;用wavelet tree的缺点就是带修改操作比较难写，码量较大，一般不会在比赛时使用。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h2 id=&#34;wavelet-tree&#34;&gt;Wavelet Tree&lt;/h2&gt;
+&lt;p&gt;&lt;img loading=&#34;lazy&#34; src=&#34;https://caaatch22.github.io/img/waveletTree/waveletTree.png&#34; alt=&#34;&#34;  /&gt;
+&lt;/p&gt;
+&lt;p&gt;该图给出了用序列 $A = [7, 3, 5, 6, 1, 3, 2, 7, 8, 4]$ 构建的wavelet tree的形态。对于树上的每个节点，我们会将其按照值域分成两个部分$[low, mid), [mid, high)$。通过 &lt;strong&gt;稳定划分&lt;/strong&gt;（stable_partition，即不改变相对顺序的情况下划分）将该节点上的序列中小于 $mid$的划分到左子树中，大于等于mid的划分到右子树中，递归直至节点中只有一种值时为叶节点。需要注意的是，我们并不会在叶子节点中直接存储序列的值，而是通过某个方法使得我们能够使用较小的空间的情况下得到足够的信息。&lt;/p&gt;</description>
       <content:encoded><![CDATA[<h1 id="wavelet-tree-for-competitive-programming">Wavelet Tree for Competitive Programming</h1>
 <blockquote>
 <p>最近在学<em>FM-Index</em>相关算法用于数据库，了解到Wavelet Tree这一数据结构，发现其还可以应用在算法竞赛中。网上相关中文资料比较少，权当自己做个学习笔记</p>
@@ -2094,12 +2534,28 @@ $\sigma$ = | $\Sigma = {1, 2, \cdots, \sigma}$| （用于序列上时是值域�
       <pubDate>Tue, 27 Dec 2022 23:45:12 +0000</pubDate>
       
       <guid>https://caaatch22.github.io/posts/cmu15445-project2-concurrent-b-tree/</guid>
-      <description>Overview 这个实验应该是最难的一个实验了。。。（感觉和Project 4 —— Transaction实现的难度差不多） 另外，2022fall版本的B+ tree更是变态，因为几乎没有给任何内部的API，让人无从下手。建议到 Github repo 里找到20年的，我基本是根据里面定义的函数来实现的。
-实验材料贴心的为你分成了两个检查点，四个小任务。
-Checkpoint #1
-Task #1 - B+Tree Pages Task #2 - B+Tree Data Structure (Insertion, Deletion, Point Search) Checkpoint #2
-Task #3 - Index Iterator Task #4 - Concurrent Index Task #1 - B+Tree Pages 第一个任务算是热身，主要是搞清楚 B+ 树的一些类之间的关系。 我们知道，数据库中的索引也是数据，同样以 page 的形式被组织。我们先来看看要完成的这些类之间的关系。
-B+ tree internal page 与 B + tree leaf page 都继承自B + tree page，B + tree page 中定义了 B+ 树每个结点的一些信息。而B + Tree 这个类则是Checkpoint 1的主要对象，它对internal page 以及 leaf page 进行管理，并对外开放接口。而在内存中，internal page 与 leaf page 都属于 page 的一部分，关系如下图所示。他们就是 page 中的 data 部分。因此，每次 从 buffer pool manager 得到一个 page 后，若是将他们用作 B+树的结点，则需要对这个 data 进行释义，也就是将他强制转化为internal page 或者 leaf page。这在 C++ 中通过 reinterpret_cast 完成。</description>
+      <description>&lt;h2 id=&#34;overview&#34;&gt;Overview&lt;/h2&gt;
+&lt;blockquote&gt;
+&lt;p&gt;这个实验应该是最难的一个实验了。。。（感觉和Project 4 —— Transaction实现的难度差不多） 另外，2022fall版本的B+ tree更是变态，因为几乎没有给任何内部的API，让人无从下手。建议到 Github repo 里找到20年的，我基本是根据里面定义的函数来实现的。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;实验材料&lt;del&gt;贴心的&lt;/del&gt;为你分成了两个检查点，四个小任务。&lt;/p&gt;
+&lt;p&gt;Checkpoint #1&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Task #1 - B+Tree Pages&lt;/li&gt;
+&lt;li&gt;Task #2 - B+Tree Data Structure (Insertion, Deletion, Point Search)&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Checkpoint #2&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Task #3 - Index Iterator&lt;/li&gt;
+&lt;li&gt;Task #4 - Concurrent Index&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;task-1---btree-pages&#34;&gt;Task #1 - B+Tree Pages&lt;/h2&gt;
+&lt;p&gt;第一个任务算是热身，主要是搞清楚 B+ 树的一些类之间的关系。
+我们知道，数据库中的索引也是数据，同样以 page 的形式被组织。我们先来看看要完成的这些类之间的关系。&lt;/p&gt;
+&lt;p&gt;&lt;img loading=&#34;lazy&#34; src=&#34;https://caaatch22.github.io/img/busTub/B-tree/B-tree-page-relation.png&#34; alt=&#34;&#34;  /&gt;
+&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;B+ tree internal page&lt;/code&gt; 与 &lt;code&gt;B + tree leaf page&lt;/code&gt; 都继承自&lt;code&gt;B + tree page&lt;/code&gt;，&lt;code&gt;B + tree page&lt;/code&gt; 中定义了 B+ 树每个结点的一些信息。而B + Tree 这个类则是Checkpoint 1的主要对象，它对&lt;code&gt;internal page&lt;/code&gt; 以及 &lt;code&gt;leaf page&lt;/code&gt; 进行管理，并对外开放接口。而在内存中，internal page 与 leaf page 都属于 page 的一部分，关系如下图所示。他们就是 &lt;code&gt;page&lt;/code&gt; 中的 data 部分。因此，每次
+从 buffer pool manager 得到一个 page 后，若是将他们用作 B+树的结点，则需要对这个 data 进行&lt;strong&gt;释义&lt;/strong&gt;，也就是将他强制转化为internal page 或者 leaf page。这在 C++ 中通过 &lt;a href=&#34;https://en.cppreference.com/w/cpp/language/reinterpret_cast&#34;&gt;&lt;strong&gt;reinterpret_cast&lt;/strong&gt;&lt;/a&gt; 完成。&lt;/p&gt;</description>
       <content:encoded><![CDATA[<h2 id="overview">Overview</h2>
 <blockquote>
 <p>这个实验应该是最难的一个实验了。。。（感觉和Project 4 —— Transaction实现的难度差不多） 另外，2022fall版本的B+ tree更是变态，因为几乎没有给任何内部的API，让人无从下手。建议到 Github repo 里找到20年的，我基本是根据里面定义的函数来实现的。</p>
@@ -2207,11 +2663,22 @@ B+ tree internal page 与 B + tree leaf page 都继承自B + tree page，B + tre
       <pubDate>Thu, 22 Dec 2022 15:37:34 +0000</pubDate>
       
       <guid>https://caaatch22.github.io/posts/cmu15445-project1-buffer-pool-manager/</guid>
-      <description>Buffer Pool Manager cmu15445 是一门关于数据库管理系统（DBMS）设计与实现的经典公开课，是很多dba和内核开发人员的入门课程。开课教授Andy Pavlo 非常风趣幽默，他有自己上课的DJ，他曾在浴缸里录课，且时常语出惊人。这门课的实验项目BusTub非常有挑战性，并对所有人开放评测资源。
-Overview BusTub是一个面向磁盘的 DBMS(Database Management System)。由于磁盘上的数据不支持字节粒度的访问，这就需要一个管理页的中间层，而 Andy 坚持&amp;ldquo;The OS is not your friend&amp;rdquo;， 反对使用 mmap 进行页操作，因此实验一的目标便在于通过实现 Buffer Pool Manager 主动管理磁盘中的页（page）在内存中的缓存，从而，最小化磁盘访问次数（时间上）、最大化相关数据连续（空间上）。
-这次实验有三个子任务，分别是
-Task #1: Extendible Hash Table Task #2: LRU-K Replacer Task #3: Buffer Pool Manager Instance 可拓展哈希表是这个是实验中相对独立的模块。这里不会讲它的细节，后面的两个任务中需要用到哈希表的地方我直接用std::unordered_map替代，而且效率还更高。应该是因为 Extendible Hash Table 要求线程安全，为了方便在我在每个函数入口都加了大锁。 想要 Extendible Hash Table 具体细节的可以看这个b站视频。关于它的优化，我想可以进行更细粒度的锁管理甚至写一个无锁(lockfree)的哈希表。
-Buffer Pool Manager 在后两个实验开始之前，我建议先将Task #2和Task #3的实验材料完整的看完在开始写代码。因为 replacer 和 buffer pool manager 有较大程度的耦合。很多API设计需要对照两个组件才能知道自己应该维护的数据与功能的边界。为了更符合直觉，我会先阐述 buffer pool manager 的设计，同时会穿插着 LRU-k 的API什么时候，在哪用。</description>
+      <description>&lt;h1 id=&#34;buffer-pool-manager&#34;&gt;Buffer Pool Manager&lt;/h1&gt;
+&lt;blockquote&gt;
+&lt;p&gt;cmu15445 是一门关于数据库管理系统（DBMS）设计与实现的经典公开课，是很多dba和内核开发人员的入门课程。开课教授Andy Pavlo 非常风趣幽默，他有自己上课的DJ，他曾在浴缸里录课，且时常语出惊人。这门课的实验项目BusTub非常有挑战性，并对所有人开放评测资源。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h2 id=&#34;overview&#34;&gt;Overview&lt;/h2&gt;
+&lt;p&gt;BusTub是一个面向磁盘的 DBMS(Database Management System)。由于磁盘上的数据不支持字节粒度的访问，这就需要一个管理页的中间层，而 Andy 坚持&lt;a href=&#34;https://db.cs.cmu.edu/mmap-cidr2022/&#34;&gt;&amp;ldquo;The OS is not your friend&amp;rdquo;&lt;/a&gt;， 反对使用 mmap 进行页操作，因此实验一的目标便在于通过实现 Buffer Pool Manager 主动管理磁盘中的页（page）在内存中的缓存，从而，最小化磁盘访问次数（时间上）、最大化相关数据连续（空间上）。&lt;/p&gt;
+&lt;p&gt;这次实验有三个子任务，分别是&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Task #1: Extendible Hash Table&lt;/li&gt;
+&lt;li&gt;Task #2: LRU-K Replacer&lt;/li&gt;
+&lt;li&gt;Task #3: Buffer Pool Manager Instance&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;可拓展哈希表是这个是实验中相对独立的模块。这里不会讲它的细节，后面的两个任务中需要用到哈希表的地方我直接用std::unordered_map替代，而且效率还更高。应该是因为 Extendible Hash Table 要求线程安全，为了方便在我在每个函数入口都加了大锁。
+想要 Extendible Hash Table 具体细节的可以看这个&lt;a href=&#34;https://www.bilibili.com/video/BV1nV4y1N7LM/?spm_id_from=333.788&amp;amp;vd_source=11c680307875dda5d5b5c13fca2e5c57&#34;&gt;b站视频&lt;/a&gt;。关于它的优化，我想可以进行更细粒度的锁管理甚至写一个无锁(lockfree)的哈希表。&lt;/p&gt;
+&lt;h2 id=&#34;buffer-pool-manager-1&#34;&gt;Buffer Pool Manager&lt;/h2&gt;
+&lt;p&gt;在后两个实验开始之前，我建议先将Task #2和Task #3的&lt;a href=&#34;https://15445.courses.cs.cmu.edu/fall2022/project1/&#34;&gt;实验材料&lt;/a&gt;完整的看完在开始写代码。因为 &lt;code&gt;replacer&lt;/code&gt; 和 &lt;code&gt;buffer pool manager&lt;/code&gt; 有较大程度的耦合。很多API设计需要对照两个组件才能知道自己应该维护的数据与功能的边界。为了更符合直觉，我会先阐述 &lt;code&gt;buffer pool manager&lt;/code&gt; 的设计，同时会穿插着 &lt;code&gt;LRU-k&lt;/code&gt; 的API什么时候，在哪用。&lt;/p&gt;</description>
       <content:encoded><![CDATA[<h1 id="buffer-pool-manager">Buffer Pool Manager</h1>
 <blockquote>
 <p>cmu15445 是一门关于数据库管理系统（DBMS）设计与实现的经典公开课，是很多dba和内核开发人员的入门课程。开课教授Andy Pavlo 非常风趣幽默，他有自己上课的DJ，他曾在浴缸里录课，且时常语出惊人。这门课的实验项目BusTub非常有挑战性，并对所有人开放评测资源。</p>
@@ -2328,10 +2795,43 @@ Buffer Pool Manager 在后两个实验开始之前，我建议先将Task #2和Ta
       <pubDate>Tue, 20 Dec 2022 17:33:40 +0000</pubDate>
       
       <guid>https://caaatch22.github.io/posts/memo/</guid>
-      <description>vscode 插件：
-C/C++, ~ Extension Pack, Themes, InteliCode CMake Tools, CodeLLDB Vim remote ssh, docker Error Lens, GitLens user的settings.json
-&amp;#34;editor.fontFamily&amp;#34;: &amp;#34;Fira Code&amp;#34;, &amp;#34;workbench.panel.defaultLocation&amp;#34;: &amp;#34;right&amp;#34;, &amp;#34;vim.handleKeys&amp;#34;: { &amp;#34;&amp;lt;C-c&amp;gt;&amp;#34;: false, &amp;#34;&amp;lt;C-f&amp;gt;&amp;#34;: false, &amp;#34;&amp;lt;C-x&amp;gt;&amp;#34;: false, &amp;#34;&amp;lt;C-a&amp;gt;&amp;#34;: false, &amp;#34;&amp;lt;C-p&amp;gt;&amp;#34;: false, }, &amp;#34;C_Cpp.vcFormat.newLine.beforeOpenBrace.block&amp;#34;: &amp;#34;sameLine&amp;#34;, &amp;#34;C_Cpp.vcFormat.newLine.beforeOpenBrace.function&amp;#34;: &amp;#34;sameLine&amp;#34;, &amp;#34;editor.formatOnSave&amp;#34;: true, &amp;#34;C_Cpp.clang_format_fallbackStyle&amp;#34;: &amp;#34;{ BasedOnStyle: LLVM, UseTab: Never, IndentWidth: 2, TabWidth: 2}&amp;#34;, pip, python, pyenv 使用pyenv控制多个python版本
-pyenv versions # 查看所有安装的python脚本 pyenv install 3.8.0 # 安装python 3.8.0 pyenv global 3.8.0 # 将3.</description>
+      <description>&lt;h2 id=&#34;vscode&#34;&gt;vscode&lt;/h2&gt;
+&lt;p&gt;插件：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;C/C++, ~ Extension Pack, Themes, InteliCode&lt;/li&gt;
+&lt;li&gt;CMake Tools, CodeLLDB&lt;/li&gt;
+&lt;li&gt;Vim&lt;/li&gt;
+&lt;li&gt;remote ssh, docker&lt;/li&gt;
+&lt;li&gt;Error Lens, GitLens&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;user的settings.json&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-json&#34; data-lang=&#34;json&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;editor.fontFamily&amp;#34;&lt;/span&gt;&lt;span style=&#34;color:#960050;background-color:#1e0010&#34;&gt;:&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Fira Code&amp;#34;&lt;/span&gt;&lt;span style=&#34;color:#960050;background-color:#1e0010&#34;&gt;,&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;workbench.panel.defaultLocation&amp;#34;&lt;/span&gt;&lt;span style=&#34;color:#960050;background-color:#1e0010&#34;&gt;:&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;right&amp;#34;&lt;/span&gt;&lt;span style=&#34;color:#960050;background-color:#1e0010&#34;&gt;,&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;vim.handleKeys&amp;#34;&lt;/span&gt;&lt;span style=&#34;color:#960050;background-color:#1e0010&#34;&gt;:&lt;/span&gt; {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        &lt;span style=&#34;color:#f92672&#34;&gt;&amp;#34;&amp;lt;C-c&amp;gt;&amp;#34;&lt;/span&gt;: &lt;span style=&#34;color:#66d9ef&#34;&gt;false&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        &lt;span style=&#34;color:#f92672&#34;&gt;&amp;#34;&amp;lt;C-f&amp;gt;&amp;#34;&lt;/span&gt;: &lt;span style=&#34;color:#66d9ef&#34;&gt;false&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        &lt;span style=&#34;color:#f92672&#34;&gt;&amp;#34;&amp;lt;C-x&amp;gt;&amp;#34;&lt;/span&gt;: &lt;span style=&#34;color:#66d9ef&#34;&gt;false&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        &lt;span style=&#34;color:#f92672&#34;&gt;&amp;#34;&amp;lt;C-a&amp;gt;&amp;#34;&lt;/span&gt;: &lt;span style=&#34;color:#66d9ef&#34;&gt;false&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        &lt;span style=&#34;color:#f92672&#34;&gt;&amp;#34;&amp;lt;C-p&amp;gt;&amp;#34;&lt;/span&gt;: &lt;span style=&#34;color:#66d9ef&#34;&gt;false&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    }&lt;span style=&#34;color:#960050;background-color:#1e0010&#34;&gt;,&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;C_Cpp.vcFormat.newLine.beforeOpenBrace.block&amp;#34;&lt;/span&gt;&lt;span style=&#34;color:#960050;background-color:#1e0010&#34;&gt;:&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;sameLine&amp;#34;&lt;/span&gt;&lt;span style=&#34;color:#960050;background-color:#1e0010&#34;&gt;,&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;C_Cpp.vcFormat.newLine.beforeOpenBrace.function&amp;#34;&lt;/span&gt;&lt;span style=&#34;color:#960050;background-color:#1e0010&#34;&gt;:&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;sameLine&amp;#34;&lt;/span&gt;&lt;span style=&#34;color:#960050;background-color:#1e0010&#34;&gt;,&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;editor.formatOnSave&amp;#34;&lt;/span&gt;&lt;span style=&#34;color:#960050;background-color:#1e0010&#34;&gt;:&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;true&lt;/span&gt;&lt;span style=&#34;color:#960050;background-color:#1e0010&#34;&gt;,&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;C_Cpp.clang_format_fallbackStyle&amp;#34;&lt;/span&gt;&lt;span style=&#34;color:#960050;background-color:#1e0010&#34;&gt;:&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;{ BasedOnStyle: LLVM, UseTab: Never, IndentWidth: 2, TabWidth: 2}&amp;#34;&lt;/span&gt;&lt;span style=&#34;color:#960050;background-color:#1e0010&#34;&gt;,&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h2 id=&#34;pip-python-pyenv&#34;&gt;pip, python, pyenv&lt;/h2&gt;
+&lt;p&gt;使用&lt;code&gt;pyenv&lt;/code&gt;控制多个python版本&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-shell&#34; data-lang=&#34;shell&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;pyenv versions &lt;span style=&#34;color:#75715e&#34;&gt;# 查看所有安装的python脚本&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;pyenv install 3.8.0 &lt;span style=&#34;color:#75715e&#34;&gt;# 安装python 3.8.0&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;pyenv global 3.8.0 &lt;span style=&#34;color:#75715e&#34;&gt;# 将3.8.0设置为全局python，对应pip也会改变&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;删除&lt;code&gt;__pycache__&lt;/code&gt;&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-bash&#34; data-lang=&#34;bash&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;find . -name &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;*.pyc&amp;#34;&lt;/span&gt; -type f -print -exec rm -rf &lt;span style=&#34;color:#f92672&#34;&gt;{}&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;\;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h2 id=&#34;about-clash&#34;&gt;about clash&lt;/h2&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-bash&#34; data-lang=&#34;bash&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# start.sh&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;nohup ./clash -d . &amp;gt;/dev/null 2&amp;gt;&amp;amp;&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt; &amp;amp;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-bash&#34; data-lang=&#34;bash&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;#shutdown.sh&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;ps -A | grep clash | awk &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;{print $1}&amp;#39;&lt;/span&gt; | xargs kill
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;暂时设置7890做全局代理&lt;/p&gt;</description>
       <content:encoded><![CDATA[<h2 id="vscode">vscode</h2>
 <p>插件：</p>
 <ul>
@@ -2407,9 +2907,19 @@ pyenv versions # 查看所有安装的python脚本 pyenv install 3.8.0 # 安装p
       <pubDate>Mon, 09 May 2022 22:35:22 +0000</pubDate>
       
       <guid>https://caaatch22.github.io/posts/cs144-note1/</guid>
-      <description>Computer Network introduction dominant model : bidirectional, reliable byte stream connection
-http: hypertext transfer protocol : designed to be a document centric way for programs to communicate. Client &amp;mdash;&amp;gt; Server model
-Bit-Torrent: (peer-to-peer model) a client requests document from other clients, a single client can request from many others. these collections of collaborating clients are called swarms when a client wants to downloads a file, it first find torrent, usually using www and download using http.</description>
+      <description>&lt;h1 id=&#34;computer-network&#34;&gt;Computer Network&lt;/h1&gt;
+&lt;h2 id=&#34;introduction&#34;&gt;introduction&lt;/h2&gt;
+&lt;p&gt;dominant model : bidirectional, reliable byte stream connection&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;http&lt;/strong&gt;: hypertext transfer protocol : designed to be a document centric way for programs to communicate.
+Client  &amp;mdash;&amp;gt;  Server  model&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;Bit-Torrent&lt;/strong&gt;: (peer-to-peer model) a client requests document from other clients, a single client can request from many others.
+these collections of collaborating clients are called &lt;strong&gt;swarms&lt;/strong&gt;
+when a client wants to downloads a file, it first find &lt;code&gt;torrent&lt;/code&gt;, usually using www and download using http.
+&lt;strong&gt;torrent&lt;/strong&gt; file describes information about data file, also tells bit-torrent about the &lt;strong&gt;tracker&lt;/strong&gt; (a node keeps track names of clients of the swarm)&lt;/p&gt;</description>
       <content:encoded><![CDATA[<h1 id="computer-network">Computer Network</h1>
 <h2 id="introduction">introduction</h2>
 <p>dominant model : bidirectional, reliable byte stream connection</p>
@@ -2466,30 +2976,30 @@ a packet is a self-contained unit consisting of the data we want to be delivered
 <!-- raw HTML omitted -->
 <h2 id="ip-service-model">IP Service model</h2>
 <table>
-<thead>
-<tr>
-<th>Property</th>
-<th>behavior</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Datagram</td>
-<td>Individually routed packets.</td>
-</tr>
-<tr>
-<td>Unreliable</td>
-<td>packet might be dropped</td>
-</tr>
-<tr>
-<td>Best effort</td>
-<td>only if necessary</td>
-</tr>
-<tr>
-<td>Connectionless</td>
-<td>No per-flow state.</td>
-</tr>
-</tbody>
+  <thead>
+      <tr>
+          <th>Property</th>
+          <th>behavior</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>Datagram</td>
+          <td>Individually routed packets.</td>
+      </tr>
+      <tr>
+          <td>Unreliable</td>
+          <td>packet might be dropped</td>
+      </tr>
+      <tr>
+          <td>Best effort</td>
+          <td>only if necessary</td>
+      </tr>
+      <tr>
+          <td>Connectionless</td>
+          <td>No per-flow state.</td>
+      </tr>
+  </tbody>
 </table>
 <p><strong>IP is &ldquo;simple&rdquo;</strong></p>
 <ul>
@@ -2541,8 +3051,258 @@ TCP port: tells which applications to deliver data to.</p>
       <pubDate>Thu, 17 Mar 2022 23:38:14 +0000</pubDate>
       
       <guid>https://caaatch22.github.io/posts/xcpc-template/</guid>
-      <description>icpc模板 Previous Next &amp;nbsp; &amp;nbsp; / [pdf] View the PDF file here. algorithm-template Competitive Programming template
-basic algorithm 双指针 离散化，去重 前缀和与差分 二分 单调栈 单调队列 尺取法 归并排序，快速排序，第k小 树的中心 拓扑排序 math 素数，筛素数，素性测试， 反素数 质因数分解，预处理质因数 欧拉函数 组合数 拓展欧几里得，线性同余方程 中国剩余定理 容斥原理 高斯消元，高斯异或 矩阵乘法 博弈论，Nim游戏 莫比乌斯反演 BSGS FFT 生成函数 线性基 date strcture 并查集 Sparse table Trie, 01Trie 树状数组 线段树，扫描线 树链剖分 可持久化线段树，kth number, 主席树 splay 分块 莫队 点分治 kdtree Graph Floyd bellman-ford, spfa，判负环 dijkstra， 拆点 分层图最短路 差分约束 最小生成树 prim, kruskal 瓶颈生成树 kruskal重构树 lca 二分图匹配 欧拉回路欧拉路径 强连通分量 2-sat 网络流相关 string 字符串hash KMP， 前缀函数 Z-algorithm ac自动机 SA SAM dp 01pack, 完全背包，多重背包及优化，分组背包 线性dp, LCS, LIS, 编辑距离 区间dp 字符串压缩 数位dp 状压dp 树形dp 基环树dp 单调队列优化dp 斜率优化dp Geometry 常用模板 二维凸包 github地址 https://github.</description>
+      <description>&lt;h2 id=&#34;icpc模板&#34;&gt;icpc模板&lt;/h2&gt;
+&lt;script src= &#39;/js/pdf-js/build/pdf.js&#39;&gt;&lt;/script&gt;
+
+&lt;style&gt;
+  #embed-pdf-container {
+    position: relative;
+    width: 100%;
+    height: auto;
+    min-height: 20vh;
+     
+  }
+  
+  .pdf-canvas {
+    border: 1px solid black;
+    direction: ltr;
+    width: 100%;
+    height: auto;
+    display: none;
+  }
+  
+  #the-canvas {
+    border: 1px solid black;
+    direction: ltr;
+    width: 100%;
+    height: auto;
+    display: none;
+  }
+  
+  
+  .pdf-loadingWrapper {
+    display: none;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 350px;
+  }
+  
+  .pdf-loading {
+    display: inline-block;
+    width: 50px;
+    height: 50px;
+    border: 3px solid #d2d0d0;;
+    border-radius: 50%;
+    border-top-color: #383838;
+    animation: spin 1s ease-in-out infinite;
+    -webkit-animation: spin 1s ease-in-out infinite;
+  }
+  
+  
+  
+  
+  
+  #overlayText {
+    word-wrap: break-word;
+    display: grid;
+    justify-content: end;
+  }
+  
+  #overlayText a {
+    position: relative;
+    top: 10px;
+    right: 4px;
+    color: #000;
+    margin: auto;
+    background-color: #eeeeee;
+    padding: 0.3em 1em;
+    border: solid 2px;
+    border-radius: 12px;
+    border-color: #00000030;
+    text-decoration: none;
+  }
+  
+  #overlayText svg {
+    height: clamp(1em, 2vw, 1.4em);
+    width:  clamp(1em, 2vw, 1.4em);
+  }
+  
+  
+  
+  @keyframes spin {
+    to { -webkit-transform: rotate(360deg); }
+  }
+  @-webkit-keyframes spin {
+    to { -webkit-transform: rotate(360deg); }
+  }
+  &lt;/style&gt;&lt;div class=&#34;embed-pdf-container&#34; id=&#34;embed-pdf-container-e21a8caf&#34;&gt;
+    &lt;div class=&#34;pdf-loadingWrapper&#34; id=&#34;pdf-loadingWrapper-e21a8caf&#34;&gt;
+        &lt;div class=&#34;pdf-loading&#34; id=&#34;pdf-loading-e21a8caf&#34;&gt;&lt;/div&gt;
+    &lt;/div&gt;
+    &lt;div id=&#34;overlayText&#34;&gt;
+      &lt;a href=&#34;https://caaatch22.github.io/catch22-algorithm-template.pdf&#34; aria-label=&#34;Download&#34; download&gt;
+        &lt;svg aria-hidden=&#34;true&#34; xmlns=&#34;http://www.w3.org/2000/svg&#34; viewBox=&#34;0 0 18 18&#34;&gt;
+            &lt;path d=&#34;M9 13c.3 0 .5-.1.7-.3L15.4 7 14 5.6l-4 4V1H8v8.6l-4-4L2.6 7l5.7 5.7c.2.2.4.3.7.3zm-7 2h14v2H2z&#34; /&gt;
+        &lt;/svg&gt;
+      &lt;/a&gt;
+    &lt;/div&gt;
+    &lt;canvas class=&#34;pdf-canvas&#34; id=&#34;pdf-canvas-e21a8caf&#34;&gt;&lt;/canvas&gt;
+&lt;/div&gt;
+
+&lt;div class=&#34;pdf-paginator&#34; id=&#34;pdf-paginator-e21a8caf&#34;&gt;
+    &lt;button id=&#34;pdf-prev-e21a8caf&#34;&gt;Previous&lt;/button&gt;
+    &lt;button id=&#34;pdf-next-e21a8caf&#34;&gt;Next&lt;/button&gt; &amp;nbsp; &amp;nbsp;
+    &lt;span&gt;
+      &lt;span class=&#34;pdf-pagenum&#34; id=&#34;pdf-pagenum-e21a8caf&#34;&gt;&lt;/span&gt; / &lt;span class=&#34;pdf-pagecount&#34; id=&#34;pdf-pagecount-e21a8caf&#34;&gt;&lt;/span&gt;
+    &lt;/span&gt;
+    &lt;a class=&#34;pdf-source&#34; id=&#34;pdf-source-e21a8caf&#34; href=&#34;https://caaatch22.github.io/catch22-algorithm-template.pdf&#34;&gt;[pdf]&lt;/a&gt;
+&lt;/div&gt;
+
+&lt;noscript&gt;
+View the PDF file &lt;a class=&#34;pdf-source&#34; id=&#34;pdf-source-noscript-e21a8caf&#34; href=&#34;https://caaatch22.github.io/catch22-algorithm-template.pdf&#34;&gt;here&lt;/a&gt;.
+&lt;/noscript&gt;
+
+&lt;script type=&#34;text/javascript&#34;&gt;
+    (function(){
+    var url = &#39;\/catch22-algorithm-template.pdf&#39;;
+
+    var hidePaginator = &#34;&#34; === &#34;true&#34;;
+    var hideLoader = &#34;&#34; === &#34;true&#34;;
+    var selectedPageNum = parseInt(&#34;&#34;) || 1;
+
+    
+    var pdfjsLib = window[&#39;pdfjs-dist/build/pdf&#39;];
+
+    
+    if (pdfjsLib.GlobalWorkerOptions.workerSrc == &#39;&#39;)
+      pdfjsLib.GlobalWorkerOptions.workerSrc = &#34;https:\/\/caaatch22.github.io\/&#34; + &#39;js/pdf-js/build/pdf.worker.js&#39;;
+
+    
+    var pdfDoc = null,
+        pageNum = selectedPageNum,
+        pageRendering = false,
+        pageNumPending = null,
+        scale = 3,
+        canvas = document.getElementById(&#39;pdf-canvas-e21a8caf&#39;),
+        ctx = canvas.getContext(&#39;2d&#39;),
+        paginator = document.getElementById(&#34;pdf-paginator-e21a8caf&#34;),
+        loadingWrapper = document.getElementById(&#39;pdf-loadingWrapper-e21a8caf&#39;);
+
+
+    
+    showPaginator();
+    showLoader();
+
+    
+
+    function renderPage(num) {
+      pageRendering = true;
+      
+      pdfDoc.getPage(num).then(function(page) {
+        var viewport = page.getViewport({scale: scale});
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+
+        
+        var renderContext = {
+          canvasContext: ctx,
+          viewport: viewport
+        };
+        var renderTask = page.render(renderContext);
+
+        
+        renderTask.promise.then(function() {
+          pageRendering = false;
+          showContent();
+
+          if (pageNumPending !== null) {
+            
+            renderPage(pageNumPending);
+            pageNumPending = null;
+          }
+        });
+      });
+
+      
+      document.getElementById(&#39;pdf-pagenum-e21a8caf&#39;).textContent = num;
+    }
+
+    
+
+    function showContent() {
+      loadingWrapper.style.display = &#39;none&#39;;
+      canvas.style.display = &#39;block&#39;;
+    }
+
+    
+
+    function showLoader() {
+      if(hideLoader) return
+      loadingWrapper.style.display = &#39;flex&#39;;
+      canvas.style.display = &#39;none&#39;;
+    }
+
+    
+
+    function showPaginator() {
+      if(hidePaginator) return
+      paginator.style.display = &#39;block&#39;;
+    }
+
+    
+
+    function queueRenderPage(num) {
+      if (pageRendering) {
+        pageNumPending = num;
+      } else {
+        renderPage(num);
+      }
+    }
+
+    
+
+    function onPrevPage() {
+      if (pageNum &lt;= 1) {
+        return;
+      }
+      pageNum--;
+      queueRenderPage(pageNum);
+    }
+    document.getElementById(&#39;pdf-prev-e21a8caf&#39;).addEventListener(&#39;click&#39;, onPrevPage);
+
+    
+
+    function onNextPage() {
+      if (pageNum &gt;= pdfDoc.numPages) {
+        return;
+      }
+      pageNum++;
+      queueRenderPage(pageNum);
+    }
+    document.getElementById(&#39;pdf-next-e21a8caf&#39;).addEventListener(&#39;click&#39;, onNextPage);
+
+    
+
+    pdfjsLib.getDocument(url).promise.then(function(pdfDoc_) {
+      pdfDoc = pdfDoc_;
+      var numPages = pdfDoc.numPages;
+      document.getElementById(&#39;pdf-pagecount-e21a8caf&#39;).textContent = numPages;
+
+      
+      if(pageNum &gt; numPages) {
+        pageNum = numPages
+      }
+
+      
+      renderPage(pageNum);
+    });
+    })();
+&lt;/script&gt;
+
+&lt;h1 id=&#34;algorithm-template&#34;&gt;algorithm-template&lt;/h1&gt;
+&lt;blockquote&gt;
+&lt;p&gt;Competitive Programming template&lt;/p&gt;</description>
       <content:encoded><![CDATA[<h2 id="icpc模板">icpc模板</h2>
 <script src= '/js/pdf-js/build/pdf.js'></script>
 
@@ -2668,7 +3428,7 @@ View the PDF file <a class="pdf-source" id="pdf-source-noscript-e21a8caf" href="
 
     
     if (pdfjsLib.GlobalWorkerOptions.workerSrc == '')
-      pdfjsLib.GlobalWorkerOptions.workerSrc = "https:\/\/caaatch22.github.io" + 'js/pdf-js/build/pdf.worker.js';
+      pdfjsLib.GlobalWorkerOptions.workerSrc = "https:\/\/caaatch22.github.io\/" + 'js/pdf-js/build/pdf.worker.js';
 
     
     var pdfDoc = null,
@@ -2897,6 +3657,46 @@ View the PDF file <a class="pdf-source" id="pdf-source-noscript-e21a8caf" href="
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
       <guid>https://caaatch22.github.io/posts/mlc/</guid>
+      <description></description>
+      <content:encoded><![CDATA[]]></content:encoded>
+    </item>
+    
+    <item>
+      <title></title>
+      <link>https://caaatch22.github.io/posts/transformers-0-attention-is-all-you-need/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://caaatch22.github.io/posts/transformers-0-attention-is-all-you-need/</guid>
+      <description></description>
+      <content:encoded><![CDATA[]]></content:encoded>
+    </item>
+    
+    <item>
+      <title></title>
+      <link>https://caaatch22.github.io/posts/transformers-2-finetuning/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://caaatch22.github.io/posts/transformers-2-finetuning/</guid>
+      <description></description>
+      <content:encoded><![CDATA[]]></content:encoded>
+    </item>
+    
+    <item>
+      <title></title>
+      <link>https://caaatch22.github.io/posts/transformers-3-flashattention/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://caaatch22.github.io/posts/transformers-3-flashattention/</guid>
+      <description></description>
+      <content:encoded><![CDATA[]]></content:encoded>
+    </item>
+    
+    <item>
+      <title></title>
+      <link>https://caaatch22.github.io/posts/transformers-4-vllm/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://caaatch22.github.io/posts/transformers-4-vllm/</guid>
       <description></description>
       <content:encoded><![CDATA[]]></content:encoded>
     </item>

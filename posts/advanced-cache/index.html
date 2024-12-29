@@ -7,19 +7,45 @@
 <meta name="robots" content="index, follow">
 <title>Computer Architecture —— 高级缓存技术 | Mingjie&#39;s Home</title>
 <meta name="keywords" content="ComputerArchitecture">
-<meta name="description" content="本文不会介绍cache的组织形式等基本内容，但也算不上什么&quot;Advanced&quot;。主要包含一些从硬件层面优化cache的手段。
-优化cache的几种方法 pipeline caches 上图为教科书上经常出现的cache形式(2-way associative为例)，它很精炼的解释了cache的实现。但也稍微引入了些“误导”：
-图中v、tag和data部分画在连续的一行上，仿佛硬件上他们就是同一块 SRAM 的不同bit 图中识别tag与data是并行完成的，这很好，某种意义上能降低时延；但我们经常遗忘一个事实，只有读cache的时候我们才能这么操作（或者说在写cache时，读取data block是没有意义的） 对于第一点，在实际的实现当中，tag和data部分都是分开放置的，tag一般是由一种叫CAM(Context-Addressable Memory)的材料构成。当然，这与pi不pipeline没什么关系；
+<meta name="description" content="
+本文不会介绍cache的组织形式等基本内容，但也算不上什么&quot;Advanced&quot;。主要包含一些从硬件层面优化cache的手段。
+
+优化cache的几种方法
+pipeline caches
+
+
+上图为教科书上经常出现的cache形式(2-way associative为例)，它很精炼的解释了cache的实现。但也稍微引入了些“误导”：
+
+图中v、tag和data部分画在连续的一行上，仿佛硬件上他们就是同一块 SRAM 的不同bit
+图中识别tag与data是并行完成的，这很好，某种意义上能降低时延；但我们经常遗忘一个事实，只有读cache的时候我们才能这么操作（或者说在写cache时，读取data block是没有意义的）
+
+对于第一点，在实际的实现当中，tag和data部分都是分开放置的，tag一般是由一种叫CAM(Context-Addressable Memory)的材料构成。当然，这与pi不pipeline没什么关系；
 读cache主要就两个部分：比较tag，获取data；我们暂且不考虑以pipeline的方式优化，那么serial的先比较tag再读data一定不如parallel的方式进行吗？当我们并行的读取tag和data的时候，我们会发现，读出来的data有可能没用（没有匹配的tag）；并且，在n-way set associate cache中，我们会浪费的读出$n-1$个data项；这给我们什么启示呢？如果我们串行的读cache，那么我们可以在比较tag阶段就知道我们想要的数据在不在cache当中；更有意义的是，根据tag比较的结果，我们就知道哪一路的数据是需要被访问的（提前知道了在n-way中的哪一way），那么我们访问data block时，就无需多路选择器，直接访问指定的way，将其他way的data访问的使能信号置为无效，这种做法的优点在于有效减小功耗。
-serial的做法肯定比parallel的延时要大，若这时访问cache处于处理器的critical path(关键路径)上，我们可以再将其进行流水线化。 我们现在再来看看写cache时的情况：
+serial的做法肯定比parallel的延时要大，若这时访问cache处于处理器的critical path(关键路径)上，我们可以再将其进行流水线化。
+
+
+我们现在再来看看写cache时的情况：
 写cache时，只有通过tag比较，确认要写的地址在cache中后，才可以写data SRAM，在主频较高的处理器中，这些操作很难在一个周期内完成，这也要求我们将其流水线化。下图为对cache进行写操作使用的流水线示意图：
+
+
 在上图的实现方式中，store第一个周期读取Tag并进行比较，根据比较的结果，在第二个周期选择是否将数据写到Data SRAM中。还需要注意的是，当执行load指令时，它想要的数据可能正好在store指令的流水线寄存器中（RAW的情况；上图中的DelayedStoreData寄存器），而不是来自于Data SRAM。因此需要一种机制检测这种情况，这需要将load指令所携带的地址和store指令的流水线寄存器(即DelayedStoreAddr寄存器)进行比较，如果相等，那么就将store指令的数据作为load指令的结果。
 由此可以看出，对写D-Cache使用流水线之后，不仅增加了流水线本身的硬件，也带来了其他一些额外的硬件开销。其实。不仅在Cache中有这种现象，在处理器的其他部分增加流水线的级数，也会伴随着其他方面的硬件需求,因此过深的流水线带来的硬件复杂度是非常高的，就像Intel的Pentium 4处理器，并不会从过深的流水线中得到预想的好处。当然，cache的流水线化已经是一种广泛使用的用于降低latency的方法了。
-write buffers 我愿称之为buffer of buffer，本来cache就起buffer的作用了，但我们再加一个buffer，如下图所示： 这和多一级的cache有什么不同呢？这是一个专门为写操作设计的buffer（注意：load也可能造成写操作）。原因在于我们知道写通常比读更慢，特别对于write-through来说；其次，当上层cache满后，需要先将dirty cache line写回下层cache，再读取下层cache中的数据。若下层cache只有一个读写端口，那么这种串行的过程导致D-Cache发生缺失的处理时间变得很长，此时就可以采用write buffer来解决这个问题。脏状态的cache-line会首先放到写级存中，等到下级存储器有空闲的时候，才会将写缓存中的数据写到下级存储器中。
-对于write buffer，我们还可以对其进行 合并(merging) 操作。所谓merging，指的是将在同一个cache-line上的数据一并写入下层cache中，而非多次写入同一个cache-line。 上图中的右侧表示了一个采用了merging write buffer策略的写缓冲区。
-critial word first and early restart 先来看一下cache miss时的cpu： 图中展示了一个blocking cache在cache miss时，cpu stall，而后cache将需要取得的cache-line放入后，cpu resume的timeline。我们可以发现，若我们只需要cache-line中的第3个word，cpu完全可以提早resume。如下图所示： 这就是early restart，而critial word first指的是，是在此基础上，在取cache-block时，不按照0~7 word的顺序而是按照3,4,5,6,7,0,1,2的顺序获取，配合early restart以减小miss penalty。
-当然，这种优化手段一般在cache-block size越大的时候效果越好。
-non-blocking caches 本节主要参考了超标量处理器设计9.6.2">
+write buffers
+我愿称之为buffer of buffer，本来cache就起buffer的作用了，但我们再加一个buffer，如下图所示：
+
+
+这和多一级的cache有什么不同呢？这是一个专门为写操作设计的buffer（注意：load也可能造成写操作）。原因在于我们知道写通常比读更慢，特别对于write-through来说；其次，当上层cache满后，需要先将dirty cache line写回下层cache，再读取下层cache中的数据。若下层cache只有一个读写端口，那么这种串行的过程导致D-Cache发生缺失的处理时间变得很长，此时就可以采用write buffer来解决这个问题。脏状态的cache-line会首先放到写级存中，等到下级存储器有空闲的时候，才会将写缓存中的数据写到下级存储器中。
+对于write buffer，我们还可以对其进行 合并(merging) 操作。所谓merging，指的是将在同一个cache-line上的数据一并写入下层cache中，而非多次写入同一个cache-line。
+
+
+上图中的右侧表示了一个采用了merging write buffer策略的写缓冲区。
+critial word first and early restart
+先来看一下cache miss时的cpu：
+
+
+图中展示了一个blocking cache在cache miss时，cpu stall，而后cache将需要取得的cache-line放入后，cpu resume的timeline。我们可以发现，若我们只需要cache-line中的第3个word，cpu完全可以提早resume。如下图所示：
+
+">
 <meta name="author" content="">
 <link rel="canonical" href="https://caaatch22.github.io/posts/advanced-cache/">
 <link crossorigin="anonymous" href="/assets/css/stylesheet.678b5c47efa744d2e0dd0d61101075e6aecdc9a0631e7ad8538f4ec0cca79273.css" integrity="sha256-Z4tcR&#43;&#43;nRNLg3Q1hEBB15q7NyaBjHnrYU49OwMynknM=" rel="preload stylesheet" as="style">
@@ -32,6 +58,7 @@ non-blocking caches 本节主要参考了超标量处理器设计9.6.2">
 <link rel="mask-icon" href="https://caaatch22.github.io/safari-pinned-tab.svg">
 <meta name="theme-color" content="#2e2e33">
 <meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://caaatch22.github.io/posts/advanced-cache/">
 <noscript>
     <style>
         #theme-toggle,
@@ -90,30 +117,59 @@ non-blocking caches 本节主要参考了超标量处理器设计9.6.2">
 </script>
 
 
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-WEG841BBW9"></script>
-<script>
-var doNotTrack = false;
-if (!doNotTrack) {
-	window.dataLayer = window.dataLayer || [];
-	function gtag(){dataLayer.push(arguments);}
-	gtag('js', new Date());
-	gtag('config', 'G-WEG841BBW9', { 'anonymize_ip': false });
-}
-</script>
-<meta property="og:title" content="Computer Architecture —— 高级缓存技术" />
-<meta property="og:description" content="本文不会介绍cache的组织形式等基本内容，但也算不上什么&quot;Advanced&quot;。主要包含一些从硬件层面优化cache的手段。
-优化cache的几种方法 pipeline caches 上图为教科书上经常出现的cache形式(2-way associative为例)，它很精炼的解释了cache的实现。但也稍微引入了些“误导”：
-图中v、tag和data部分画在连续的一行上，仿佛硬件上他们就是同一块 SRAM 的不同bit 图中识别tag与data是并行完成的，这很好，某种意义上能降低时延；但我们经常遗忘一个事实，只有读cache的时候我们才能这么操作（或者说在写cache时，读取data block是没有意义的） 对于第一点，在实际的实现当中，tag和data部分都是分开放置的，tag一般是由一种叫CAM(Context-Addressable Memory)的材料构成。当然，这与pi不pipeline没什么关系；
+      <script async src="https://www.googletagmanager.com/gtag/js?id=G-WEG841BBW9"></script>
+      <script>
+        var doNotTrack = false;
+        if ( false ) {
+          var dnt = (navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack);
+          var doNotTrack = (dnt == "1" || dnt == "yes");
+        }
+        if (!doNotTrack) {
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-WEG841BBW9');
+        }
+      </script><meta property="og:title" content="Computer Architecture —— 高级缓存技术" />
+<meta property="og:description" content="
+本文不会介绍cache的组织形式等基本内容，但也算不上什么&quot;Advanced&quot;。主要包含一些从硬件层面优化cache的手段。
+
+优化cache的几种方法
+pipeline caches
+
+
+上图为教科书上经常出现的cache形式(2-way associative为例)，它很精炼的解释了cache的实现。但也稍微引入了些“误导”：
+
+图中v、tag和data部分画在连续的一行上，仿佛硬件上他们就是同一块 SRAM 的不同bit
+图中识别tag与data是并行完成的，这很好，某种意义上能降低时延；但我们经常遗忘一个事实，只有读cache的时候我们才能这么操作（或者说在写cache时，读取data block是没有意义的）
+
+对于第一点，在实际的实现当中，tag和data部分都是分开放置的，tag一般是由一种叫CAM(Context-Addressable Memory)的材料构成。当然，这与pi不pipeline没什么关系；
 读cache主要就两个部分：比较tag，获取data；我们暂且不考虑以pipeline的方式优化，那么serial的先比较tag再读data一定不如parallel的方式进行吗？当我们并行的读取tag和data的时候，我们会发现，读出来的data有可能没用（没有匹配的tag）；并且，在n-way set associate cache中，我们会浪费的读出$n-1$个data项；这给我们什么启示呢？如果我们串行的读cache，那么我们可以在比较tag阶段就知道我们想要的数据在不在cache当中；更有意义的是，根据tag比较的结果，我们就知道哪一路的数据是需要被访问的（提前知道了在n-way中的哪一way），那么我们访问data block时，就无需多路选择器，直接访问指定的way，将其他way的data访问的使能信号置为无效，这种做法的优点在于有效减小功耗。
-serial的做法肯定比parallel的延时要大，若这时访问cache处于处理器的critical path(关键路径)上，我们可以再将其进行流水线化。 我们现在再来看看写cache时的情况：
+serial的做法肯定比parallel的延时要大，若这时访问cache处于处理器的critical path(关键路径)上，我们可以再将其进行流水线化。
+
+
+我们现在再来看看写cache时的情况：
 写cache时，只有通过tag比较，确认要写的地址在cache中后，才可以写data SRAM，在主频较高的处理器中，这些操作很难在一个周期内完成，这也要求我们将其流水线化。下图为对cache进行写操作使用的流水线示意图：
+
+
 在上图的实现方式中，store第一个周期读取Tag并进行比较，根据比较的结果，在第二个周期选择是否将数据写到Data SRAM中。还需要注意的是，当执行load指令时，它想要的数据可能正好在store指令的流水线寄存器中（RAW的情况；上图中的DelayedStoreData寄存器），而不是来自于Data SRAM。因此需要一种机制检测这种情况，这需要将load指令所携带的地址和store指令的流水线寄存器(即DelayedStoreAddr寄存器)进行比较，如果相等，那么就将store指令的数据作为load指令的结果。
 由此可以看出，对写D-Cache使用流水线之后，不仅增加了流水线本身的硬件，也带来了其他一些额外的硬件开销。其实。不仅在Cache中有这种现象，在处理器的其他部分增加流水线的级数，也会伴随着其他方面的硬件需求,因此过深的流水线带来的硬件复杂度是非常高的，就像Intel的Pentium 4处理器，并不会从过深的流水线中得到预想的好处。当然，cache的流水线化已经是一种广泛使用的用于降低latency的方法了。
-write buffers 我愿称之为buffer of buffer，本来cache就起buffer的作用了，但我们再加一个buffer，如下图所示： 这和多一级的cache有什么不同呢？这是一个专门为写操作设计的buffer（注意：load也可能造成写操作）。原因在于我们知道写通常比读更慢，特别对于write-through来说；其次，当上层cache满后，需要先将dirty cache line写回下层cache，再读取下层cache中的数据。若下层cache只有一个读写端口，那么这种串行的过程导致D-Cache发生缺失的处理时间变得很长，此时就可以采用write buffer来解决这个问题。脏状态的cache-line会首先放到写级存中，等到下级存储器有空闲的时候，才会将写缓存中的数据写到下级存储器中。
-对于write buffer，我们还可以对其进行 合并(merging) 操作。所谓merging，指的是将在同一个cache-line上的数据一并写入下层cache中，而非多次写入同一个cache-line。 上图中的右侧表示了一个采用了merging write buffer策略的写缓冲区。
-critial word first and early restart 先来看一下cache miss时的cpu： 图中展示了一个blocking cache在cache miss时，cpu stall，而后cache将需要取得的cache-line放入后，cpu resume的timeline。我们可以发现，若我们只需要cache-line中的第3个word，cpu完全可以提早resume。如下图所示： 这就是early restart，而critial word first指的是，是在此基础上，在取cache-block时，不按照0~7 word的顺序而是按照3,4,5,6,7,0,1,2的顺序获取，配合early restart以减小miss penalty。
-当然，这种优化手段一般在cache-block size越大的时候效果越好。
-non-blocking caches 本节主要参考了超标量处理器设计9.6.2" />
+write buffers
+我愿称之为buffer of buffer，本来cache就起buffer的作用了，但我们再加一个buffer，如下图所示：
+
+
+这和多一级的cache有什么不同呢？这是一个专门为写操作设计的buffer（注意：load也可能造成写操作）。原因在于我们知道写通常比读更慢，特别对于write-through来说；其次，当上层cache满后，需要先将dirty cache line写回下层cache，再读取下层cache中的数据。若下层cache只有一个读写端口，那么这种串行的过程导致D-Cache发生缺失的处理时间变得很长，此时就可以采用write buffer来解决这个问题。脏状态的cache-line会首先放到写级存中，等到下级存储器有空闲的时候，才会将写缓存中的数据写到下级存储器中。
+对于write buffer，我们还可以对其进行 合并(merging) 操作。所谓merging，指的是将在同一个cache-line上的数据一并写入下层cache中，而非多次写入同一个cache-line。
+
+
+上图中的右侧表示了一个采用了merging write buffer策略的写缓冲区。
+critial word first and early restart
+先来看一下cache miss时的cpu：
+
+
+图中展示了一个blocking cache在cache miss时，cpu stall，而后cache将需要取得的cache-line放入后，cpu resume的timeline。我们可以发现，若我们只需要cache-line中的第3个word，cpu完全可以提早resume。如下图所示：
+
+" />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://caaatch22.github.io/posts/advanced-cache/" /><meta property="article:section" content="posts" />
 <meta property="article:published_time" content="2023-08-23T23:38:14+00:00" />
@@ -121,35 +177,61 @@ non-blocking caches 本节主要参考了超标量处理器设计9.6.2" />
 
 <meta name="twitter:card" content="summary"/>
 <meta name="twitter:title" content="Computer Architecture —— 高级缓存技术"/>
-<meta name="twitter:description" content="本文不会介绍cache的组织形式等基本内容，但也算不上什么&quot;Advanced&quot;。主要包含一些从硬件层面优化cache的手段。
-优化cache的几种方法 pipeline caches 上图为教科书上经常出现的cache形式(2-way associative为例)，它很精炼的解释了cache的实现。但也稍微引入了些“误导”：
-图中v、tag和data部分画在连续的一行上，仿佛硬件上他们就是同一块 SRAM 的不同bit 图中识别tag与data是并行完成的，这很好，某种意义上能降低时延；但我们经常遗忘一个事实，只有读cache的时候我们才能这么操作（或者说在写cache时，读取data block是没有意义的） 对于第一点，在实际的实现当中，tag和data部分都是分开放置的，tag一般是由一种叫CAM(Context-Addressable Memory)的材料构成。当然，这与pi不pipeline没什么关系；
+<meta name="twitter:description" content="
+本文不会介绍cache的组织形式等基本内容，但也算不上什么&quot;Advanced&quot;。主要包含一些从硬件层面优化cache的手段。
+
+优化cache的几种方法
+pipeline caches
+
+
+上图为教科书上经常出现的cache形式(2-way associative为例)，它很精炼的解释了cache的实现。但也稍微引入了些“误导”：
+
+图中v、tag和data部分画在连续的一行上，仿佛硬件上他们就是同一块 SRAM 的不同bit
+图中识别tag与data是并行完成的，这很好，某种意义上能降低时延；但我们经常遗忘一个事实，只有读cache的时候我们才能这么操作（或者说在写cache时，读取data block是没有意义的）
+
+对于第一点，在实际的实现当中，tag和data部分都是分开放置的，tag一般是由一种叫CAM(Context-Addressable Memory)的材料构成。当然，这与pi不pipeline没什么关系；
 读cache主要就两个部分：比较tag，获取data；我们暂且不考虑以pipeline的方式优化，那么serial的先比较tag再读data一定不如parallel的方式进行吗？当我们并行的读取tag和data的时候，我们会发现，读出来的data有可能没用（没有匹配的tag）；并且，在n-way set associate cache中，我们会浪费的读出$n-1$个data项；这给我们什么启示呢？如果我们串行的读cache，那么我们可以在比较tag阶段就知道我们想要的数据在不在cache当中；更有意义的是，根据tag比较的结果，我们就知道哪一路的数据是需要被访问的（提前知道了在n-way中的哪一way），那么我们访问data block时，就无需多路选择器，直接访问指定的way，将其他way的data访问的使能信号置为无效，这种做法的优点在于有效减小功耗。
-serial的做法肯定比parallel的延时要大，若这时访问cache处于处理器的critical path(关键路径)上，我们可以再将其进行流水线化。 我们现在再来看看写cache时的情况：
+serial的做法肯定比parallel的延时要大，若这时访问cache处于处理器的critical path(关键路径)上，我们可以再将其进行流水线化。
+
+
+我们现在再来看看写cache时的情况：
 写cache时，只有通过tag比较，确认要写的地址在cache中后，才可以写data SRAM，在主频较高的处理器中，这些操作很难在一个周期内完成，这也要求我们将其流水线化。下图为对cache进行写操作使用的流水线示意图：
+
+
 在上图的实现方式中，store第一个周期读取Tag并进行比较，根据比较的结果，在第二个周期选择是否将数据写到Data SRAM中。还需要注意的是，当执行load指令时，它想要的数据可能正好在store指令的流水线寄存器中（RAW的情况；上图中的DelayedStoreData寄存器），而不是来自于Data SRAM。因此需要一种机制检测这种情况，这需要将load指令所携带的地址和store指令的流水线寄存器(即DelayedStoreAddr寄存器)进行比较，如果相等，那么就将store指令的数据作为load指令的结果。
 由此可以看出，对写D-Cache使用流水线之后，不仅增加了流水线本身的硬件，也带来了其他一些额外的硬件开销。其实。不仅在Cache中有这种现象，在处理器的其他部分增加流水线的级数，也会伴随着其他方面的硬件需求,因此过深的流水线带来的硬件复杂度是非常高的，就像Intel的Pentium 4处理器，并不会从过深的流水线中得到预想的好处。当然，cache的流水线化已经是一种广泛使用的用于降低latency的方法了。
-write buffers 我愿称之为buffer of buffer，本来cache就起buffer的作用了，但我们再加一个buffer，如下图所示： 这和多一级的cache有什么不同呢？这是一个专门为写操作设计的buffer（注意：load也可能造成写操作）。原因在于我们知道写通常比读更慢，特别对于write-through来说；其次，当上层cache满后，需要先将dirty cache line写回下层cache，再读取下层cache中的数据。若下层cache只有一个读写端口，那么这种串行的过程导致D-Cache发生缺失的处理时间变得很长，此时就可以采用write buffer来解决这个问题。脏状态的cache-line会首先放到写级存中，等到下级存储器有空闲的时候，才会将写缓存中的数据写到下级存储器中。
-对于write buffer，我们还可以对其进行 合并(merging) 操作。所谓merging，指的是将在同一个cache-line上的数据一并写入下层cache中，而非多次写入同一个cache-line。 上图中的右侧表示了一个采用了merging write buffer策略的写缓冲区。
-critial word first and early restart 先来看一下cache miss时的cpu： 图中展示了一个blocking cache在cache miss时，cpu stall，而后cache将需要取得的cache-line放入后，cpu resume的timeline。我们可以发现，若我们只需要cache-line中的第3个word，cpu完全可以提早resume。如下图所示： 这就是early restart，而critial word first指的是，是在此基础上，在取cache-block时，不按照0~7 word的顺序而是按照3,4,5,6,7,0,1,2的顺序获取，配合early restart以减小miss penalty。
-当然，这种优化手段一般在cache-block size越大的时候效果越好。
-non-blocking caches 本节主要参考了超标量处理器设计9.6.2"/>
+write buffers
+我愿称之为buffer of buffer，本来cache就起buffer的作用了，但我们再加一个buffer，如下图所示：
+
+
+这和多一级的cache有什么不同呢？这是一个专门为写操作设计的buffer（注意：load也可能造成写操作）。原因在于我们知道写通常比读更慢，特别对于write-through来说；其次，当上层cache满后，需要先将dirty cache line写回下层cache，再读取下层cache中的数据。若下层cache只有一个读写端口，那么这种串行的过程导致D-Cache发生缺失的处理时间变得很长，此时就可以采用write buffer来解决这个问题。脏状态的cache-line会首先放到写级存中，等到下级存储器有空闲的时候，才会将写缓存中的数据写到下级存储器中。
+对于write buffer，我们还可以对其进行 合并(merging) 操作。所谓merging，指的是将在同一个cache-line上的数据一并写入下层cache中，而非多次写入同一个cache-line。
+
+
+上图中的右侧表示了一个采用了merging write buffer策略的写缓冲区。
+critial word first and early restart
+先来看一下cache miss时的cpu：
+
+
+图中展示了一个blocking cache在cache miss时，cpu stall，而后cache将需要取得的cache-line放入后，cpu resume的timeline。我们可以发现，若我们只需要cache-line中的第3个word，cpu完全可以提早resume。如下图所示：
+
+"/>
 
 
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "BreadcrumbList",
-  "itemListElement": [, 
+  "itemListElement": [
     {
       "@type": "ListItem",
-      "position":  2 ,
+      "position":  1 ,
       "name": "Posts",
       "item": "https://caaatch22.github.io/posts/"
     }, 
     {
       "@type": "ListItem",
-      "position":  3 ,
+      "position":  2 ,
       "name": "Computer Architecture —— 高级缓存技术",
       "item": "https://caaatch22.github.io/posts/advanced-cache/"
     }
@@ -162,7 +244,7 @@ non-blocking caches 本节主要参考了超标量处理器设计9.6.2"/>
   "@type": "BlogPosting",
   "headline": "Computer Architecture —— 高级缓存技术",
   "name": "Computer Architecture —— 高级缓存技术",
-  "description": "本文不会介绍cache的组织形式等基本内容，但也算不上什么\u0026quot;Advanced\u0026quot;。主要包含一些从硬件层面优化cache的手段。\n优化cache的几种方法 pipeline caches 上图为教科书上经常出现的cache形式(2-way associative为例)，它很精炼的解释了cache的实现。但也稍微引入了些“误导”：\n图中v、tag和data部分画在连续的一行上，仿佛硬件上他们就是同一块 SRAM 的不同bit 图中识别tag与data是并行完成的，这很好，某种意义上能降低时延；但我们经常遗忘一个事实，只有读cache的时候我们才能这么操作（或者说在写cache时，读取data block是没有意义的） 对于第一点，在实际的实现当中，tag和data部分都是分开放置的，tag一般是由一种叫CAM(Context-Addressable Memory)的材料构成。当然，这与pi不pipeline没什么关系；\n读cache主要就两个部分：比较tag，获取data；我们暂且不考虑以pipeline的方式优化，那么serial的先比较tag再读data一定不如parallel的方式进行吗？当我们并行的读取tag和data的时候，我们会发现，读出来的data有可能没用（没有匹配的tag）；并且，在n-way set associate cache中，我们会浪费的读出$n-1$个data项；这给我们什么启示呢？如果我们串行的读cache，那么我们可以在比较tag阶段就知道我们想要的数据在不在cache当中；更有意义的是，根据tag比较的结果，我们就知道哪一路的数据是需要被访问的（提前知道了在n-way中的哪一way），那么我们访问data block时，就无需多路选择器，直接访问指定的way，将其他way的data访问的使能信号置为无效，这种做法的优点在于有效减小功耗。\nserial的做法肯定比parallel的延时要大，若这时访问cache处于处理器的critical path(关键路径)上，我们可以再将其进行流水线化。 我们现在再来看看写cache时的情况：\n写cache时，只有通过tag比较，确认要写的地址在cache中后，才可以写data SRAM，在主频较高的处理器中，这些操作很难在一个周期内完成，这也要求我们将其流水线化。下图为对cache进行写操作使用的流水线示意图：\n在上图的实现方式中，store第一个周期读取Tag并进行比较，根据比较的结果，在第二个周期选择是否将数据写到Data SRAM中。还需要注意的是，当执行load指令时，它想要的数据可能正好在store指令的流水线寄存器中（RAW的情况；上图中的DelayedStoreData寄存器），而不是来自于Data SRAM。因此需要一种机制检测这种情况，这需要将load指令所携带的地址和store指令的流水线寄存器(即DelayedStoreAddr寄存器)进行比较，如果相等，那么就将store指令的数据作为load指令的结果。\n由此可以看出，对写D-Cache使用流水线之后，不仅增加了流水线本身的硬件，也带来了其他一些额外的硬件开销。其实。不仅在Cache中有这种现象，在处理器的其他部分增加流水线的级数，也会伴随着其他方面的硬件需求,因此过深的流水线带来的硬件复杂度是非常高的，就像Intel的Pentium 4处理器，并不会从过深的流水线中得到预想的好处。当然，cache的流水线化已经是一种广泛使用的用于降低latency的方法了。\nwrite buffers 我愿称之为buffer of buffer，本来cache就起buffer的作用了，但我们再加一个buffer，如下图所示： 这和多一级的cache有什么不同呢？这是一个专门为写操作设计的buffer（注意：load也可能造成写操作）。原因在于我们知道写通常比读更慢，特别对于write-through来说；其次，当上层cache满后，需要先将dirty cache line写回下层cache，再读取下层cache中的数据。若下层cache只有一个读写端口，那么这种串行的过程导致D-Cache发生缺失的处理时间变得很长，此时就可以采用write buffer来解决这个问题。脏状态的cache-line会首先放到写级存中，等到下级存储器有空闲的时候，才会将写缓存中的数据写到下级存储器中。\n对于write buffer，我们还可以对其进行 合并(merging) 操作。所谓merging，指的是将在同一个cache-line上的数据一并写入下层cache中，而非多次写入同一个cache-line。 上图中的右侧表示了一个采用了merging write buffer策略的写缓冲区。\ncritial word first and early restart 先来看一下cache miss时的cpu： 图中展示了一个blocking cache在cache miss时，cpu stall，而后cache将需要取得的cache-line放入后，cpu resume的timeline。我们可以发现，若我们只需要cache-line中的第3个word，cpu完全可以提早resume。如下图所示： 这就是early restart，而critial word first指的是，是在此基础上，在取cache-block时，不按照0~7 word的顺序而是按照3,4,5,6,7,0,1,2的顺序获取，配合early restart以减小miss penalty。\n当然，这种优化手段一般在cache-block size越大的时候效果越好。\nnon-blocking caches 本节主要参考了超标量处理器设计9.6.2",
+  "description": " 本文不会介绍cache的组织形式等基本内容，但也算不上什么\u0026quot;Advanced\u0026quot;。主要包含一些从硬件层面优化cache的手段。\n优化cache的几种方法 pipeline caches 上图为教科书上经常出现的cache形式(2-way associative为例)，它很精炼的解释了cache的实现。但也稍微引入了些“误导”：\n图中v、tag和data部分画在连续的一行上，仿佛硬件上他们就是同一块 SRAM 的不同bit 图中识别tag与data是并行完成的，这很好，某种意义上能降低时延；但我们经常遗忘一个事实，只有读cache的时候我们才能这么操作（或者说在写cache时，读取data block是没有意义的） 对于第一点，在实际的实现当中，tag和data部分都是分开放置的，tag一般是由一种叫CAM(Context-Addressable Memory)的材料构成。当然，这与pi不pipeline没什么关系；\n读cache主要就两个部分：比较tag，获取data；我们暂且不考虑以pipeline的方式优化，那么serial的先比较tag再读data一定不如parallel的方式进行吗？当我们并行的读取tag和data的时候，我们会发现，读出来的data有可能没用（没有匹配的tag）；并且，在n-way set associate cache中，我们会浪费的读出$n-1$个data项；这给我们什么启示呢？如果我们串行的读cache，那么我们可以在比较tag阶段就知道我们想要的数据在不在cache当中；更有意义的是，根据tag比较的结果，我们就知道哪一路的数据是需要被访问的（提前知道了在n-way中的哪一way），那么我们访问data block时，就无需多路选择器，直接访问指定的way，将其他way的data访问的使能信号置为无效，这种做法的优点在于有效减小功耗。\nserial的做法肯定比parallel的延时要大，若这时访问cache处于处理器的critical path(关键路径)上，我们可以再将其进行流水线化。 我们现在再来看看写cache时的情况：\n写cache时，只有通过tag比较，确认要写的地址在cache中后，才可以写data SRAM，在主频较高的处理器中，这些操作很难在一个周期内完成，这也要求我们将其流水线化。下图为对cache进行写操作使用的流水线示意图：\n在上图的实现方式中，store第一个周期读取Tag并进行比较，根据比较的结果，在第二个周期选择是否将数据写到Data SRAM中。还需要注意的是，当执行load指令时，它想要的数据可能正好在store指令的流水线寄存器中（RAW的情况；上图中的DelayedStoreData寄存器），而不是来自于Data SRAM。因此需要一种机制检测这种情况，这需要将load指令所携带的地址和store指令的流水线寄存器(即DelayedStoreAddr寄存器)进行比较，如果相等，那么就将store指令的数据作为load指令的结果。\n由此可以看出，对写D-Cache使用流水线之后，不仅增加了流水线本身的硬件，也带来了其他一些额外的硬件开销。其实。不仅在Cache中有这种现象，在处理器的其他部分增加流水线的级数，也会伴随着其他方面的硬件需求,因此过深的流水线带来的硬件复杂度是非常高的，就像Intel的Pentium 4处理器，并不会从过深的流水线中得到预想的好处。当然，cache的流水线化已经是一种广泛使用的用于降低latency的方法了。\nwrite buffers 我愿称之为buffer of buffer，本来cache就起buffer的作用了，但我们再加一个buffer，如下图所示： 这和多一级的cache有什么不同呢？这是一个专门为写操作设计的buffer（注意：load也可能造成写操作）。原因在于我们知道写通常比读更慢，特别对于write-through来说；其次，当上层cache满后，需要先将dirty cache line写回下层cache，再读取下层cache中的数据。若下层cache只有一个读写端口，那么这种串行的过程导致D-Cache发生缺失的处理时间变得很长，此时就可以采用write buffer来解决这个问题。脏状态的cache-line会首先放到写级存中，等到下级存储器有空闲的时候，才会将写缓存中的数据写到下级存储器中。\n对于write buffer，我们还可以对其进行 合并(merging) 操作。所谓merging，指的是将在同一个cache-line上的数据一并写入下层cache中，而非多次写入同一个cache-line。 上图中的右侧表示了一个采用了merging write buffer策略的写缓冲区。\ncritial word first and early restart 先来看一下cache miss时的cpu： 图中展示了一个blocking cache在cache miss时，cpu stall，而后cache将需要取得的cache-line放入后，cpu resume的timeline。我们可以发现，若我们只需要cache-line中的第3个word，cpu完全可以提早resume。如下图所示： ",
   "keywords": [
     "ComputerArchitecture"
   ],
@@ -202,7 +284,7 @@ non-blocking caches 本节主要参考了超标量处理器设计9.6.2"/>
 <header class="header">
     <nav class="nav">
         <div class="logo">
-            <a href="https://caaatch22.github.io" accesskey="h" title="Mingjie&#39;s Home (Alt + H)">Mingjie&#39;s Home</a>
+            <a href="https://caaatch22.github.io/" accesskey="h" title="Mingjie&#39;s Home (Alt + H)">Mingjie&#39;s Home</a>
             <div class="logo-switches">
                 <button id="theme-toggle" accesskey="t" title="(Alt + T)">
                     <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
@@ -224,6 +306,8 @@ non-blocking caches 本节主要参考了超标量处理器设计9.6.2"/>
                         <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
                     </svg>
                 </button>
+                <ul class="lang-switch"><li>|</li>
+                </ul>
             </div>
         </div>
         <ul id="menu">
@@ -254,11 +338,11 @@ non-blocking caches 本节主要参考了超标量处理器设计9.6.2"/>
 
 <article class="post-single">
   <header class="post-header">
-    <div class="breadcrumbs"><a href="https://caaatch22.github.io">Home</a>&nbsp;»&nbsp;<a href="https://caaatch22.github.io/posts/">Posts</a></div>
+    <div class="breadcrumbs"><a href="https://caaatch22.github.io/">Home</a>&nbsp;»&nbsp;<a href="https://caaatch22.github.io/posts/">Posts</a></div>
     <h1 class="post-title">
       Computer Architecture —— 高级缓存技术
     </h1>
-    <div class="post-meta"><span title='2023-08-23 23:38:14 +0000 UTC'>August 23, 2023</span>&nbsp;·&nbsp;2 min
+    <div class="post-meta">&lt;span title=&#39;2023-08-23 23:38:14 &#43;0000 UTC&#39;&gt;August 23, 2023&lt;/span&gt;&amp;nbsp;·&amp;nbsp;2 min
 
 </div>
   </header> <aside id="toc-container" class="toc-container wide">
@@ -505,7 +589,7 @@ non-blocking caches 本节主要参考了超标量处理器设计9.6.2"/>
     </main>
     
 <footer class="footer">
-    <span>&copy; 2024 <a href="https://caaatch22.github.io">Mingjie&#39;s Home</a></span>
+    <span>&copy; 2024 <a href="https://caaatch22.github.io/">Mingjie&#39;s Home</a></span>
     <span>
         Powered by
         <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &

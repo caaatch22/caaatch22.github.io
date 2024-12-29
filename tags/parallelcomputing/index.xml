@@ -13,9 +13,71 @@
       <pubDate>Fri, 26 Jan 2024 22:35:22 +0000</pubDate>
       
       <guid>https://caaatch22.github.io/posts/cuda/</guid>
-      <description>本系列笔记主要参考了 &amp;ldquo;Programming massively parallel processors&amp;quot;这本书，以及网上相关资料；不会特别详细，当作个人整理的面经
-CUDA软件架构 CUDA从软件层面上提供了三层结构包括grid, block和thread。每个kernal内启动的所有线程在一个grid内。启动kernel时指定&amp;laquo;&amp;lt;dimGrid, dimBlock&amp;raquo;&amp;gt;，都是一个dim3结构。
-gridDim的最大值范围： (x,y,z): (2^31 - 1, 65535, 65535) blockDim的最大值范围：(x,y,z): (1024, 1024, 64) 且还要同时满足：一个block内的threads数量不能超过1024(从kepler开始)。即：$ blockDim.x * blockDim.y * blockDim.z &amp;lt;= 1024 $ CUDA内存架构 变量声明 所在内存 作用域 生命周期 kernel内除了array的变量 register thread grid kernel内的array 变量 local thread grid __shared__ 修饰的kernel内的变量 shared block grid __device__ 修饰的全局变量 global grid application __device__ __constant__ 修饰的全局变量 constant grid application 其中 寄存器是GPU上运行速度最快的内存空间，延迟为1个时钟周期。 接下来是共享内存，共享内存是GPU上可受用户控制的一级缓存 。共享内存类似于CPU的缓存，不过与CPU的缓存不同，GPU的共享内存可以有CUDA内核直接编程控制。延迟为1～32个时钟周期。 local memory实际上就在global memory上，只是通过编译器处理成私有的、每个线程独立的一块内存区域。一般一个kernal内的数组会被处理成local memory。延迟和global memory类似。 还有texture memeory，但是和科学计算相关不大。 CUDA硬件结构 一个GPU可以看作是SM(streaming multiprocessor)的集合，每个SM包含多个SP(streaming processor，或者现在一般叫CUDA cores)。 例如，在一个A100中，一共有108个SMs，每个SM有64个CUDA cores。 从软件调度上，一个grid对应整个GPU(多个SM)，block对应SM，warp/thread级别对应一个CUDA core。 一个block内的threads一定被分配到同一个SM中，但有可能多个block都被分配到同一个SM中。(且可能同时分给一个SM超出硬件cores的线程，A100为例子 2048 threads == 32warps，只是真正同时运行某些warp，其余的可以用作hidding latency等) 每个SM上都有一个control，一个shared_memory。软件上可以通过__syncthreads()同步一个block内的所有线程。</description>
+      <description>&lt;blockquote&gt;
+&lt;p&gt;本系列笔记主要参考了 &amp;ldquo;Programming massively parallel processors&amp;quot;这本书，以及网上相关资料；不会特别详细，当作个人整理的面经&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h2 id=&#34;cuda软件架构&#34;&gt;CUDA软件架构&lt;/h2&gt;
+&lt;p&gt;CUDA从软件层面上提供了三层结构包括grid, block和thread。每个kernal内启动的所有线程在一个grid内。启动kernel时指定&amp;laquo;&amp;lt;dimGrid, dimBlock&amp;raquo;&amp;gt;，都是一个dim3结构。&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;gridDim的最大值范围： (x,y,z): (2^31 - 1, 65535, 65535)&lt;/li&gt;
+&lt;li&gt;blockDim的最大值范围：(x,y,z): (1024, 1024, 64)&lt;/li&gt;
+&lt;li&gt;且还要同时满足：一个block内的threads数量不能超过1024(从kepler开始)。即：$ blockDim.x * blockDim.y * blockDim.z &amp;lt;= 1024 $&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;img loading=&#34;lazy&#34; src=&#34;https://caaatch22.github.io/img/CUDA/CUDA-software-arch.png&#34; alt=&#34;CUDA software architecture&#34;  /&gt;
+&lt;/p&gt;
+&lt;h2 id=&#34;cuda内存架构&#34;&gt;CUDA内存架构&lt;/h2&gt;
+&lt;table&gt;
+  &lt;thead&gt;
+      &lt;tr&gt;
+          &lt;th&gt;变量声明&lt;/th&gt;
+          &lt;th&gt;所在内存&lt;/th&gt;
+          &lt;th&gt;作用域&lt;/th&gt;
+          &lt;th&gt;生命周期&lt;/th&gt;
+      &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+      &lt;tr&gt;
+          &lt;td&gt;kernel内除了array的变量&lt;/td&gt;
+          &lt;td&gt;register&lt;/td&gt;
+          &lt;td&gt;thread&lt;/td&gt;
+          &lt;td&gt;grid&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;kernel内的array 变量&lt;/td&gt;
+          &lt;td&gt;local&lt;/td&gt;
+          &lt;td&gt;thread&lt;/td&gt;
+          &lt;td&gt;grid&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;&lt;code&gt;__shared__&lt;/code&gt; 修饰的kernel内的变量&lt;/td&gt;
+          &lt;td&gt;shared&lt;/td&gt;
+          &lt;td&gt;block&lt;/td&gt;
+          &lt;td&gt;grid&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;&lt;code&gt;__device__&lt;/code&gt; 修饰的全局变量&lt;/td&gt;
+          &lt;td&gt;global&lt;/td&gt;
+          &lt;td&gt;grid&lt;/td&gt;
+          &lt;td&gt;application&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;&lt;code&gt;__device__ __constant__&lt;/code&gt; 修饰的全局变量&lt;/td&gt;
+          &lt;td&gt;constant&lt;/td&gt;
+          &lt;td&gt;grid&lt;/td&gt;
+          &lt;td&gt;application&lt;/td&gt;
+      &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;ul&gt;
+&lt;li&gt;其中 &lt;strong&gt;寄存器是GPU上运行速度最快的内存空间&lt;/strong&gt;，延迟为1个时钟周期。&lt;/li&gt;
+&lt;li&gt;接下来是共享内存，&lt;strong&gt;共享内存是GPU上可受用户控制的一级缓存&lt;/strong&gt; 。共享内存类似于CPU的缓存，不过与CPU的缓存不同，GPU的共享内存可以有CUDA内核直接编程控制。延迟为1～32个时钟周期。&lt;/li&gt;
+&lt;li&gt;local memory实际上就在global memory上，只是通过编译器处理成私有的、每个线程独立的一块内存区域。一般一个kernal内的数组会被处理成local memory。延迟和global memory类似。&lt;/li&gt;
+&lt;li&gt;还有texture memeory，但是和科学计算相关不大。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;cuda硬件结构&#34;&gt;CUDA硬件结构&lt;/h2&gt;
+&lt;p&gt;一个GPU可以看作是SM(streaming multiprocessor)的集合，每个SM包含多个SP(streaming processor，或者现在一般叫CUDA cores)。
+&lt;img loading=&#34;lazy&#34; src=&#34;https://caaatch22.github.io/img/CUDA/CUDA-GPU.png&#34; alt=&#34;CUDA GPU&#34;  /&gt;
+&lt;/p&gt;</description>
       <content:encoded><![CDATA[<blockquote>
 <p>本系列笔记主要参考了 &ldquo;Programming massively parallel processors&quot;这本书，以及网上相关资料；不会特别详细，当作个人整理的面经</p>
 </blockquote>
@@ -30,46 +92,46 @@ gridDim的最大值范围： (x,y,z): (2^31 - 1, 65535, 65535) blockDim的最大
 </p>
 <h2 id="cuda内存架构">CUDA内存架构</h2>
 <table>
-<thead>
-<tr>
-<th>变量声明</th>
-<th>所在内存</th>
-<th>作用域</th>
-<th>生命周期</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>kernel内除了array的变量</td>
-<td>register</td>
-<td>thread</td>
-<td>grid</td>
-</tr>
-<tr>
-<td>kernel内的array 变量</td>
-<td>local</td>
-<td>thread</td>
-<td>grid</td>
-</tr>
-<tr>
-<td><code>__shared__</code> 修饰的kernel内的变量</td>
-<td>shared</td>
-<td>block</td>
-<td>grid</td>
-</tr>
-<tr>
-<td><code>__device__</code> 修饰的全局变量</td>
-<td>global</td>
-<td>grid</td>
-<td>application</td>
-</tr>
-<tr>
-<td><code>__device__ __constant__</code> 修饰的全局变量</td>
-<td>constant</td>
-<td>grid</td>
-<td>application</td>
-</tr>
-</tbody>
+  <thead>
+      <tr>
+          <th>变量声明</th>
+          <th>所在内存</th>
+          <th>作用域</th>
+          <th>生命周期</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>kernel内除了array的变量</td>
+          <td>register</td>
+          <td>thread</td>
+          <td>grid</td>
+      </tr>
+      <tr>
+          <td>kernel内的array 变量</td>
+          <td>local</td>
+          <td>thread</td>
+          <td>grid</td>
+      </tr>
+      <tr>
+          <td><code>__shared__</code> 修饰的kernel内的变量</td>
+          <td>shared</td>
+          <td>block</td>
+          <td>grid</td>
+      </tr>
+      <tr>
+          <td><code>__device__</code> 修饰的全局变量</td>
+          <td>global</td>
+          <td>grid</td>
+          <td>application</td>
+      </tr>
+      <tr>
+          <td><code>__device__ __constant__</code> 修饰的全局变量</td>
+          <td>constant</td>
+          <td>grid</td>
+          <td>application</td>
+      </tr>
+  </tbody>
 </table>
 <ul>
 <li>其中 <strong>寄存器是GPU上运行速度最快的内存空间</strong>，延迟为1个时钟周期。</li>
@@ -146,7 +208,7 @@ gridDim的最大值范围： (x,y,z): (2^31 - 1, 65535, 65535) blockDim的最大
 <!-- raw HTML omitted -->
 <!-- raw HTML omitted -->
 <h2 id="一些并行算法">一些并行算法</h2>
-<p>TODO: reduce, gemm, transpose, softmax, layernorm</p>
+<p>TODO: reduce, gemm, transpose, softmax, layernor</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span><span style="color:#75715e">#define TILE_WIDTH 16
 </span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>__global__ <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">matrixMulKernel</span>(<span style="color:#66d9ef">float</span><span style="color:#f92672">*</span> M, <span style="color:#66d9ef">float</span><span style="color:#f92672">*</span> N, <span style="color:#66d9ef">float</span><span style="color:#f92672">*</span> P, <span style="color:#66d9ef">int</span> Width) {
 </span></span><span style="display:flex;"><span>    __shared__ <span style="color:#66d9ef">float</span> Mds[TILE_WIDTH][TILE_WIDTH];

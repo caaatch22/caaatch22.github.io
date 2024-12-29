@@ -13,15 +13,33 @@
       <pubDate>Fri, 01 Sep 2023 15:51:19 +0000</pubDate>
       
       <guid>https://caaatch22.github.io/posts/c-%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B--%E7%8E%B0%E4%BB%A3architecture%E7%9A%84%E5%A6%A5%E5%8D%8F/</guid>
-      <description>介绍 什么是内存模型(Memory Model)呢？这里介绍的内存模型并非C++对象的内存排布模型，而是一个非编程语言层面的概念。我们知道在C++11中，标准引入了 std::atomic&amp;lt;&amp;gt;原子对象，同时还引入了
-memory_order_relaxed memory_order_consume memory_order_acquire memory_order_release memory_order_acq_rel memory_order_seq_cst 这六种 memory order。引入可以让我们进行无锁编程，而如果你想要更高性能的程序，你就必须深挖这六种内存模型的含义并正确应用。（当然，在不显式指明memory order的情况下，你能保证获得正确的代码，但存在性能损失）
-内存模型 在介绍C++ memory order之前，我们先回答另一个问题。你的计算机执行的程序就是你写的程序吗? —— 显然不是的。
-原因也很简单，为了更高效的执行指令，编译器、CPU结构、缓存及其他硬件系统都会对指令进行增删，修改，重排。但要回答具体进行了什么样的修改，又是一个极其复杂的问题。或者说，整个现代体系结构，就是在保证程序正确性的前提下利用各种手段对程序优化。我们可以粗略的将其分成几个部分：
-source code order: 程序员在源代码中指定的顺序 program code order: 基本上可以看成汇编/机器码的顺序，它可以由编译器优化后得到 execution code order: CPU执行指令顺序也不见得与汇编相同，不同CPU在执行相同机器码时任然存在优化空间。 perceived order/physical order: 最终的执行顺序。即便CPU按照某种确定指令执行，物理时间上的执行顺序仍然可能不同。例如，在超标量CPU中，一次可以fetch and decode多个指令，这些指令之间的物理执行顺序就是不确定的；由于不同层级缓存之间延时不同，以及缓存之间的通信需要等带来的不确定的执行顺序等 上图简要说明了你的源代码可能经历的优化步骤。
-这些优化的一个主要原因在于 掩盖memory access操作与CPU执行速度上的巨大鸿沟。如果没有cache，CPU每个访存指令都需要stall一两百个时钟周期，这是不可接受的。但是引入cache的同时又会带来 cache coherence等问题，这也是造成x初始为0，两个线程同时执行 x++，而x最终不一定为 2的元凶。而一个内存模型则对上述并发程序的同一块内存进行了一定的限制，它给出了在并发程序下，任意一组写操作时，可能读到的值。 不同体系结构(x86, arm, power&amp;hellip;)通过不同的内存模型来保证程序的正确性。
-bonus question: 不同等级的cache latency？
-answer: l1: 1ns, l2: 5ns, l3: 50~100ns, main memory: 200ns
-Sequential Consistency(SC) SC是最严格的内存模型，也被称作non-weak memory model。在该模型下，多线程程序执行的可做如下分析：对于每一步，随机选择一个线程，并执行该线程执行中的下一步（例如，按程序或编译的顺序）。重复这个过程，直到整个程序终止。这实际上等效于按照（程序或编译的）顺序执行所有线程的所有步骤，并以某种方式交错它们，从而产生所有步骤的单一总顺序。SC不允许重新排列线程的步骤。因此，每当访问对象时，都会检索该顺序中存储在对象中的最后一个值。（注意，内存模型中说的重新排列与编译器层面无关，编译器自然是可以讲没有data dependance的读写操作进行重排的，只要保证程序的正确性即可。内存模型中的重排指的是在硬件执行阶段，由于cache hierarchy等引发的一些问题导致指令物理执行顺序被改变）。</description>
+      <description>&lt;!-- raw HTML omitted --&gt;
+&lt;!-- raw HTML omitted --&gt;
+&lt;h2 id=&#34;介绍&#34;&gt;介绍&lt;/h2&gt;
+&lt;p&gt;什么是内存模型(Memory Model)呢？这里介绍的内存模型并非&lt;a href=&#34;https://citeseerx.ist.psu.edu/document?repid=rep1&amp;amp;type=pdf&amp;amp;doi=160489e8b12cd9a44cbff0cd85fb6aa05437d1ac&#34;&gt;C++对象的内存排布模型&lt;/a&gt;，而是一个非编程语言层面的概念。我们知道在C++11中，标准引入了 &lt;code&gt;std::atomic&amp;lt;&amp;gt;&lt;/code&gt;原子对象，同时还引入了&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-cpp&#34; data-lang=&#34;cpp&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;memory_order_relaxed
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;memory_order_consume
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;memory_order_acquire
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;memory_order_release
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;memory_order_acq_rel
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;memory_order_seq_cst
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;这六种 &lt;code&gt;memory order&lt;/code&gt;。引入可以让我们进行&lt;strong&gt;无锁编程&lt;/strong&gt;，而如果你想要更高性能的程序，你就必须深挖这六种内存模型的含义并正确应用。（当然，在不显式指明memory order的情况下，你能保证获得正确的代码，但存在性能损失）&lt;/p&gt;
+&lt;h2 id=&#34;内存模型&#34;&gt;内存模型&lt;/h2&gt;
+&lt;p&gt;在介绍C++ memory order之前，我们先回答另一个问题。&lt;em&gt;你的计算机执行的程序就是你写的程序吗? —— 显然不是的。&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;原因也很简单，为了更高效的执行指令，编译器、CPU结构、缓存及其他硬件系统都会对指令进行增删，修改，重排。但要回答具体进行了什么样的修改，又是一个极其复杂的问题。或者说，整个现代体系结构，就是在保证程序正确性的前提下利用各种手段对程序优化。我们可以粗略的将其分成几个部分：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;&lt;strong&gt;source code order:&lt;/strong&gt; 程序员在源代码中指定的顺序&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;program code order:&lt;/strong&gt; 基本上可以看成汇编/机器码的顺序，它可以由编译器优化后得到&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;execution code order:&lt;/strong&gt; CPU执行指令顺序也不见得与汇编相同，不同CPU在执行相同机器码时任然存在优化空间。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;perceived order/physical order:&lt;/strong&gt; 最终的执行顺序。即便CPU按照某种确定指令执行，物理时间上的执行顺序仍然可能不同。例如，在超标量CPU中，一次可以fetch and decode多个指令，这些指令之间的物理执行顺序就是不确定的；由于不同层级缓存之间延时不同，以及缓存之间的通信需要等带来的不确定的执行顺序等&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;&lt;img loading=&#34;lazy&#34; src=&#34;https://caaatch22.github.io/img/memory-model/optimization-by-different-parts-of-computer.png&#34; alt=&#34;optimizations-by-compyter&#34;  /&gt;
+&lt;/p&gt;
+&lt;p&gt;上图简要说明了你的源代码可能经历的优化步骤。&lt;/p&gt;
+&lt;p&gt;这些优化的一个主要原因在于 掩盖memory access操作与CPU执行速度上的巨大鸿沟。如果没有cache，CPU每个访存指令都需要stall一两百个时钟周期，这是不可接受的。但是引入cache的同时又会带来 &lt;code&gt;cache coherence&lt;/code&gt;等问题，这也是造成x初始为0，两个线程同时执行 &lt;code&gt;x++&lt;/code&gt;，而x最终不一定为 &lt;code&gt;2&lt;/code&gt;的元凶。&lt;strong&gt;而一个内存模型则对上述并发程序的同一块内存进行了一定的限制，它给出了在并发程序下，任意一组写操作时，可能读到的值。&lt;/strong&gt; 不同体系结构(x86, arm, power&amp;hellip;)通过不同的内存模型来保证程序的正确性。&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;bonus question: 不同等级的cache latency？&lt;/p&gt;
+&lt;p&gt;answer: l1: 1ns, l2: 5ns, l3: 50~100ns, main memory: 200ns&lt;/p&gt;</description>
       <content:encoded><![CDATA[<!-- raw HTML omitted -->
 <!-- raw HTML omitted -->
 <h2 id="介绍">介绍</h2>
@@ -58,25 +76,25 @@ Sequential Consistency(SC) SC是最严格的内存模型，也被称作non-weak 
 在这种结构中，我们隐藏了cache与store buffer的存在，或者说SC协议允许我们无视这两个硬件。
 那么，我们对于下面表格中的问题就有确定的答案：</p>
 <table>
-<thead>
-<tr>
-<th>Thread 1</th>
-<th>Thread 2</th>
-<th>main</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>x = 1</td>
-<td>y = 1</td>
-<td>x = 0, y = 0</td>
-</tr>
-<tr>
-<td>y&rsquo; = y</td>
-<td>x&rsquo; = x</td>
-<td>Spawn thread 1, 2; Wait for threads</td>
-</tr>
-</tbody>
+  <thead>
+      <tr>
+          <th>Thread 1</th>
+          <th>Thread 2</th>
+          <th>main</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>x = 1</td>
+          <td>y = 1</td>
+          <td>x = 0, y = 0</td>
+      </tr>
+      <tr>
+          <td>y&rsquo; = y</td>
+          <td>x&rsquo; = x</td>
+          <td>Spawn thread 1, 2; Wait for threads</td>
+      </tr>
+  </tbody>
 </table>
 <p>显然，在SC模型中最终的结果只可能是：</p>
 <ol>
@@ -134,38 +152,38 @@ POWER架构还提供了一个额外的“轻量级同步”指令，称为 <code
 <h2 id="c-memory-order">C++ memory order</h2>
 <p>对于 <code>weak memory model</code>，特别是上面介绍的ARM的内存模型，想要精细的控制程序的允许重排的程度需要非常大的心智负担。（光是不同体系结构，不同等级的fence指令就令人望而却步）。因此C++11标准提供的六种memory order就是从语言层面来约束最终希望达到的对程序被优化程度的限制。现在我们再看这几种memory order就比较清晰了。（以下说法并不严谨，但是作为程序员的take away完全足够了。</p>
 <table>
-<thead>
-<tr>
-<th>Memory Order</th>
-<th>Explaination</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>memory_order_relaxed</td>
-<td>表示这个R/W操作除了原子性外没有任何其他限制，他可能会被重排到程序的任何位置（当然，编译器不会允许将他重排到同一个线程对同一个原子变量写操作的前面，这违背了正确性）</td>
-</tr>
-<tr>
-<td>memory_order_consume</td>
-<td>(只用于读) 后面依赖此原子变量的访存指令不允许重排至此条指令之前。 注意，当前标准中的memory_order_consume是<a href="https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0371r0.html%E6%89%80%E4%BB%A5%E4%B8%8D%E8%A6%81%E4%BD%BF%E7%94%A8">没有实际用处的</a>， 一般情况下不要使用</td>
-</tr>
-<tr>
-<td>memory_order_acuqire</td>
-<td>(只用于读) 后面访存指令不允许重排至此条指令之前</td>
-</tr>
-<tr>
-<td>memory_order_release</td>
-<td>(只用于写) 前面访存指令不允许重排至此条指令之后。当此条指令的结果对其他线程可见后，之前的所有指令都可见</td>
-</tr>
-<tr>
-<td>memory_order_acq_rel</td>
-<td>acquire + release语意</td>
-</tr>
-<tr>
-<td>memory_order_seq_cst</td>
-<td>满足sequential_consistency内存模型</td>
-</tr>
-</tbody>
+  <thead>
+      <tr>
+          <th>Memory Order</th>
+          <th>Explaination</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>memory_order_relaxed</td>
+          <td>表示这个R/W操作除了原子性外没有任何其他限制，他可能会被重排到程序的任何位置（当然，编译器不会允许将他重排到同一个线程对同一个原子变量写操作的前面，这违背了正确性）</td>
+      </tr>
+      <tr>
+          <td>memory_order_consume</td>
+          <td>(只用于读) 后面依赖此原子变量的访存指令不允许重排至此条指令之前。 注意，当前标准中的memory_order_consume是<a href="https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0371r0.html%E6%89%80%E4%BB%A5%E4%B8%8D%E8%A6%81%E4%BD%BF%E7%94%A8">没有实际用处的</a>， 一般情况下不要使用</td>
+      </tr>
+      <tr>
+          <td>memory_order_acuqire</td>
+          <td>(只用于读) 后面访存指令不允许重排至此条指令之前</td>
+      </tr>
+      <tr>
+          <td>memory_order_release</td>
+          <td>(只用于写) 前面访存指令不允许重排至此条指令之后。当此条指令的结果对其他线程可见后，之前的所有指令都可见</td>
+      </tr>
+      <tr>
+          <td>memory_order_acq_rel</td>
+          <td>acquire + release语意</td>
+      </tr>
+      <tr>
+          <td>memory_order_seq_cst</td>
+          <td>满足sequential_consistency内存模型</td>
+      </tr>
+  </tbody>
 </table>
 <!-- raw HTML omitted -->
 <p>在默认情况下，<code>std::atomic&lt;&gt;</code>相关函数总是选用 <code>std::memory_order_seq_cst</code>，它能有效地帮我们避免错误。但是，我们既然都使用 <code>atomic</code>而不是 <code>mutex</code>了，自然是对性能有较高要求。
@@ -238,11 +256,47 @@ POWER架构还提供了一个额外的“轻量级同步”指令，称为 <code
       <pubDate>Sat, 20 May 2023 17:33:40 +0000</pubDate>
       
       <guid>https://caaatch22.github.io/posts/c-crtp/</guid>
-      <description>原先只是了解这个名词，想着C++20后静态多态直接用 concept来实现就好了就没细看，没必要整这些模板元编程的奇技淫巧。没想到面试某量化C++开发的时候被狠狠拷打&amp;hellip;&amp;hellip;.
-CRTP (curiously recurring template pattern) 一般认为，CRTP可以用来实现静态多态
-template &amp;lt;typename T&amp;gt; class Base { void func() { static_cast&amp;lt;T*&amp;gt;(this)-&amp;gt;funcImpl(); } }; class Derived : public Base&amp;lt;Derived&amp;gt; { void funcImpl() { // do works here } }; 通过CRTP可以使得类具有类似于虚函数的效果，同时又没有虚函数调用时的开销(虚函数调用需要通过虚函数指针查找虚函数表进行调用)，同时类的对象的体积相比使用虚函数也会减少(不需要存储虚函数指针)，但是缺点是无法动态绑定，感觉有点过于鸡肋。
-有什么用呢？可以用来向纯虚类一样做接口：（以下类似的代码在大量数学库中出现）
-template &amp;lt;typename ChildType&amp;gt; struct VectorBase { ChildType &amp;amp;underlying() { return static_cast&amp;lt;ChildType &amp;amp;&amp;gt;(*this); } inline ChildType &amp;amp;operator+=(const ChildType &amp;amp;rhs) { this-&amp;gt;underlying() = this-&amp;gt;underlying() + rhs; return this-&amp;gt;underlying(); } }; struct Vec3f : public VectorBase&amp;lt;Vec3f&amp;gt; { float x{}, y{}, z{}; Vec3f() = default; Vec3f(float x, float y, float z) : x(x), y(y), z(z) {} }; inline Vec3f operator+(const Vec3f &amp;amp;lhs, const Vec3f &amp;amp;rhs) { Vec3f result; result.</description>
+      <description>&lt;blockquote&gt;
+&lt;p&gt;原先只是了解这个名词，想着C++20后静态多态直接用 &lt;code&gt;concept&lt;/code&gt;来实现就好了就没细看，没必要整这些模板元编程的奇技淫巧。没想到面试某量化C++开发的时候被狠狠拷打&amp;hellip;&amp;hellip;.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h2 id=&#34;crtp-curiously-recurring-template-pattern&#34;&gt;CRTP (&lt;strong&gt;curiously recurring template pattern&lt;/strong&gt;)&lt;/h2&gt;
+&lt;p&gt;一般认为，CRTP可以用来实现静态多态&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-cpp&#34; data-lang=&#34;cpp&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;template&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;typename&lt;/span&gt; T&lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;class&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;Base&lt;/span&gt; {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#66d9ef&#34;&gt;void&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;func&lt;/span&gt;() {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;static_cast&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt;T&lt;span style=&#34;color:#f92672&#34;&gt;*&amp;gt;&lt;/span&gt;(&lt;span style=&#34;color:#66d9ef&#34;&gt;this&lt;/span&gt;)&lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt;funcImpl();
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  }
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;};
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;class&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;Derived&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;:&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;public&lt;/span&gt; Base&lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt;Derived&lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&lt;/span&gt; {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#66d9ef&#34;&gt;void&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;funcImpl&lt;/span&gt;() {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#75715e&#34;&gt;// do works here
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;  }
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;};
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;通过CRTP可以使得类具有类似于虚函数的效果，同时又没有虚函数调用时的开销(虚函数调用需要通过虚函数指针查找虚函数表进行调用)，同时类的对象的体积相比使用虚函数也会减少(不需要存储虚函数指针)，但是缺点是无法动态绑定，感觉有点过于鸡肋。&lt;/p&gt;
+&lt;p&gt;有什么用呢？可以用来向纯虚类一样做接口：（以下类似的代码在大量数学库中出现）&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-cpp&#34; data-lang=&#34;cpp&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;template&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;typename&lt;/span&gt; ChildType&lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&lt;/span&gt; 
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;struct&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;VectorBase&lt;/span&gt; {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  ChildType &lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&lt;/span&gt;underlying() { &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;static_cast&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt;ChildType &lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&amp;gt;&lt;/span&gt;(&lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;this&lt;/span&gt;); }
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#66d9ef&#34;&gt;inline&lt;/span&gt; ChildType &lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;operator&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;+=&lt;/span&gt;(&lt;span style=&#34;color:#66d9ef&#34;&gt;const&lt;/span&gt; ChildType &lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&lt;/span&gt;rhs) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;this&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt;underlying() &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;this&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt;underlying() &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; rhs;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;this&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt;underlying();
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  }
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;};
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;struct&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;Vec3f&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;:&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;public&lt;/span&gt; VectorBase&lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt;Vec3f&lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&lt;/span&gt; {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#66d9ef&#34;&gt;float&lt;/span&gt; x{}, y{}, z{};
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  Vec3f() &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;default&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  Vec3f(&lt;span style=&#34;color:#66d9ef&#34;&gt;float&lt;/span&gt; x, &lt;span style=&#34;color:#66d9ef&#34;&gt;float&lt;/span&gt; y, &lt;span style=&#34;color:#66d9ef&#34;&gt;float&lt;/span&gt; z) &lt;span style=&#34;color:#f92672&#34;&gt;:&lt;/span&gt; x(x), y(y), z(z) {}
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;};
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;inline&lt;/span&gt; Vec3f &lt;span style=&#34;color:#66d9ef&#34;&gt;operator&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt;(&lt;span style=&#34;color:#66d9ef&#34;&gt;const&lt;/span&gt; Vec3f &lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&lt;/span&gt;lhs, &lt;span style=&#34;color:#66d9ef&#34;&gt;const&lt;/span&gt; Vec3f &lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&lt;/span&gt;rhs) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  Vec3f result;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  result.x &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; lhs.x &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; rhs.x;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  result.y &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; lhs.y &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; rhs.y;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  result.z &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; lhs.z &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; rhs.z;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; result;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;定义好VectorBase后，Vec3f, Vec4f等直接实现接口就好。相比虚函数的形式，在空间和runtime都有优势。&lt;/p&gt;</description>
       <content:encoded><![CDATA[<blockquote>
 <p>原先只是了解这个名词，想着C++20后静态多态直接用 <code>concept</code>来实现就好了就没细看，没必要整这些模板元编程的奇技淫巧。没想到面试某量化C++开发的时候被狠狠拷打&hellip;&hellip;.</p>
 </blockquote>

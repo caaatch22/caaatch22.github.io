@@ -2,7 +2,7 @@
 <html lang="en" dir="auto">
 
 <head>
-	<meta name="generator" content="Hugo 0.119.0"><meta charset="utf-8">
+	<meta name="generator" content="Hugo 0.140.1"><meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <meta name="robots" content="index, follow">
@@ -21,6 +21,7 @@
 <meta name="msapplication-TileColor" content="#2e2e33">
 <link rel="alternate" type="application/rss+xml" href="https://caaatch22.github.io/index.xml">
 <link rel="alternate" type="application/json" href="https://caaatch22.github.io/index.json">
+<link rel="alternate" hreflang="en" href="https://caaatch22.github.io/">
 <noscript>
     <style>
         #theme-toggle,
@@ -58,17 +59,20 @@
 
     </style>
 </noscript>
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-WEG841BBW9"></script>
-<script>
-var doNotTrack = false;
-if (!doNotTrack) {
-	window.dataLayer = window.dataLayer || [];
-	function gtag(){dataLayer.push(arguments);}
-	gtag('js', new Date());
-	gtag('config', 'G-WEG841BBW9', { 'anonymize_ip': false });
-}
-</script>
-<meta property="og:title" content="Mingjie&#39;s Home" />
+      <script async src="https://www.googletagmanager.com/gtag/js?id=G-WEG841BBW9"></script>
+      <script>
+        var doNotTrack = false;
+        if ( false ) {
+          var dnt = (navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack);
+          var doNotTrack = (dnt == "1" || dnt == "yes");
+        }
+        if (!doNotTrack) {
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-WEG841BBW9');
+        }
+      </script><meta property="og:title" content="Mingjie&#39;s Home" />
 <meta property="og:description" content="" />
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://caaatch22.github.io/" />
@@ -82,7 +86,7 @@ if (!doNotTrack) {
   "@context": "https://schema.org",
   "@type": "Organization",
   "name": "Mingjie's Home",
-  "url": "https://caaatch22.github.io",
+  "url": "https://caaatch22.github.io/",
   "description": "",
   "thumbnailUrl": "https://caaatch22.github.io/favicon.ico",
   "sameAs": [
@@ -107,7 +111,7 @@ if (!doNotTrack) {
 <header class="header">
     <nav class="nav">
         <div class="logo">
-            <a href="https://caaatch22.github.io" accesskey="h" title="Mingjie&#39;s Home (Alt + H)">Mingjie&#39;s Home</a>
+            <a href="https://caaatch22.github.io/" accesskey="h" title="Mingjie&#39;s Home (Alt + H)">Mingjie&#39;s Home</a>
             <div class="logo-switches">
                 <button id="theme-toggle" accesskey="t" title="(Alt + T)">
                     <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
@@ -129,6 +133,8 @@ if (!doNotTrack) {
                         <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
                     </svg>
                 </button>
+                <ul class="lang-switch"><li>|</li>
+                </ul>
             </div>
         </div>
         <ul id="menu">
@@ -158,51 +164,6 @@ if (!doNotTrack) {
 <main class="main"> 
 
 <article class="post-entry"> 
-  <header class="entry-header">
-    <h2>phmap —— 缓存友好的高效hashtable
-    </h2>
-  </header>
-  <div class="entry-content">
-    <p>众所周知，C&#43;&#43;标准库的 unordered_map在性能上向来不是一个好的选择。开源市场上有非常多的高性能哈希表可供选择，phmap继承自 absl-hashmap，有着非常好的插入、查找性能。在著名的Comprehensive C&#43;&#43; Hashmap Benchmarks 2022榜单中名列前茅。事实上，我比对了 phmap::flat_hash_map与榜单中综合性能第一的 ankerl::unordered_dense::map，我的benchmark中只有遍历哈希表时，flat_hash_map的性能低于 unordered_dense::map，其余无论是插入还是随即查找，大部分情况下 flat_hash_map的性能都更优。本文简单介绍了 flat_hash_map相关情况，以及一些使用上的建议与坑点。
-flat_hash_map 和 node_hash_map区别 phmap中有提供了两类哈希表，其内部布局示意图如下：
-由上图（忽略了bucket的细节）可以看出，flat_hash_map的最大的优点在于
-node之间的内存是连续的(虽然可能中间存在空node)，遍历的时候对cache更加友好 并且相比于 node_hash_map版少一次寻址过程（std::unordered_map的设计与 node_hash_map）相同。 而 flat_*系列的缺点就是在 rehash的时候:
-会引发原来的value失效（这里的失效指的是原来的那个对象所对应的内存失效，而不是value所包含的内容失效，例如，value是一个指针，那它的值——所指向的对象，不会受到影响）。举个例子： flat_hash_map&lt;int, Data&gt; mp; node_hash_map&lt;int, Data&gt; nodemp; mp[0] = Data(); nodemp[0] = Data(); auto&amp; mp0 = mp[0]; auto&amp; nodemp0 = nodemp[0]; // tigger rehash for (int i = 1; i &lt;= 10; i &#43;&#43;) { mp[i] = Data(); nodemp[i] = Data(); } assert(std::addressof(mp[0]) != std::addressof(mp0)); assert(std::addressof(nodemp[0]) == std::addressof(nodemp0)); 原因就是 flat_hash_map的内存布局导致的。而 node_hash_map或者 std::unordered_map就保证不会出现这种情况，因为当他们rehash的时候，只需要将bucket内的指针重新分配，指针的值还是指向原来的 node&lt;key, value&gt;....</p>
-  </div>
-  <footer class="entry-footer"><span title='2023-07-23 21:23:15 +0000 UTC'>July 23, 2023</span>&nbsp;·&nbsp;3 min</footer>
-  <a class="entry-link" aria-label="post link to phmap —— 缓存友好的高效hashtable" href="https://caaatch22.github.io/posts/phmap/"></a>
-</article>
-
-<article class="post-entry"> 
-  <header class="entry-header">
-    <h2>ICPC西安游记
-    </h2>
-  </header>
-  <div class="entry-content">
-    <p>没写记录，学弟写了，直接用
-ICPC西安邀请赛</p>
-  </div>
-  <footer class="entry-footer"><span title='2023-05-29 13:35:22 +0000 UTC'>May 29, 2023</span>&nbsp;·&nbsp;1 min</footer>
-  <a class="entry-link" aria-label="post link to ICPC西安游记" href="https://caaatch22.github.io/posts/icpc%E8%A5%BF%E5%AE%89%E6%B8%B8%E8%AE%B0/"></a>
-</article>
-
-<article class="post-entry"> 
-  <header class="entry-header">
-    <h2>C&#43;&#43; CRTP
-    </h2>
-  </header>
-  <div class="entry-content">
-    <p>原先只是了解这个名词，想着C&#43;&#43;20后静态多态直接用 concept来实现就好了就没细看，没必要整这些模板元编程的奇技淫巧。没想到面试某量化C&#43;&#43;开发的时候被狠狠拷打…….
-CRTP (curiously recurring template pattern) 一般认为，CRTP可以用来实现静态多态
-template &lt;typename T&gt; class Base { void func() { static_cast&lt;T*&gt;(this)-&gt;funcImpl(); } }; class Derived : public Base&lt;Derived&gt; { void funcImpl() { // do works here } }; 通过CRTP可以使得类具有类似于虚函数的效果，同时又没有虚函数调用时的开销(虚函数调用需要通过虚函数指针查找虚函数表进行调用)，同时类的对象的体积相比使用虚函数也会减少(不需要存储虚函数指针)，但是缺点是无法动态绑定，感觉有点过于鸡肋。
-有什么用呢？可以用来向纯虚类一样做接口：（以下类似的代码在大量数学库中出现）
-template &lt;typename ChildType&gt; struct VectorBase { ChildType &amp;underlying() { return static_cast&lt;ChildType &amp;&gt;(*this); } inline ChildType &amp;operator&#43;=(const ChildType &amp;rhs) { this-&gt;underlying() = this-&gt;underlying() &#43; rhs; return this-&gt;underlying(); } }; struct Vec3f : public VectorBase&lt;Vec3f&gt; { float x{}, y{}, z{}; Vec3f() = default; Vec3f(float x, float y, float z) : x(x), y(y), z(z) {} }; inline Vec3f operator&#43;(const Vec3f &amp;lhs, const Vec3f &amp;rhs) { Vec3f result; result....</p>
-  </div>
-  <footer class="entry-footer"><span title='2023-05-20 17:33:40 +0000 UTC'>May 20, 2023</span>&nbsp;·&nbsp;2 min</footer>
-  <a class="entry-link" aria-label="post link to C&#43;&#43; CRTP" href="https://caaatch22.github.io/posts/c-crtp/"></a>
-</article>
-
-<article class="post-entry"> 
 <figure class="entry-cover"><img loading="lazy" src="https://caaatch22.github.io/img/FalconLink/falcon-black.png" alt="">
 </figure>
   <header class="entry-header">
@@ -210,13 +171,14 @@ template &lt;typename ChildType&gt; struct VectorBase { ChildType &amp;underlyin
     </h2>
   </header>
   <div class="entry-content">
-    <p>本博客部署在两个服务器上，其中一个的 HTTP 服务就是由本文介绍的 FalconLink 提供。你可以通过IP地址 101.34.211.126:20080 尝试访问。 项目地址 https://github.com/caaatch22/FalconLink
+    <p> 本博客部署在两个服务器上，其中一个的 HTTP 服务就是由本文介绍的 FalconLink 提供。你可以通过IP地址 101.34.211.126:20080 尝试访问。 项目地址 https://github.com/caaatch22/FalconLink
 Overview FalconLink是一个轻量级的高并发网络库。它封装了网络编程套接字API，将其抽象成一个易用，可拓展框架。用户只需通过设置回调函数的形式注入业务逻辑。它同时也具有 HTTP 服务请求与解析的功能。
 上图是FalconLink系统架构的一个简单概括性图示。
 采用非阻塞socket配合边缘触发，及one loop per thread的主从 reactor设计 Acceptor 是专门用于处理接受新用户连接请求的模块。它守候在监听端口。收到请求后建立 Connection 分配给 EventLoop。 FalconLink 将每个 TCP连接抽象成一个 Connection，一个 Connection对应一个连接 socket 套接字。用户可以为每一条Connection注册回调函数。 每个 EventLoop 都拥有一个 Poller。 Poller 负责监听已连接的套接字，将有事件触发的连接反馈给 EventLoop。 EventLoop是该系统的核心组件, 每个都单独运行在一个线程中. 它从 Poller 中接收到有事件触发的用户连接后, 会获取并执行它们的回调函数. ThreadPool 线程池管理着系统中有多少个 EventLoop 在运行，并调度线程，防止注册过多线程导致性能下降。 支持 HTTP(GET,HEAD)请求的解析与回复，支持挂载静态 html 文件（本博客使用FalconLink的 HTTP 服务） 实现异步logger API 使用falconlink，可以轻易且优雅的在20行内实现一个 echo server。
-#include &#34;falconlink.hpp&#34; int main() { falconlink::InetAddr local_address(&#34;0.0.0.0&#34;, 8090); falconlink::Server echo_server(local_address); echo_server ....</p>
+#include &#34;falconlink.hpp&#34; int main() { falconlink::InetAddr local_address(&#34;0.0.0.0&#34;, 8090); falconlink::Server echo_server(local_address); echo_server .onHandle([&amp;](falconlink::Connection* client_conn) { int from_fd = client_conn-&gt;fd(); auto [read, exit] = client_conn-&gt;recv(); if (exit) { client_conn-&gt;getEventLoop()-&gt;deleteConnection(from_fd); // client_conn ptr is invalid below here, do not touch it again return; } // 只有以下四行是业务逻辑 if (read) { client_conn-&gt;WriteToWriteBuffer(client_conn-&gt;ReadAsString()); client_conn-&gt;send(); client_conn-&gt;clearReadBuffer(); } }) .start(); return 0; } Build &amp; Test 将代码 clone 到本地，进入主目录
+...</p>
   </div>
-  <footer class="entry-footer"><span title='2023-03-01 19:34:21 +0000 UTC'>March 1, 2023</span>&nbsp;·&nbsp;1 min</footer>
+  <footer class="entry-footer">&lt;span title=&#39;2023-03-01 19:34:21 &#43;0000 UTC&#39;&gt;March 1, 2023&lt;/span&gt;&amp;nbsp;·&amp;nbsp;1 min</footer>
   <a class="entry-link" aria-label="post link to 轻量级高并发网络库&#43;httpserver" href="https://caaatch22.github.io/posts/%E5%AE%9E%E7%8E%B0%E4%B8%80%E4%B8%AA%E7%AE%80%E5%8D%95%E7%9A%84%E7%BD%91%E7%BB%9C%E5%BA%93-httpserver/"></a>
 </article>
 
@@ -234,9 +196,10 @@ Overview FalconLink是一个轻量级的高并发网络库。它封装了网络�
 Parser sql 语句的解析就像其他编程语言一样，同样需要翻译成比较结构化的东西。Parser 阶段会生成一个抽象语法树(AST, Abstract Syntax Tree)。 这并不是数据库核心部分，bustub 直接使用了 PostgreSQL 的 parser 库 libpg_query。
 Binder 得到 AST 后，需要将这些词语绑定到数据库实体上，这就是 Binder 的工作。例如有这样一条 sql：
 SELECT table1.y, table2.x FROM table1 INNER JOIN table2 ON table1.x = table2.y; 其中 SELECT 和 FROM 是关键字，x 和 table1 是标识符。我们可以使用 explain 来看看 binder 层（bustub-shell 未完成时也可以使用 explain）：
-=== BINDER === BoundSelec { table=BoundJoin { type=Inner, left=BoundBaseTableRef { table=table1, oid=25 }, right=BoundBaseTableRef { table=table2, oid=26 }, condition=(table1....</p>
+=== BINDER === BoundSelec { table=BoundJoin { type=Inner, left=BoundBaseTableRef { table=table1, oid=25 }, right=BoundBaseTableRef { table=table2, oid=26 }, condition=(table1.x=table2.y) }, columns=[table1.y, table2.x], groupBy=[], having=, where=, limit=, offset=, order_by=[], is_distinct=false, ctes=, } 可以看出，binder的作用就是对AST的各个节点绑定一个（物理）实体。
+...</p>
   </div>
-  <footer class="entry-footer"><span title='2023-01-17 23:45:12 +0000 UTC'>January 17, 2023</span>&nbsp;·&nbsp;4 min</footer>
+  <footer class="entry-footer">&lt;span title=&#39;2023-01-17 23:45:12 &#43;0000 UTC&#39;&gt;January 17, 2023&lt;/span&gt;&amp;nbsp;·&amp;nbsp;4 min</footer>
   <a class="entry-link" aria-label="post link to CMU15445-project3 Query Excution" href="https://caaatch22.github.io/posts/cmu15445-project3-query-execution/"></a>
 </article>
 
@@ -253,10 +216,121 @@ SELECT table1.y, table2.x FROM table1 INNER JOIN table2 ON table1.x = table2.y; 
 假设我们有一长为 $n$ 的序列 $A[0…n - 1]$ 。在算法竞赛中，典型的数据量是 $n = 1e5, |A[i]| &lt;= 1e9$
 区间 $[L, R)$ 中元素$x$的出现次数 区间 $[L, R)$ 中的第k小数 区间 $[L, R)$ 上 小于等于x的数的个数 … 以上问题都可以通过可持久化线段树在解决。那为什么还需要wavelet tree呢，我们都知道可持久化线段树的常数很大，并且十分消耗空间，在有些苛刻的题目下可能会被卡 好吧应该都是金牌题，不是我该考虑的 。利用wavelet tree可以在$log(\sigma)$时间内完成的同时（且优秀的常数），若使用bitvector优化空间，空间上大概比可持久化线段树少一个量级。最重要的一点是，我个人觉得他比主席树更加直观易懂。 $\sigma$ = | $\Sigma = {1, 2, \cdots, \sigma}$| （用于序列上时是值域大小）。
 用wavelet tree的缺点就是带修改操作比较难写，码量较大，一般不会在比赛时使用。
-Wavelet Tree 该图给出了用序列 $A = [7, 3, 5, 6, 1, 3, 2, 7, 8, 4]$ 构建的wavelet tree的形态。对于树上的每个节点，我们会将其按照值域分成两个部分$[low, mid), [mid, high)$。通过 稳定划分（stable_partition，即不改变相对顺序的情况下划分）将该节点上的序列中小于 $mid$的划分到左子树中，大于等于mid的划分到右子树中，递归直至节点中只有一种值时为叶节点。需要注意的是，我们并不会在叶子节点中直接存储序列的值，而是通过某个方法使得我们能够使用较小的空间的情况下得到足够的信息。...</p>
+Wavelet Tree 该图给出了用序列 $A = [7, 3, 5, 6, 1, 3, 2, 7, 8, 4]$ 构建的wavelet tree的形态。对于树上的每个节点，我们会将其按照值域分成两个部分$[low, mid), [mid, high)$。通过 稳定划分（stable_partition，即不改变相对顺序的情况下划分）将该节点上的序列中小于 $mid$的划分到左子树中，大于等于mid的划分到右子树中，递归直至节点中只有一种值时为叶节点。需要注意的是，我们并不会在叶子节点中直接存储序列的值，而是通过某个方法使得我们能够使用较小的空间的情况下得到足够的信息。
+...</p>
   </div>
-  <footer class="entry-footer"><span title='2023-01-10 16:18:32 +0000 UTC'>January 10, 2023</span>&nbsp;·&nbsp;4 min</footer>
+  <footer class="entry-footer">&lt;span title=&#39;2023-01-10 16:18:32 &#43;0000 UTC&#39;&gt;January 10, 2023&lt;/span&gt;&amp;nbsp;·&amp;nbsp;4 min</footer>
   <a class="entry-link" aria-label="post link to 将Wavelet Tree用于算法竞赛" href="https://caaatch22.github.io/posts/%E7%AE%97%E6%B3%95%E7%AB%9E%E8%B5%9B%E4%B8%AD%E7%9A%84wavelet-tree/"></a>
+</article>
+
+<article class="post-entry"> 
+<figure class="entry-cover"><img loading="lazy" src="https://caaatch22.github.io/img/busTub/B-tree/B-tree.png" alt="">
+</figure>
+  <header class="entry-header">
+    <h2>CMU15445-project2 Concurrent B&#43; tree
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>Overview 这个实验应该是最难的一个实验了。。。（感觉和Project 4 —— Transaction实现的难度差不多） 另外，2022fall版本的B&#43; tree更是变态，因为几乎没有给任何内部的API，让人无从下手。建议到 Github repo 里找到20年的，我基本是根据里面定义的函数来实现的。
+实验材料贴心的为你分成了两个检查点，四个小任务。
+Checkpoint #1
+Task #1 - B&#43;Tree Pages Task #2 - B&#43;Tree Data Structure (Insertion, Deletion, Point Search) Checkpoint #2
+Task #3 - Index Iterator Task #4 - Concurrent Index Task #1 - B&#43;Tree Pages 第一个任务算是热身，主要是搞清楚 B&#43; 树的一些类之间的关系。 我们知道，数据库中的索引也是数据，同样以 page 的形式被组织。我们先来看看要完成的这些类之间的关系。
+B&#43; tree internal page 与 B &#43; tree leaf page 都继承自B &#43; tree page，B &#43; tree page 中定义了 B&#43; 树每个结点的一些信息。而B &#43; Tree 这个类则是Checkpoint 1的主要对象，它对internal page 以及 leaf page 进行管理，并对外开放接口。而在内存中，internal page 与 leaf page 都属于 page 的一部分，关系如下图所示。他们就是 page 中的 data 部分。因此，每次 从 buffer pool manager 得到一个 page 后，若是将他们用作 B&#43;树的结点，则需要对这个 data 进行释义，也就是将他强制转化为internal page 或者 leaf page。这在 C&#43;&#43; 中通过 reinterpret_cast 完成。
+...</p>
+  </div>
+  <footer class="entry-footer">&lt;span title=&#39;2022-12-27 23:45:12 &#43;0000 UTC&#39;&gt;December 27, 2022&lt;/span&gt;&amp;nbsp;·&amp;nbsp;2 min</footer>
+  <a class="entry-link" aria-label="post link to CMU15445-project2 Concurrent B&#43; tree" href="https://caaatch22.github.io/posts/cmu15445-project2-concurrent-b-tree/"></a>
+</article>
+
+<article class="post-entry"> 
+<figure class="entry-cover"><img loading="lazy" src="https://caaatch22.github.io/img/busTub/bustub.png" alt="">
+</figure>
+  <header class="entry-header">
+    <h2>CMU15445-project1 Buffer Pool Manager
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>Buffer Pool Manager cmu15445 是一门关于数据库管理系统（DBMS）设计与实现的经典公开课，是很多dba和内核开发人员的入门课程。开课教授Andy Pavlo 非常风趣幽默，他有自己上课的DJ，他曾在浴缸里录课，且时常语出惊人。这门课的实验项目BusTub非常有挑战性，并对所有人开放评测资源。
+Overview BusTub是一个面向磁盘的 DBMS(Database Management System)。由于磁盘上的数据不支持字节粒度的访问，这就需要一个管理页的中间层，而 Andy 坚持“The OS is not your friend”， 反对使用 mmap 进行页操作，因此实验一的目标便在于通过实现 Buffer Pool Manager 主动管理磁盘中的页（page）在内存中的缓存，从而，最小化磁盘访问次数（时间上）、最大化相关数据连续（空间上）。
+这次实验有三个子任务，分别是
+Task #1: Extendible Hash Table Task #2: LRU-K Replacer Task #3: Buffer Pool Manager Instance 可拓展哈希表是这个是实验中相对独立的模块。这里不会讲它的细节，后面的两个任务中需要用到哈希表的地方我直接用std::unordered_map替代，而且效率还更高。应该是因为 Extendible Hash Table 要求线程安全，为了方便在我在每个函数入口都加了大锁。 想要 Extendible Hash Table 具体细节的可以看这个b站视频。关于它的优化，我想可以进行更细粒度的锁管理甚至写一个无锁(lockfree)的哈希表。
+Buffer Pool Manager 在后两个实验开始之前，我建议先将Task #2和Task #3的实验材料完整的看完在开始写代码。因为 replacer 和 buffer pool manager 有较大程度的耦合。很多API设计需要对照两个组件才能知道自己应该维护的数据与功能的边界。为了更符合直觉，我会先阐述 buffer pool manager 的设计，同时会穿插着 LRU-k 的API什么时候，在哪用。
+...</p>
+  </div>
+  <footer class="entry-footer">&lt;span title=&#39;2022-12-22 15:37:34 &#43;0000 UTC&#39;&gt;December 22, 2022&lt;/span&gt;&amp;nbsp;·&amp;nbsp;3 min</footer>
+  <a class="entry-link" aria-label="post link to CMU15445-project1 Buffer Pool Manager" href="https://caaatch22.github.io/posts/cmu15445-project1-buffer-pool-manager/"></a>
+</article>
+
+<article class="post-entry"> 
+  <header class="entry-header">
+    <h2>个人常用配置备忘
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>vscode 插件：
+C/C&#43;&#43;, ~ Extension Pack, Themes, InteliCode CMake Tools, CodeLLDB Vim remote ssh, docker Error Lens, GitLens user的settings.json
+&#34;editor.fontFamily&#34;: &#34;Fira Code&#34;, &#34;workbench.panel.defaultLocation&#34;: &#34;right&#34;, &#34;vim.handleKeys&#34;: { &#34;&lt;C-c&gt;&#34;: false, &#34;&lt;C-f&gt;&#34;: false, &#34;&lt;C-x&gt;&#34;: false, &#34;&lt;C-a&gt;&#34;: false, &#34;&lt;C-p&gt;&#34;: false, }, &#34;C_Cpp.vcFormat.newLine.beforeOpenBrace.block&#34;: &#34;sameLine&#34;, &#34;C_Cpp.vcFormat.newLine.beforeOpenBrace.function&#34;: &#34;sameLine&#34;, &#34;editor.formatOnSave&#34;: true, &#34;C_Cpp.clang_format_fallbackStyle&#34;: &#34;{ BasedOnStyle: LLVM, UseTab: Never, IndentWidth: 2, TabWidth: 2}&#34;, pip, python, pyenv 使用pyenv控制多个python版本
+pyenv versions # 查看所有安装的python脚本 pyenv install 3.8.0 # 安装python 3.8.0 pyenv global 3.8.0 # 将3.8.0设置为全局python，对应pip也会改变 删除__pycache__
+find . -name &#34;*.pyc&#34; -type f -print -exec rm -rf {} \; about clash # start.sh nohup ./clash -d . &gt;/dev/null 2&gt;&amp;1 &amp; #shutdown.sh ps -A | grep clash | awk &#39;{print $1}&#39; | xargs kill 暂时设置7890做全局代理
+...</p>
+  </div>
+  <footer class="entry-footer">&lt;span title=&#39;2022-12-20 17:33:40 &#43;0000 UTC&#39;&gt;December 20, 2022&lt;/span&gt;&amp;nbsp;·&amp;nbsp;1 min</footer>
+  <a class="entry-link" aria-label="post link to 个人常用配置备忘" href="https://caaatch22.github.io/posts/memo/"></a>
+</article>
+
+<article class="post-entry"> 
+  <header class="entry-header">
+    <h2>cs144-note1
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>Computer Network introduction dominant model : bidirectional, reliable byte stream connection
+http: hypertext transfer protocol : designed to be a document centric way for programs to communicate. Client —&gt; Server model
+Bit-Torrent: (peer-to-peer model) a client requests document from other clients, a single client can request from many others. these collections of collaborating clients are called swarms when a client wants to downloads a file, it first find torrent, usually using www and download using http. torrent file describes information about data file, also tells bit-torrent about the tracker (a node keeps track names of clients of the swarm)
+...</p>
+  </div>
+  <footer class="entry-footer">&lt;span title=&#39;2022-05-09 22:35:22 &#43;0000 UTC&#39;&gt;May 9, 2022&lt;/span&gt;&amp;nbsp;·&amp;nbsp;3 min</footer>
+  <a class="entry-link" aria-label="post link to cs144-note1" href="https://caaatch22.github.io/posts/cs144-note1/"></a>
+</article>
+
+<article class="post-entry"> 
+<figure class="entry-cover"><img loading="lazy" src="https://caaatch22.github.io/img/icpc-algorithm-template/icpc-template.png" alt="">
+</figure>
+  <header class="entry-header">
+    <h2>xcpc template
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>icpc模板 Previous Next     / [pdf] View the PDF file here. algorithm-template Competitive Programming template
+...</p>
+  </div>
+  <footer class="entry-footer">&lt;span title=&#39;2022-03-17 23:38:14 &#43;0000 UTC&#39;&gt;March 17, 2022&lt;/span&gt;&amp;nbsp;·&amp;nbsp;1 min</footer>
+  <a class="entry-link" aria-label="post link to xcpc template" href="https://caaatch22.github.io/posts/xcpc-template/"></a>
+</article>
+
+<article class="post-entry"> 
+  <header class="entry-header">
+    <h2>
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p></p>
+  </div>
+  <footer class="entry-footer">0 min</footer>
+  <a class="entry-link" aria-label="post link to " href="https://caaatch22.github.io/posts/mlc/"></a>
+</article>
+
+<article class="post-entry"> 
+  <header class="entry-header">
+    <h2>
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p></p>
+  </div>
+  <footer class="entry-footer">0 min</footer>
+  <a class="entry-link" aria-label="post link to " href="https://caaatch22.github.io/posts/transformers-0-attention-is-all-you-need/"></a>
 </article>
 <footer class="page-footer">
   <nav class="pagination">
@@ -270,7 +344,7 @@ Wavelet Tree 该图给出了用序列 $A = [7, 3, 5, 6, 1, 3, 2, 7, 8, 4]$ 构�
     </main>
     
 <footer class="footer">
-    <span>&copy; 2024 <a href="https://caaatch22.github.io">Mingjie&#39;s Home</a></span>
+    <span>&copy; 2024 <a href="https://caaatch22.github.io/">Mingjie&#39;s Home</a></span>
     <span>
         Powered by
         <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &

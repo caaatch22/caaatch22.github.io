@@ -7,11 +7,37 @@
 <meta name="robots" content="index, follow">
 <title>phmap —— 缓存友好的高效hashtable | Mingjie&#39;s Home</title>
 <meta name="keywords" content="DataStructure, opensource">
-<meta name="description" content="众所周知，C&#43;&#43;标准库的 unordered_map在性能上向来不是一个好的选择。开源市场上有非常多的高性能哈希表可供选择，phmap继承自 absl-hashmap，有着非常好的插入、查找性能。在著名的Comprehensive C&#43;&#43; Hashmap Benchmarks 2022榜单中名列前茅。事实上，我比对了 phmap::flat_hash_map与榜单中综合性能第一的 ankerl::unordered_dense::map，我的benchmark中只有遍历哈希表时，flat_hash_map的性能低于 unordered_dense::map，其余无论是插入还是随即查找，大部分情况下 flat_hash_map的性能都更优。本文简单介绍了 flat_hash_map相关情况，以及一些使用上的建议与坑点。
-flat_hash_map 和 node_hash_map区别 phmap中有提供了两类哈希表，其内部布局示意图如下：
+<meta name="description" content="
+众所周知，C&#43;&#43;标准库的 unordered_map在性能上向来不是一个好的选择。开源市场上有非常多的高性能哈希表可供选择，phmap继承自 absl-hashmap，有着非常好的插入、查找性能。在著名的Comprehensive C&#43;&#43; Hashmap Benchmarks 2022榜单中名列前茅。事实上，我比对了 phmap::flat_hash_map与榜单中综合性能第一的 ankerl::unordered_dense::map，我的benchmark中只有遍历哈希表时，flat_hash_map的性能低于 unordered_dense::map，其余无论是插入还是随即查找，大部分情况下 flat_hash_map的性能都更优。本文简单介绍了 flat_hash_map相关情况，以及一些使用上的建议与坑点。
+
+flat_hash_map 和 node_hash_map区别
+phmap中有提供了两类哈希表，其内部布局示意图如下：
+
+
 由上图（忽略了bucket的细节）可以看出，flat_hash_map的最大的优点在于
-node之间的内存是连续的(虽然可能中间存在空node)，遍历的时候对cache更加友好 并且相比于 node_hash_map版少一次寻址过程（std::unordered_map的设计与 node_hash_map）相同。 而 flat_*系列的缺点就是在 rehash的时候:
-会引发原来的value失效（这里的失效指的是原来的那个对象所对应的内存失效，而不是value所包含的内容失效，例如，value是一个指针，那它的值——所指向的对象，不会受到影响）。举个例子： flat_hash_map&lt;int, Data&gt; mp; node_hash_map&lt;int, Data&gt; nodemp; mp[0] = Data(); nodemp[0] = Data(); auto&amp; mp0 = mp[0]; auto&amp; nodemp0 = nodemp[0]; // tigger rehash for (int i = 1; i &lt;= 10; i &#43;&#43;) { mp[i] = Data(); nodemp[i] = Data(); } assert(std::addressof(mp[0]) != std::addressof(mp0)); assert(std::addressof(nodemp[0]) == std::addressof(nodemp0)); 原因就是 flat_hash_map的内存布局导致的。而 node_hash_map或者 std::unordered_map就保证不会出现这种情况，因为当他们rehash的时候，只需要将bucket内的指针重新分配，指针的值还是指向原来的 node&lt;key, value&gt;.">
+
+node之间的内存是连续的(虽然可能中间存在空node)，遍历的时候对cache更加友好
+并且相比于 node_hash_map版少一次寻址过程（std::unordered_map的设计与 node_hash_map）相同。
+
+而 flat_*系列的缺点就是在 rehash的时候:
+
+会引发原来的value失效（这里的失效指的是原来的那个对象所对应的内存失效，而不是value所包含的内容失效，例如，value是一个指针，那它的值——所指向的对象，不会受到影响）。举个例子：
+
+
+flat_hash_map&lt;int, Data&gt; mp;
+node_hash_map&lt;int, Data&gt; nodemp;
+mp[0] = Data();
+nodemp[0] = Data();
+auto&amp; mp0 = mp[0];
+auto&amp; nodemp0 = nodemp[0];
+// tigger rehash
+for (int i = 1; i &lt;= 10; i &#43;&#43;) {
+	mp[i] = Data();
+	nodemp[i] = Data(); 
+}
+assert(std::addressof(mp[0]) != std::addressof(mp0));
+assert(std::addressof(nodemp[0]) == std::addressof(nodemp0));
+原因就是 flat_hash_map的内存布局导致的。而 node_hash_map或者 std::unordered_map就保证不会出现这种情况，因为当他们rehash的时候，只需要将bucket内的指针重新分配，指针的值还是指向原来的 node&lt;key, value&gt;.">
 <meta name="author" content="">
 <link rel="canonical" href="https://caaatch22.github.io/posts/phmap/">
 <link crossorigin="anonymous" href="/assets/css/stylesheet.678b5c47efa744d2e0dd0d61101075e6aecdc9a0631e7ad8538f4ec0cca79273.css" integrity="sha256-Z4tcR&#43;&#43;nRNLg3Q1hEBB15q7NyaBjHnrYU49OwMynknM=" rel="preload stylesheet" as="style">
@@ -24,6 +50,7 @@ node之间的内存是连续的(虽然可能中间存在空node)，遍历的时�
 <link rel="mask-icon" href="https://caaatch22.github.io/safari-pinned-tab.svg">
 <meta name="theme-color" content="#2e2e33">
 <meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://caaatch22.github.io/posts/phmap/">
 <noscript>
     <style>
         #theme-toggle,
@@ -61,22 +88,51 @@ node之间的内存是连续的(虽然可能中间存在空node)，遍历的时�
 
     </style>
 </noscript>
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-WEG841BBW9"></script>
-<script>
-var doNotTrack = false;
-if (!doNotTrack) {
-	window.dataLayer = window.dataLayer || [];
-	function gtag(){dataLayer.push(arguments);}
-	gtag('js', new Date());
-	gtag('config', 'G-WEG841BBW9', { 'anonymize_ip': false });
-}
-</script>
-<meta property="og:title" content="phmap —— 缓存友好的高效hashtable" />
-<meta property="og:description" content="众所周知，C&#43;&#43;标准库的 unordered_map在性能上向来不是一个好的选择。开源市场上有非常多的高性能哈希表可供选择，phmap继承自 absl-hashmap，有着非常好的插入、查找性能。在著名的Comprehensive C&#43;&#43; Hashmap Benchmarks 2022榜单中名列前茅。事实上，我比对了 phmap::flat_hash_map与榜单中综合性能第一的 ankerl::unordered_dense::map，我的benchmark中只有遍历哈希表时，flat_hash_map的性能低于 unordered_dense::map，其余无论是插入还是随即查找，大部分情况下 flat_hash_map的性能都更优。本文简单介绍了 flat_hash_map相关情况，以及一些使用上的建议与坑点。
-flat_hash_map 和 node_hash_map区别 phmap中有提供了两类哈希表，其内部布局示意图如下：
+      <script async src="https://www.googletagmanager.com/gtag/js?id=G-WEG841BBW9"></script>
+      <script>
+        var doNotTrack = false;
+        if ( false ) {
+          var dnt = (navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack);
+          var doNotTrack = (dnt == "1" || dnt == "yes");
+        }
+        if (!doNotTrack) {
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-WEG841BBW9');
+        }
+      </script><meta property="og:title" content="phmap —— 缓存友好的高效hashtable" />
+<meta property="og:description" content="
+众所周知，C&#43;&#43;标准库的 unordered_map在性能上向来不是一个好的选择。开源市场上有非常多的高性能哈希表可供选择，phmap继承自 absl-hashmap，有着非常好的插入、查找性能。在著名的Comprehensive C&#43;&#43; Hashmap Benchmarks 2022榜单中名列前茅。事实上，我比对了 phmap::flat_hash_map与榜单中综合性能第一的 ankerl::unordered_dense::map，我的benchmark中只有遍历哈希表时，flat_hash_map的性能低于 unordered_dense::map，其余无论是插入还是随即查找，大部分情况下 flat_hash_map的性能都更优。本文简单介绍了 flat_hash_map相关情况，以及一些使用上的建议与坑点。
+
+flat_hash_map 和 node_hash_map区别
+phmap中有提供了两类哈希表，其内部布局示意图如下：
+
+
 由上图（忽略了bucket的细节）可以看出，flat_hash_map的最大的优点在于
-node之间的内存是连续的(虽然可能中间存在空node)，遍历的时候对cache更加友好 并且相比于 node_hash_map版少一次寻址过程（std::unordered_map的设计与 node_hash_map）相同。 而 flat_*系列的缺点就是在 rehash的时候:
-会引发原来的value失效（这里的失效指的是原来的那个对象所对应的内存失效，而不是value所包含的内容失效，例如，value是一个指针，那它的值——所指向的对象，不会受到影响）。举个例子： flat_hash_map&lt;int, Data&gt; mp; node_hash_map&lt;int, Data&gt; nodemp; mp[0] = Data(); nodemp[0] = Data(); auto&amp; mp0 = mp[0]; auto&amp; nodemp0 = nodemp[0]; // tigger rehash for (int i = 1; i &lt;= 10; i &#43;&#43;) { mp[i] = Data(); nodemp[i] = Data(); } assert(std::addressof(mp[0]) != std::addressof(mp0)); assert(std::addressof(nodemp[0]) == std::addressof(nodemp0)); 原因就是 flat_hash_map的内存布局导致的。而 node_hash_map或者 std::unordered_map就保证不会出现这种情况，因为当他们rehash的时候，只需要将bucket内的指针重新分配，指针的值还是指向原来的 node&lt;key, value&gt;." />
+
+node之间的内存是连续的(虽然可能中间存在空node)，遍历的时候对cache更加友好
+并且相比于 node_hash_map版少一次寻址过程（std::unordered_map的设计与 node_hash_map）相同。
+
+而 flat_*系列的缺点就是在 rehash的时候:
+
+会引发原来的value失效（这里的失效指的是原来的那个对象所对应的内存失效，而不是value所包含的内容失效，例如，value是一个指针，那它的值——所指向的对象，不会受到影响）。举个例子：
+
+
+flat_hash_map&lt;int, Data&gt; mp;
+node_hash_map&lt;int, Data&gt; nodemp;
+mp[0] = Data();
+nodemp[0] = Data();
+auto&amp; mp0 = mp[0];
+auto&amp; nodemp0 = nodemp[0];
+// tigger rehash
+for (int i = 1; i &lt;= 10; i &#43;&#43;) {
+	mp[i] = Data();
+	nodemp[i] = Data(); 
+}
+assert(std::addressof(mp[0]) != std::addressof(mp0));
+assert(std::addressof(nodemp[0]) == std::addressof(nodemp0));
+原因就是 flat_hash_map的内存布局导致的。而 node_hash_map或者 std::unordered_map就保证不会出现这种情况，因为当他们rehash的时候，只需要将bucket内的指针重新分配，指针的值还是指向原来的 node&lt;key, value&gt;." />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://caaatch22.github.io/posts/phmap/" /><meta property="article:section" content="posts" />
 <meta property="article:published_time" content="2023-07-23T21:23:15+00:00" />
@@ -84,27 +140,53 @@ node之间的内存是连续的(虽然可能中间存在空node)，遍历的时�
 
 <meta name="twitter:card" content="summary"/>
 <meta name="twitter:title" content="phmap —— 缓存友好的高效hashtable"/>
-<meta name="twitter:description" content="众所周知，C&#43;&#43;标准库的 unordered_map在性能上向来不是一个好的选择。开源市场上有非常多的高性能哈希表可供选择，phmap继承自 absl-hashmap，有着非常好的插入、查找性能。在著名的Comprehensive C&#43;&#43; Hashmap Benchmarks 2022榜单中名列前茅。事实上，我比对了 phmap::flat_hash_map与榜单中综合性能第一的 ankerl::unordered_dense::map，我的benchmark中只有遍历哈希表时，flat_hash_map的性能低于 unordered_dense::map，其余无论是插入还是随即查找，大部分情况下 flat_hash_map的性能都更优。本文简单介绍了 flat_hash_map相关情况，以及一些使用上的建议与坑点。
-flat_hash_map 和 node_hash_map区别 phmap中有提供了两类哈希表，其内部布局示意图如下：
+<meta name="twitter:description" content="
+众所周知，C&#43;&#43;标准库的 unordered_map在性能上向来不是一个好的选择。开源市场上有非常多的高性能哈希表可供选择，phmap继承自 absl-hashmap，有着非常好的插入、查找性能。在著名的Comprehensive C&#43;&#43; Hashmap Benchmarks 2022榜单中名列前茅。事实上，我比对了 phmap::flat_hash_map与榜单中综合性能第一的 ankerl::unordered_dense::map，我的benchmark中只有遍历哈希表时，flat_hash_map的性能低于 unordered_dense::map，其余无论是插入还是随即查找，大部分情况下 flat_hash_map的性能都更优。本文简单介绍了 flat_hash_map相关情况，以及一些使用上的建议与坑点。
+
+flat_hash_map 和 node_hash_map区别
+phmap中有提供了两类哈希表，其内部布局示意图如下：
+
+
 由上图（忽略了bucket的细节）可以看出，flat_hash_map的最大的优点在于
-node之间的内存是连续的(虽然可能中间存在空node)，遍历的时候对cache更加友好 并且相比于 node_hash_map版少一次寻址过程（std::unordered_map的设计与 node_hash_map）相同。 而 flat_*系列的缺点就是在 rehash的时候:
-会引发原来的value失效（这里的失效指的是原来的那个对象所对应的内存失效，而不是value所包含的内容失效，例如，value是一个指针，那它的值——所指向的对象，不会受到影响）。举个例子： flat_hash_map&lt;int, Data&gt; mp; node_hash_map&lt;int, Data&gt; nodemp; mp[0] = Data(); nodemp[0] = Data(); auto&amp; mp0 = mp[0]; auto&amp; nodemp0 = nodemp[0]; // tigger rehash for (int i = 1; i &lt;= 10; i &#43;&#43;) { mp[i] = Data(); nodemp[i] = Data(); } assert(std::addressof(mp[0]) != std::addressof(mp0)); assert(std::addressof(nodemp[0]) == std::addressof(nodemp0)); 原因就是 flat_hash_map的内存布局导致的。而 node_hash_map或者 std::unordered_map就保证不会出现这种情况，因为当他们rehash的时候，只需要将bucket内的指针重新分配，指针的值还是指向原来的 node&lt;key, value&gt;."/>
+
+node之间的内存是连续的(虽然可能中间存在空node)，遍历的时候对cache更加友好
+并且相比于 node_hash_map版少一次寻址过程（std::unordered_map的设计与 node_hash_map）相同。
+
+而 flat_*系列的缺点就是在 rehash的时候:
+
+会引发原来的value失效（这里的失效指的是原来的那个对象所对应的内存失效，而不是value所包含的内容失效，例如，value是一个指针，那它的值——所指向的对象，不会受到影响）。举个例子：
+
+
+flat_hash_map&lt;int, Data&gt; mp;
+node_hash_map&lt;int, Data&gt; nodemp;
+mp[0] = Data();
+nodemp[0] = Data();
+auto&amp; mp0 = mp[0];
+auto&amp; nodemp0 = nodemp[0];
+// tigger rehash
+for (int i = 1; i &lt;= 10; i &#43;&#43;) {
+	mp[i] = Data();
+	nodemp[i] = Data(); 
+}
+assert(std::addressof(mp[0]) != std::addressof(mp0));
+assert(std::addressof(nodemp[0]) == std::addressof(nodemp0));
+原因就是 flat_hash_map的内存布局导致的。而 node_hash_map或者 std::unordered_map就保证不会出现这种情况，因为当他们rehash的时候，只需要将bucket内的指针重新分配，指针的值还是指向原来的 node&lt;key, value&gt;."/>
 
 
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "BreadcrumbList",
-  "itemListElement": [, 
+  "itemListElement": [
     {
       "@type": "ListItem",
-      "position":  2 ,
+      "position":  1 ,
       "name": "Posts",
       "item": "https://caaatch22.github.io/posts/"
     }, 
     {
       "@type": "ListItem",
-      "position":  3 ,
+      "position":  2 ,
       "name": "phmap —— 缓存友好的高效hashtable",
       "item": "https://caaatch22.github.io/posts/phmap/"
     }
@@ -117,7 +199,7 @@ node之间的内存是连续的(虽然可能中间存在空node)，遍历的时�
   "@type": "BlogPosting",
   "headline": "phmap —— 缓存友好的高效hashtable",
   "name": "phmap —— 缓存友好的高效hashtable",
-  "description": "众所周知，C++标准库的 unordered_map在性能上向来不是一个好的选择。开源市场上有非常多的高性能哈希表可供选择，phmap继承自 absl-hashmap，有着非常好的插入、查找性能。在著名的Comprehensive C++ Hashmap Benchmarks 2022榜单中名列前茅。事实上，我比对了 phmap::flat_hash_map与榜单中综合性能第一的 ankerl::unordered_dense::map，我的benchmark中只有遍历哈希表时，flat_hash_map的性能低于 unordered_dense::map，其余无论是插入还是随即查找，大部分情况下 flat_hash_map的性能都更优。本文简单介绍了 flat_hash_map相关情况，以及一些使用上的建议与坑点。\nflat_hash_map 和 node_hash_map区别 phmap中有提供了两类哈希表，其内部布局示意图如下：\n由上图（忽略了bucket的细节）可以看出，flat_hash_map的最大的优点在于\nnode之间的内存是连续的(虽然可能中间存在空node)，遍历的时候对cache更加友好 并且相比于 node_hash_map版少一次寻址过程（std::unordered_map的设计与 node_hash_map）相同。 而 flat_*系列的缺点就是在 rehash的时候:\n会引发原来的value失效（这里的失效指的是原来的那个对象所对应的内存失效，而不是value所包含的内容失效，例如，value是一个指针，那它的值——所指向的对象，不会受到影响）。举个例子： flat_hash_map\u0026lt;int, Data\u0026gt; mp; node_hash_map\u0026lt;int, Data\u0026gt; nodemp; mp[0] = Data(); nodemp[0] = Data(); auto\u0026amp; mp0 = mp[0]; auto\u0026amp; nodemp0 = nodemp[0]; // tigger rehash for (int i = 1; i \u0026lt;= 10; i ++) { mp[i] = Data(); nodemp[i] = Data(); } assert(std::addressof(mp[0]) != std::addressof(mp0)); assert(std::addressof(nodemp[0]) == std::addressof(nodemp0)); 原因就是 flat_hash_map的内存布局导致的。而 node_hash_map或者 std::unordered_map就保证不会出现这种情况，因为当他们rehash的时候，只需要将bucket内的指针重新分配，指针的值还是指向原来的 node\u0026lt;key, value\u0026gt;.",
+  "description": " 众所周知，C++标准库的 unordered_map在性能上向来不是一个好的选择。开源市场上有非常多的高性能哈希表可供选择，phmap继承自 absl-hashmap，有着非常好的插入、查找性能。在著名的Comprehensive C++ Hashmap Benchmarks 2022榜单中名列前茅。事实上，我比对了 phmap::flat_hash_map与榜单中综合性能第一的 ankerl::unordered_dense::map，我的benchmark中只有遍历哈希表时，flat_hash_map的性能低于 unordered_dense::map，其余无论是插入还是随即查找，大部分情况下 flat_hash_map的性能都更优。本文简单介绍了 flat_hash_map相关情况，以及一些使用上的建议与坑点。\nflat_hash_map 和 node_hash_map区别 phmap中有提供了两类哈希表，其内部布局示意图如下：\n由上图（忽略了bucket的细节）可以看出，flat_hash_map的最大的优点在于\nnode之间的内存是连续的(虽然可能中间存在空node)，遍历的时候对cache更加友好 并且相比于 node_hash_map版少一次寻址过程（std::unordered_map的设计与 node_hash_map）相同。 而 flat_*系列的缺点就是在 rehash的时候:\n会引发原来的value失效（这里的失效指的是原来的那个对象所对应的内存失效，而不是value所包含的内容失效，例如，value是一个指针，那它的值——所指向的对象，不会受到影响）。举个例子： flat_hash_map\u0026lt;int, Data\u0026gt; mp; node_hash_map\u0026lt;int, Data\u0026gt; nodemp; mp[0] = Data(); nodemp[0] = Data(); auto\u0026amp; mp0 = mp[0]; auto\u0026amp; nodemp0 = nodemp[0]; // tigger rehash for (int i = 1; i \u0026lt;= 10; i ++) { mp[i] = Data(); nodemp[i] = Data(); } assert(std::addressof(mp[0]) != std::addressof(mp0)); assert(std::addressof(nodemp[0]) == std::addressof(nodemp0)); 原因就是 flat_hash_map的内存布局导致的。而 node_hash_map或者 std::unordered_map就保证不会出现这种情况，因为当他们rehash的时候，只需要将bucket内的指针重新分配，指针的值还是指向原来的 node\u0026lt;key, value\u0026gt;.\n",
   "keywords": [
     "DataStructure", "opensource"
   ],
@@ -157,7 +239,7 @@ node之间的内存是连续的(虽然可能中间存在空node)，遍历的时�
 <header class="header">
     <nav class="nav">
         <div class="logo">
-            <a href="https://caaatch22.github.io" accesskey="h" title="Mingjie&#39;s Home (Alt + H)">Mingjie&#39;s Home</a>
+            <a href="https://caaatch22.github.io/" accesskey="h" title="Mingjie&#39;s Home (Alt + H)">Mingjie&#39;s Home</a>
             <div class="logo-switches">
                 <button id="theme-toggle" accesskey="t" title="(Alt + T)">
                     <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
@@ -179,6 +261,8 @@ node之间的内存是连续的(虽然可能中间存在空node)，遍历的时�
                         <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
                     </svg>
                 </button>
+                <ul class="lang-switch"><li>|</li>
+                </ul>
             </div>
         </div>
         <ul id="menu">
@@ -209,11 +293,11 @@ node之间的内存是连续的(虽然可能中间存在空node)，遍历的时�
 
 <article class="post-single">
   <header class="post-header">
-    <div class="breadcrumbs"><a href="https://caaatch22.github.io">Home</a>&nbsp;»&nbsp;<a href="https://caaatch22.github.io/posts/">Posts</a></div>
+    <div class="breadcrumbs"><a href="https://caaatch22.github.io/">Home</a>&nbsp;»&nbsp;<a href="https://caaatch22.github.io/posts/">Posts</a></div>
     <h1 class="post-title">
       phmap —— 缓存友好的高效hashtable
     </h1>
-    <div class="post-meta"><span title='2023-07-23 21:23:15 +0000 UTC'>July 23, 2023</span>&nbsp;·&nbsp;3 min
+    <div class="post-meta">&lt;span title=&#39;2023-07-23 21:23:15 &#43;0000 UTC&#39;&gt;July 23, 2023&lt;/span&gt;&amp;nbsp;·&amp;nbsp;3 min
 
 </div>
   </header> <aside id="toc-container" class="toc-container wide">
@@ -417,116 +501,116 @@ node之间的内存是连续的(虽然可能中间存在空node)，遍历的时�
 <p>以下操作的个数都为 <code>1'000'000</code>次，最后一列string-&gt;string 插入次数为 <code>100'000</code>次</p>
 <p><em>vector作为baseline插入pair&lt;K,V&gt;进行比较</em></p>
 <table>
-<thead>
-<tr>
-<th>benchmarks(insert)</th>
-<th>insert ints</th>
-<th>insert ints(reserve first)</th>
-<th>insert string(sso)-&gt;ptr</th>
-<th>insert int-&gt;LargeData</th>
-<th>insert string(8)-&gt;string(4096)</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>std::vector</td>
-<td>17ms</td>
-<td>7ms</td>
-<td>33ms</td>
-<td>102ms</td>
-<td>153ms</td>
-</tr>
-<tr>
-<td>std::unordered_map</td>
-<td>170ms</td>
-<td>72ms</td>
-<td>343ms</td>
-<td>249ms</td>
-<td>213ms</td>
-</tr>
-<tr>
-<td>flat_hash_map</td>
-<td>47ms</td>
-<td>34ms</td>
-<td>90ms</td>
-<td>462ms</td>
-<td>182ms</td>
-</tr>
-<tr>
-<td>node_hash_map</td>
-<td>152ms</td>
-<td>68ms</td>
-<td>182ms</td>
-<td>236ms</td>
-<td>183ms</td>
-</tr>
-</tbody>
+  <thead>
+      <tr>
+          <th>benchmarks(insert)</th>
+          <th>insert ints</th>
+          <th>insert ints(reserve first)</th>
+          <th>insert string(sso)-&gt;ptr</th>
+          <th>insert int-&gt;LargeData</th>
+          <th>insert string(8)-&gt;string(4096)</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>std::vector</td>
+          <td>17ms</td>
+          <td>7ms</td>
+          <td>33ms</td>
+          <td>102ms</td>
+          <td>153ms</td>
+      </tr>
+      <tr>
+          <td>std::unordered_map</td>
+          <td>170ms</td>
+          <td>72ms</td>
+          <td>343ms</td>
+          <td>249ms</td>
+          <td>213ms</td>
+      </tr>
+      <tr>
+          <td>flat_hash_map</td>
+          <td>47ms</td>
+          <td>34ms</td>
+          <td>90ms</td>
+          <td>462ms</td>
+          <td>182ms</td>
+      </tr>
+      <tr>
+          <td>node_hash_map</td>
+          <td>152ms</td>
+          <td>68ms</td>
+          <td>182ms</td>
+          <td>236ms</td>
+          <td>183ms</td>
+      </tr>
+  </tbody>
 </table>
 <table>
-<thead>
-<tr>
-<th>benchmarks(read)</th>
-<th>iterate ints</th>
-<th>find int</th>
-<th>iterate string</th>
-<th>find string</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>std::vector</td>
-<td>0ms</td>
-<td>*</td>
-<td>3ms</td>
-<td>*</td>
-</tr>
-<tr>
-<td>std::unordered_map</td>
-<td>20ms</td>
-<td>52ms</td>
-<td>55ms</td>
-<td>152ms</td>
-</tr>
-<tr>
-<td>flat_hash_map</td>
-<td>3ms</td>
-<td>23ms</td>
-<td>8ms</td>
-<td>71ms</td>
-</tr>
-<tr>
-<td>node_hash_map</td>
-<td>14ms</td>
-<td>38ms</td>
-<td>14ms</td>
-<td>108ms</td>
-</tr>
-</tbody>
+  <thead>
+      <tr>
+          <th>benchmarks(read)</th>
+          <th>iterate ints</th>
+          <th>find int</th>
+          <th>iterate string</th>
+          <th>find string</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>std::vector</td>
+          <td>0ms</td>
+          <td>*</td>
+          <td>3ms</td>
+          <td>*</td>
+      </tr>
+      <tr>
+          <td>std::unordered_map</td>
+          <td>20ms</td>
+          <td>52ms</td>
+          <td>55ms</td>
+          <td>152ms</td>
+      </tr>
+      <tr>
+          <td>flat_hash_map</td>
+          <td>3ms</td>
+          <td>23ms</td>
+          <td>8ms</td>
+          <td>71ms</td>
+      </tr>
+      <tr>
+          <td>node_hash_map</td>
+          <td>14ms</td>
+          <td>38ms</td>
+          <td>14ms</td>
+          <td>108ms</td>
+      </tr>
+  </tbody>
 </table>
 <p><em>About parallel_flat_hash_map</em></p>
 <table>
-<thead>
-<tr>
-<th>inserting 1000000 ints</th>
-<th>1-thread</th>
-<th>8-threads</th>
-<th>8-threads</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>flat_hash_map</td>
-<td>31ms</td>
-<td>23ms(no lock)</td>
-<td>214ms(mutex manually)</td>
-</tr>
-<tr>
-<td>parallel_flat_hash_map</td>
-<td>35ms</td>
-<td>*</td>
-<td>70ms(mutex/shared_mutex)</td>
-</tr>
-</tbody>
+  <thead>
+      <tr>
+          <th>inserting 1000000 ints</th>
+          <th>1-thread</th>
+          <th>8-threads</th>
+          <th>8-threads</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>flat_hash_map</td>
+          <td>31ms</td>
+          <td>23ms(no lock)</td>
+          <td>214ms(mutex manually)</td>
+      </tr>
+      <tr>
+          <td>parallel_flat_hash_map</td>
+          <td>35ms</td>
+          <td>*</td>
+          <td>70ms(mutex/shared_mutex)</td>
+      </tr>
+  </tbody>
 </table>
 <h3 id="一个小问题">一个小问题<a hidden class="anchor" aria-hidden="true" href="#一个小问题">#</a></h3>
 <p>在测试的时候发现，无论是 <code>flat_hash_map</code>还是 <code>node_hash_map</code>都没法插入 <code>None-moveable</code>的数据，但是 <code>std::unordered_map</code>可以。</p>
@@ -584,7 +668,7 @@ node之间的内存是连续的(虽然可能中间存在空node)，遍历的时�
   <footer class="post-footer">
     <ul class="post-tags">
       <li><a href="https://caaatch22.github.io/tags/datastructure/">DataStructure</a></li>
-      <li><a href="https://caaatch22.github.io/tags/opensource/">opensource</a></li>
+      <li><a href="https://caaatch22.github.io/tags/opensource/">Opensource</a></li>
     </ul>
 <nav class="paginav">
   <a class="prev" href="https://caaatch22.github.io/posts/advanced-cache/">
@@ -604,7 +688,7 @@ node之间的内存是连续的(虽然可能中间存在空node)，遍历的时�
     </main>
     
 <footer class="footer">
-    <span>&copy; 2024 <a href="https://caaatch22.github.io">Mingjie&#39;s Home</a></span>
+    <span>&copy; 2024 <a href="https://caaatch22.github.io/">Mingjie&#39;s Home</a></span>
     <span>
         Powered by
         <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &

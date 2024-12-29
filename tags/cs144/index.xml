@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
   <channel>
-    <title>cs144 on Mingjie&#39;s Home</title>
+    <title>Cs144 on Mingjie&#39;s Home</title>
     <link>https://caaatch22.github.io/tags/cs144/</link>
-    <description>Recent content in cs144 on Mingjie&#39;s Home</description>
+    <description>Recent content in Cs144 on Mingjie&#39;s Home</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>zh-cn</language>
     <lastBuildDate>Mon, 09 May 2022 22:35:22 +0000</lastBuildDate><atom:link href="https://caaatch22.github.io/tags/cs144/index.xml" rel="self" type="application/rss+xml" />
@@ -13,9 +13,19 @@
       <pubDate>Mon, 09 May 2022 22:35:22 +0000</pubDate>
       
       <guid>https://caaatch22.github.io/posts/cs144-note1/</guid>
-      <description>Computer Network introduction dominant model : bidirectional, reliable byte stream connection
-http: hypertext transfer protocol : designed to be a document centric way for programs to communicate. Client &amp;mdash;&amp;gt; Server model
-Bit-Torrent: (peer-to-peer model) a client requests document from other clients, a single client can request from many others. these collections of collaborating clients are called swarms when a client wants to downloads a file, it first find torrent, usually using www and download using http.</description>
+      <description>&lt;h1 id=&#34;computer-network&#34;&gt;Computer Network&lt;/h1&gt;
+&lt;h2 id=&#34;introduction&#34;&gt;introduction&lt;/h2&gt;
+&lt;p&gt;dominant model : bidirectional, reliable byte stream connection&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;http&lt;/strong&gt;: hypertext transfer protocol : designed to be a document centric way for programs to communicate.
+Client  &amp;mdash;&amp;gt;  Server  model&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;Bit-Torrent&lt;/strong&gt;: (peer-to-peer model) a client requests document from other clients, a single client can request from many others.
+these collections of collaborating clients are called &lt;strong&gt;swarms&lt;/strong&gt;
+when a client wants to downloads a file, it first find &lt;code&gt;torrent&lt;/code&gt;, usually using www and download using http.
+&lt;strong&gt;torrent&lt;/strong&gt; file describes information about data file, also tells bit-torrent about the &lt;strong&gt;tracker&lt;/strong&gt; (a node keeps track names of clients of the swarm)&lt;/p&gt;</description>
       <content:encoded><![CDATA[<h1 id="computer-network">Computer Network</h1>
 <h2 id="introduction">introduction</h2>
 <p>dominant model : bidirectional, reliable byte stream connection</p>
@@ -72,30 +82,30 @@ a packet is a self-contained unit consisting of the data we want to be delivered
 <!-- raw HTML omitted -->
 <h2 id="ip-service-model">IP Service model</h2>
 <table>
-<thead>
-<tr>
-<th>Property</th>
-<th>behavior</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Datagram</td>
-<td>Individually routed packets.</td>
-</tr>
-<tr>
-<td>Unreliable</td>
-<td>packet might be dropped</td>
-</tr>
-<tr>
-<td>Best effort</td>
-<td>only if necessary</td>
-</tr>
-<tr>
-<td>Connectionless</td>
-<td>No per-flow state.</td>
-</tr>
-</tbody>
+  <thead>
+      <tr>
+          <th>Property</th>
+          <th>behavior</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>Datagram</td>
+          <td>Individually routed packets.</td>
+      </tr>
+      <tr>
+          <td>Unreliable</td>
+          <td>packet might be dropped</td>
+      </tr>
+      <tr>
+          <td>Best effort</td>
+          <td>only if necessary</td>
+      </tr>
+      <tr>
+          <td>Connectionless</td>
+          <td>No per-flow state.</td>
+      </tr>
+  </tbody>
 </table>
 <p><strong>IP is &ldquo;simple&rdquo;</strong></p>
 <ul>

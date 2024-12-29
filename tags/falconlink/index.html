@@ -19,6 +19,7 @@
 <meta name="theme-color" content="#2e2e33">
 <meta name="msapplication-TileColor" content="#2e2e33">
 <link rel="alternate" type="application/rss+xml" href="https://caaatch22.github.io/tags/falconlink/index.xml">
+<link rel="alternate" hreflang="en" href="https://caaatch22.github.io/tags/falconlink/">
 <noscript>
     <style>
         #theme-toggle,
@@ -56,17 +57,20 @@
 
     </style>
 </noscript>
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-WEG841BBW9"></script>
-<script>
-var doNotTrack = false;
-if (!doNotTrack) {
-	window.dataLayer = window.dataLayer || [];
-	function gtag(){dataLayer.push(arguments);}
-	gtag('js', new Date());
-	gtag('config', 'G-WEG841BBW9', { 'anonymize_ip': false });
-}
-</script>
-<meta property="og:title" content="FalconLink" />
+      <script async src="https://www.googletagmanager.com/gtag/js?id=G-WEG841BBW9"></script>
+      <script>
+        var doNotTrack = false;
+        if ( false ) {
+          var dnt = (navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack);
+          var doNotTrack = (dnt == "1" || dnt == "yes");
+        }
+        if (!doNotTrack) {
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-WEG841BBW9');
+        }
+      </script><meta property="og:title" content="FalconLink" />
 <meta property="og:description" content="" />
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://caaatch22.github.io/tags/falconlink/" />
@@ -92,7 +96,7 @@ if (!doNotTrack) {
 <header class="header">
     <nav class="nav">
         <div class="logo">
-            <a href="https://caaatch22.github.io" accesskey="h" title="Mingjie&#39;s Home (Alt + H)">Mingjie&#39;s Home</a>
+            <a href="https://caaatch22.github.io/" accesskey="h" title="Mingjie&#39;s Home (Alt + H)">Mingjie&#39;s Home</a>
             <div class="logo-switches">
                 <button id="theme-toggle" accesskey="t" title="(Alt + T)">
                     <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
@@ -114,6 +118,8 @@ if (!doNotTrack) {
                         <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
                     </svg>
                 </button>
+                <ul class="lang-switch"><li>|</li>
+                </ul>
             </div>
         </div>
         <ul id="menu">
@@ -141,7 +147,7 @@ if (!doNotTrack) {
     </nav>
 </header>
 <main class="main"> 
-<header class="page-header"><div class="breadcrumbs"><a href="https://caaatch22.github.io">Home</a>&nbsp;»&nbsp;<a href="https://caaatch22.github.io/tags/">Tags</a></div>
+<header class="page-header"><div class="breadcrumbs"><a href="https://caaatch22.github.io/">Home</a>&nbsp;»&nbsp;<a href="https://caaatch22.github.io/tags/">Tags</a></div>
   <h1>
     FalconLink
   </h1>
@@ -155,19 +161,20 @@ if (!doNotTrack) {
     </h2>
   </header>
   <div class="entry-content">
-    <p>本博客部署在两个服务器上，其中一个的 HTTP 服务就是由本文介绍的 FalconLink 提供。你可以通过IP地址 101.34.211.126:20080 尝试访问。 项目地址 https://github.com/caaatch22/FalconLink
+    <p> 本博客部署在两个服务器上，其中一个的 HTTP 服务就是由本文介绍的 FalconLink 提供。你可以通过IP地址 101.34.211.126:20080 尝试访问。 项目地址 https://github.com/caaatch22/FalconLink
 Overview FalconLink是一个轻量级的高并发网络库。它封装了网络编程套接字API，将其抽象成一个易用，可拓展框架。用户只需通过设置回调函数的形式注入业务逻辑。它同时也具有 HTTP 服务请求与解析的功能。
 上图是FalconLink系统架构的一个简单概括性图示。
 采用非阻塞socket配合边缘触发，及one loop per thread的主从 reactor设计 Acceptor 是专门用于处理接受新用户连接请求的模块。它守候在监听端口。收到请求后建立 Connection 分配给 EventLoop。 FalconLink 将每个 TCP连接抽象成一个 Connection，一个 Connection对应一个连接 socket 套接字。用户可以为每一条Connection注册回调函数。 每个 EventLoop 都拥有一个 Poller。 Poller 负责监听已连接的套接字，将有事件触发的连接反馈给 EventLoop。 EventLoop是该系统的核心组件, 每个都单独运行在一个线程中. 它从 Poller 中接收到有事件触发的用户连接后, 会获取并执行它们的回调函数. ThreadPool 线程池管理着系统中有多少个 EventLoop 在运行，并调度线程，防止注册过多线程导致性能下降。 支持 HTTP(GET,HEAD)请求的解析与回复，支持挂载静态 html 文件（本博客使用FalconLink的 HTTP 服务） 实现异步logger API 使用falconlink，可以轻易且优雅的在20行内实现一个 echo server。
-#include &#34;falconlink.hpp&#34; int main() { falconlink::InetAddr local_address(&#34;0.0.0.0&#34;, 8090); falconlink::Server echo_server(local_address); echo_server ....</p>
+#include &#34;falconlink.hpp&#34; int main() { falconlink::InetAddr local_address(&#34;0.0.0.0&#34;, 8090); falconlink::Server echo_server(local_address); echo_server .onHandle([&amp;](falconlink::Connection* client_conn) { int from_fd = client_conn-&gt;fd(); auto [read, exit] = client_conn-&gt;recv(); if (exit) { client_conn-&gt;getEventLoop()-&gt;deleteConnection(from_fd); // client_conn ptr is invalid below here, do not touch it again return; } // 只有以下四行是业务逻辑 if (read) { client_conn-&gt;WriteToWriteBuffer(client_conn-&gt;ReadAsString()); client_conn-&gt;send(); client_conn-&gt;clearReadBuffer(); } }) .start(); return 0; } Build &amp; Test 将代码 clone 到本地，进入主目录
+...</p>
   </div>
-  <footer class="entry-footer"><span title='2023-03-01 19:34:21 +0000 UTC'>March 1, 2023</span>&nbsp;·&nbsp;1 min</footer>
+  <footer class="entry-footer">&lt;span title=&#39;2023-03-01 19:34:21 &#43;0000 UTC&#39;&gt;March 1, 2023&lt;/span&gt;&amp;nbsp;·&amp;nbsp;1 min</footer>
   <a class="entry-link" aria-label="post link to 轻量级高并发网络库&#43;httpserver" href="https://caaatch22.github.io/posts/%E5%AE%9E%E7%8E%B0%E4%B8%80%E4%B8%AA%E7%AE%80%E5%8D%95%E7%9A%84%E7%BD%91%E7%BB%9C%E5%BA%93-httpserver/"></a>
 </article>
     </main>
     
 <footer class="footer">
-    <span>&copy; 2024 <a href="https://caaatch22.github.io">Mingjie&#39;s Home</a></span>
+    <span>&copy; 2024 <a href="https://caaatch22.github.io/">Mingjie&#39;s Home</a></span>
     <span>
         Powered by
         <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
