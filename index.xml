@@ -3794,54 +3794,12 @@ View the PDF file <a class="pdf-source" id="pdf-source-noscript-e21a8caf" href="
 &lt;/ul&gt;
 &lt;hr&gt;
 &lt;h3 id=&#34;experience&#34;&gt;Experience&lt;/h3&gt;
+&lt;p&gt;Alibaba
+Jul. 2024 – currently
+ML framework engineer | python, cuda, pytorch, tensorflow etc.&lt;/p&gt;
 &lt;p&gt;&lt;a href=&#34;http://www.jhlfund.com/home&#34;&gt;Evolution Asset Management, Ltd.&lt;/a&gt;(AUM: above 10 billion-yuan)
 Jul. 2023 – Oct. 2023
-Quant Developer Intern | C++20&lt;/p&gt;
-&lt;ul&gt;
-&lt;li&gt;Participated in the development and optimization of low-latency trading systems, as well as the development of backtesting and simulation trading platforms.&lt;/li&gt;
-&lt;li&gt;Contributed to the development of K-line generation module, implementing lock-free concurrency during backtesting; utilizing Arrow —— in-memory database for read &amp;amp; write operations. Optimized the time required to backtest one day&amp;rsquo;s K-line data from approximately &lt;strong&gt;60 seconds&lt;/strong&gt; to around &lt;strong&gt;10 seconds&lt;/strong&gt;.&lt;/li&gt;
-&lt;li&gt;Conducted performance analysis of various modules within the internal trading system using tools like perf, resulting in flame graph visualizations. Leveraged methods such as &lt;strong&gt;Cache locality, lock-free, branchless programming, SIMD&lt;/strong&gt; to enhance performance. Implemented thread pools and other techniques to improve throughput in the backtesting system.&lt;/li&gt;
-&lt;li&gt;Conducted research on various high-quality open-source libs such as parallel_hashmap and mimalloc etc. Wrote relevant docs and unit tests and applied these libraries to the internal systems.&lt;/li&gt;
-&lt;/ul&gt;
-&lt;hr&gt;
-&lt;h3 id=&#34;honors-and-awards&#34;&gt;Honors and Awards&lt;/h3&gt;
-&lt;ul&gt;
-&lt;li&gt;&lt;strong&gt;Gold Medal&lt;/strong&gt; at &lt;strong&gt;ICPC&lt;/strong&gt; China National Invitation Programming Contest (Xi&amp;rsquo;an) May 2023&lt;/li&gt;
-&lt;li&gt;&lt;strong&gt;Bronze Medal&lt;/strong&gt; at &lt;strong&gt;ICPC&lt;/strong&gt; International Collegiate Programming Contest (Hangzhou) December 2022&lt;/li&gt;
-&lt;li&gt;&lt;strong&gt;National Third Prize&lt;/strong&gt; at 2022 Group Programming Ladder Tournament(GPLT) May 2022&lt;/li&gt;
-&lt;li&gt;&lt;strong&gt;Second Prize&lt;/strong&gt; at 16th NUAA Collegiate Programming Contest March 2022&lt;/li&gt;
-&lt;li&gt;&lt;strong&gt;Bronze Medal&lt;/strong&gt; at Collegiate Algorithm Design &amp;amp; Programming Challenge Contest November 2021&lt;/li&gt;
-&lt;/ul&gt;
-&lt;hr&gt;
-&lt;h3 id=&#34;skills&#34;&gt;Skills&lt;/h3&gt;
-&lt;ul&gt;
-&lt;li&gt;&lt;strong&gt;C++&lt;/strong&gt;: C++11/17/20, STL, conan, lock-free, unittest etc.&lt;/li&gt;
-&lt;li&gt;&lt;strong&gt;general&lt;/strong&gt;: Git, CMake, Docker, vim, perf, clickhouse, consul framework, latex&lt;/li&gt;
-&lt;li&gt;&lt;strong&gt;Programming languages&lt;/strong&gt;: C++ &amp;gt; Python &amp;gt;  Rust $\approx$ Go&lt;/li&gt;
-&lt;li&gt;&lt;strong&gt;Fundamental knowledge&lt;/strong&gt;:  Familiar with operating system principles, database designs, Linux network programming, TCP/IP principles; Familiar with modern computer architecture memory model, SIMD etc.&lt;/li&gt;
-&lt;/ul&gt;
-&lt;hr&gt;
-&lt;h3 id=&#34;projects&#34;&gt;Projects&lt;/h3&gt;
-&lt;h4 id=&#34;bustub-a-disk-oriented-database-management-system--c17&#34;&gt;BusTub: A Disk-oriented Database Management System – C++17&lt;/h4&gt;
-&lt;ul&gt;
-&lt;li&gt;Developed buffer-pool manager to maintain all page operations, using &lt;strong&gt;LRU-K eviction policy&lt;/strong&gt; to fetch in and flush out pages.&lt;/li&gt;
-&lt;li&gt;Designed a &lt;strong&gt;concurrent B+ tree&lt;/strong&gt; as index for better range query.&lt;/li&gt;
-&lt;li&gt;Deployed &lt;strong&gt;volcano model&lt;/strong&gt; in queries execution which support SELECT, INSERT, DELETE, AGGREGATION, JOIN, LIMIT, TOP-N operations.&lt;/li&gt;
-&lt;li&gt;Applied &lt;strong&gt;two-phase locking&lt;/strong&gt; in atomic transaction supporting, and employed cycle-detect algorithm to prevent deadlock&lt;/li&gt;
-&lt;/ul&gt;
-&lt;h4 id=&#34;falconlinkhttpsgithubcomcaaatch22falconlink-a-lightweight-high-concurrency-network-library--c17&#34;&gt;&lt;a href=&#34;https://github.com/caaatch22/FalconLink&#34;&gt;FalconLink&lt;/a&gt;: A lightweight high-concurrency network library – C++17&lt;/h4&gt;
-&lt;ul&gt;
-&lt;li&gt;FalconLink abstracts tedious manipulations on the TCP socket into low coupling and highly extensible framework. It allows a fast custom server side setup where the business logic could be specified for each client TCP connection in the form of a callback function.&lt;/li&gt;
-&lt;li&gt;Adopted reactor pattern with &lt;strong&gt;non-block&lt;/strong&gt; TCP socket and &lt;strong&gt;Edge trigger&lt;/strong&gt;. Every request will be handle by threadpool. Adopt Webbench as the stress testing tool, &lt;strong&gt;QPS reaches 40K&lt;/strong&gt;.&lt;/li&gt;
-&lt;li&gt;Implemented HTTP module, supporting parsing and response for HTTP request.&lt;/li&gt;
-&lt;li&gt;Built project with CMake, UnitTest with GoogleTest, support Docker build.&lt;/li&gt;
-&lt;/ul&gt;
-&lt;h4 id=&#34;toymipshttpsgithubcomcaaatch22toymips-five-stage-cpu-base-on-mips-architecture--verilog&#34;&gt;&lt;a href=&#34;https://github.com/caaatch22/ToyMips&#34;&gt;ToyMips&lt;/a&gt;: Five stage CPU base on MIPS architecture – Verilog&lt;/h4&gt;
-&lt;ul&gt;
-&lt;li&gt;Implemented &lt;strong&gt;73 instructions&lt;/strong&gt;, covering most MIPS32 instruction set, including arithmetic, logical, branch, storage and load, and exception-related instructions.&lt;/li&gt;
-&lt;li&gt;Adopted a &lt;strong&gt;five-stage pipeline&lt;/strong&gt; design of instruction fetching, decoding, execution, memory access, and write-back, which improved the CPU clock frequency. Data hazards were resolved through data forwarding, and control hazards were handled using delay slots. The design also included the coprocessor CP0 and controls for exceptions and interrupts.&lt;/li&gt;
-&lt;li&gt;Built a test frame in a Linux environment using the MIPS cross-compiler tool, Makefile, Python, and shell scripts.&lt;/li&gt;
-&lt;/ul&gt;</description>
+Quant Developer Intern | C++20&lt;/p&gt;</description>
       <content:encoded><![CDATA[<blockquote>
 <p>You can find my pdf version CV both in <a href="/resume/CV.pdf">zh</a> and <a href="/resume/CV_en.pdf">en</a></p>
 </blockquote>
@@ -3859,6 +3817,9 @@ Quant Developer Intern | C++20&lt;/p&gt;
 </ul>
 <hr>
 <h3 id="experience">Experience</h3>
+<p>Alibaba
+Jul. 2024 – currently
+ML framework engineer | python, cuda, pytorch, tensorflow etc.</p>
 <p><a href="http://www.jhlfund.com/home">Evolution Asset Management, Ltd.</a>(AUM: above 10 billion-yuan)
 Jul. 2023 – Oct. 2023
 Quant Developer Intern | C++20</p>
