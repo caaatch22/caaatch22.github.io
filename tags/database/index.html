@@ -171,7 +171,7 @@ SELECT table1.y, table2.x FROM table1 INNER JOIN table2 ON table1.x = table2.y; 
 === BINDER === BoundSelec { table=BoundJoin { type=Inner, left=BoundBaseTableRef { table=table1, oid=25 }, right=BoundBaseTableRef { table=table2, oid=26 }, condition=(table1.x=table2.y) }, columns=[table1.y, table2.x], groupBy=[], having=, where=, limit=, offset=, order_by=[], is_distinct=false, ctes=, } 可以看出，binder的作用就是对AST的各个节点绑定一个（物理）实体。
 ...</p>
   </div>
-  <footer class="entry-footer">&lt;span title=&#39;2023-01-17 23:45:12 &#43;0000 UTC&#39;&gt;2023-01-17&lt;/span&gt;&amp;nbsp;·&amp;nbsp;4 min</footer>
+  <footer class="entry-footer"><span title='2023-01-17 23:45:12 +0000 UTC'>2023-01-17</span>&nbsp;·&nbsp;4 min</footer>
   <a class="entry-link" aria-label="post link to CMU15445-project3 Query Excution" href="https://caaatch22.github.io/posts/cmu15445-project3-query-execution/"></a>
 </article>
 
@@ -191,7 +191,7 @@ Task #3 - Index Iterator Task #4 - Concurrent Index Task #1 - B&#43;Tree Pages �
 B&#43; tree internal page 与 B &#43; tree leaf page 都继承自B &#43; tree page，B &#43; tree page 中定义了 B&#43; 树每个结点的一些信息。而B &#43; Tree 这个类则是Checkpoint 1的主要对象，它对internal page 以及 leaf page 进行管理，并对外开放接口。而在内存中，internal page 与 leaf page 都属于 page 的一部分，关系如下图所示。他们就是 page 中的 data 部分。因此，每次 从 buffer pool manager 得到一个 page 后，若是将他们用作 B&#43;树的结点，则需要对这个 data 进行释义，也就是将他强制转化为internal page 或者 leaf page。这在 C&#43;&#43; 中通过 reinterpret_cast 完成。
 ...</p>
   </div>
-  <footer class="entry-footer">&lt;span title=&#39;2022-12-27 23:45:12 &#43;0000 UTC&#39;&gt;2022-12-27&lt;/span&gt;&amp;nbsp;·&amp;nbsp;2 min</footer>
+  <footer class="entry-footer"><span title='2022-12-27 23:45:12 +0000 UTC'>2022-12-27</span>&nbsp;·&nbsp;2 min</footer>
   <a class="entry-link" aria-label="post link to CMU15445-project2 Concurrent B&#43; tree" href="https://caaatch22.github.io/posts/cmu15445-project2-concurrent-b-tree/"></a>
 </article>
 
@@ -210,7 +210,7 @@ Task #1: Extendible Hash Table Task #2: LRU-K Replacer Task #3: Buffer Pool Mana
 Buffer Pool Manager 在后两个实验开始之前，我建议先将Task #2和Task #3的实验材料完整的看完在开始写代码。因为 replacer 和 buffer pool manager 有较大程度的耦合。很多API设计需要对照两个组件才能知道自己应该维护的数据与功能的边界。为了更符合直觉，我会先阐述 buffer pool manager 的设计，同时会穿插着 LRU-k 的API什么时候，在哪用。
 ...</p>
   </div>
-  <footer class="entry-footer">&lt;span title=&#39;2022-12-22 15:37:34 &#43;0000 UTC&#39;&gt;2022-12-22&lt;/span&gt;&amp;nbsp;·&amp;nbsp;3 min</footer>
+  <footer class="entry-footer"><span title='2022-12-22 15:37:34 +0000 UTC'>2022-12-22</span>&nbsp;·&nbsp;3 min</footer>
   <a class="entry-link" aria-label="post link to CMU15445-project1 Buffer Pool Manager" href="https://caaatch22.github.io/posts/cmu15445-project1-buffer-pool-manager/"></a>
 </article>
     </main>

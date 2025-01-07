@@ -169,7 +169,7 @@ Overview FalconLink是一个轻量级的高并发网络库。它封装了网络�
 #include &#34;falconlink.hpp&#34; int main() { falconlink::InetAddr local_address(&#34;0.0.0.0&#34;, 8090); falconlink::Server echo_server(local_address); echo_server .onHandle([&amp;](falconlink::Connection* client_conn) { int from_fd = client_conn-&gt;fd(); auto [read, exit] = client_conn-&gt;recv(); if (exit) { client_conn-&gt;getEventLoop()-&gt;deleteConnection(from_fd); // client_conn ptr is invalid below here, do not touch it again return; } // 只有以下四行是业务逻辑 if (read) { client_conn-&gt;WriteToWriteBuffer(client_conn-&gt;ReadAsString()); client_conn-&gt;send(); client_conn-&gt;clearReadBuffer(); } }) .start(); return 0; } Build &amp; Test 将代码 clone 到本地，进入主目录
 ...</p>
   </div>
-  <footer class="entry-footer">&lt;span title=&#39;2023-03-01 19:34:21 &#43;0000 UTC&#39;&gt;2023-03-01&lt;/span&gt;&amp;nbsp;·&amp;nbsp;1 min</footer>
+  <footer class="entry-footer"><span title='2023-03-01 19:34:21 +0000 UTC'>2023-03-01</span>&nbsp;·&nbsp;1 min</footer>
   <a class="entry-link" aria-label="post link to 轻量级高并发网络库&#43;httpserver" href="https://caaatch22.github.io/posts/%E5%AE%9E%E7%8E%B0%E4%B8%80%E4%B8%AA%E7%AE%80%E5%8D%95%E7%9A%84%E7%BD%91%E7%BB%9C%E5%BA%93-httpserver/"></a>
 </article>
     </main>
