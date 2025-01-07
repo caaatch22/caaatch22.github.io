@@ -175,7 +175,7 @@
 const std::string getValue(); std::vector&lt;std::string&gt; coll; coll.push_back(getValue()); // copies(because the return value is const) const std::string getValue(); // BAD: disables move semantics for return values const std::string&amp; getRef(); // OK const std::string* getPtr(); // OK Summary Move semantics allows us to optimize the copying of objects, where we no longer need the value. It can be used implicitly (for unnamed temporary objects or local return values) or explicitly (with std::move()). std::move() means I no longer need this value here. It marks the object as movable. An object marked with std::move() is not (partially) destroyed (the destructor still will be called). By declaring a function with a non-const rvalue reference (such as std::string&amp;&amp;), you define an interface where the caller semantically claims that it no longer needs the passed value. The implementer of the function can use this information to optimize its task by “stealing” the value or do any other modification with the passed argument. Usually, the implementer also has to ensure that the passed argument is in a valid state after the call. Moved-from objects of the C&#43;&#43; standard library are still valid objects, but you no longer know their value. Copy semantics is used as a fallback for move semantics (if copy semantics is supported). If there is no implementation taking an rvalue reference, any implementation taking an ordinary const lvalue reference (such as const std::string&amp;) is used. This fallback is then used even if the object is explicitly marked with std::move(). Calling std::move() for a const object usually has no effect. If you return by value (not by reference), do not declare the return value as a whole to be const. Moved-from objects Valid but Unspecified State
 ...</p>
   </div>
-  <footer class="entry-footer"><span title='2023-10-17 23:38:14 +0000 UTC'>2023-10-17</span>&nbsp;·&nbsp;2 min</footer>
+  <footer class="entry-footer"><span title='2023-10-17 23:38:14 +0000 UTC'>October 17, 2023</span>&nbsp;·&nbsp;2 min</footer>
   <a class="entry-link" aria-label="post link to Back to Basics -- c&#43;&#43; move sematics" href="https://caaatch22.github.io/posts/back2basics-cpp-move-sematic/"></a>
 </article>
 
@@ -192,7 +192,7 @@ $ N = 20 (20\ pipe stages), W = 5 (5\ wide fetch) $ 1 out of 5 instructions is a
 100% 预测正确率 100 个时钟周期 (all instructions fetched on the correct path) 无额外工作 99% 预测正确率 100 (correct path) &#43; 20 (wrong path) = 120 个时钟周期 20% 额外指令被取出 98% 预测正确率 100 (correct path) &#43; 20 * 2 (wrong path) = 140 个时钟周期 40% 额外指令被取出 95% 预测正确率 100 (correct path) &#43; 20 * 5 (wrong path) = 200 个时钟周期 100% 额外指令被取出 可以看出，分支预测失败在现代的超标量多流水线cpu中的penalty被极大的放大了。所以分支预测的正确性就显得额外重要。
 ...</p>
   </div>
-  <footer class="entry-footer"><span title='2023-10-17 23:38:14 +0000 UTC'>2023-10-17</span>&nbsp;·&nbsp;3 min</footer>
+  <footer class="entry-footer"><span title='2023-10-17 23:38:14 +0000 UTC'>October 17, 2023</span>&nbsp;·&nbsp;3 min</footer>
   <a class="entry-link" aria-label="post link to Computer Architecture —— 分支预测" href="https://caaatch22.github.io/posts/branch-prediction/"></a>
 </article>
 
@@ -212,7 +212,7 @@ bonus question: 不同等级的cache latency？
 answer: l1: 1ns, l2: 5ns, l3: 50~100ns, main memory: 200ns
 ...</p>
   </div>
-  <footer class="entry-footer"><span title='2023-09-01 15:51:19 +0000 UTC'>2023-09-01</span>&nbsp;·&nbsp;3 min</footer>
+  <footer class="entry-footer"><span title='2023-09-01 15:51:19 +0000 UTC'>September 1, 2023</span>&nbsp;·&nbsp;3 min</footer>
   <a class="entry-link" aria-label="post link to C&#43;&#43;内存模型 —— 现代Architecture的妥协" href="https://caaatch22.github.io/posts/c-%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B--%E7%8E%B0%E4%BB%A3architecture%E7%9A%84%E5%A6%A5%E5%8D%8F/"></a>
 </article>
 
@@ -234,7 +234,7 @@ write buffers 我愿称之为buffer of buffer，本来cache就起buffer的作用
 对于write buffer，我们还可以对其进行 合并(merging) 操作。所谓merging，指的是将在同一个cache-line上的数据一并写入下层cache中，而非多次写入同一个cache-line。 上图中的右侧表示了一个采用了merging write buffer策略的写缓冲区。
 critial word first and early restart 先来看一下cache miss时的cpu： 图中展示了一个blocking cache在cache miss时，cpu stall，而后cache将需要取得的cache-line放入后，cpu resume的timeline。我们可以发现，若我们只需要cache-line中的第3个word，cpu完全可以提早resume。如下图所示： ...</p>
   </div>
-  <footer class="entry-footer"><span title='2023-08-23 23:38:14 +0000 UTC'>2023-08-23</span>&nbsp;·&nbsp;2 min</footer>
+  <footer class="entry-footer"><span title='2023-08-23 23:38:14 +0000 UTC'>August 23, 2023</span>&nbsp;·&nbsp;2 min</footer>
   <a class="entry-link" aria-label="post link to Computer Architecture —— 高级缓存技术" href="https://caaatch22.github.io/posts/advanced-cache/"></a>
 </article>
 
@@ -251,7 +251,7 @@ node之间的内存是连续的(虽然可能中间存在空node)，遍历的时�
 会引发原来的value失效（这里的失效指的是原来的那个对象所对应的内存失效，而不是value所包含的内容失效，例如，value是一个指针，那它的值——所指向的对象，不会受到影响）。举个例子： flat_hash_map&lt;int, Data&gt; mp; node_hash_map&lt;int, Data&gt; nodemp; mp[0] = Data(); nodemp[0] = Data(); auto&amp; mp0 = mp[0]; auto&amp; nodemp0 = nodemp[0]; // tigger rehash for (int i = 1; i &lt;= 10; i &#43;&#43;) { mp[i] = Data(); nodemp[i] = Data(); } assert(std::addressof(mp[0]) != std::addressof(mp0)); assert(std::addressof(nodemp[0]) == std::addressof(nodemp0)); 原因就是 flat_hash_map的内存布局导致的。而 node_hash_map或者 std::unordered_map就保证不会出现这种情况，因为当他们rehash的时候，只需要将bucket内的指针重新分配，指针的值还是指向原来的 node&lt;key, value&gt;.
 ...</p>
   </div>
-  <footer class="entry-footer"><span title='2023-07-23 21:23:15 +0000 UTC'>2023-07-23</span>&nbsp;·&nbsp;3 min</footer>
+  <footer class="entry-footer"><span title='2023-07-23 21:23:15 +0000 UTC'>July 23, 2023</span>&nbsp;·&nbsp;3 min</footer>
   <a class="entry-link" aria-label="post link to phmap —— 缓存友好的高效hashtable" href="https://caaatch22.github.io/posts/phmap/"></a>
 </article>
 
@@ -265,7 +265,7 @@ node之间的内存是连续的(虽然可能中间存在空node)，遍历的时�
 ICPC西安邀请赛
 </p>
   </div>
-  <footer class="entry-footer"><span title='2023-05-29 13:35:22 +0000 UTC'>2023-05-29</span>&nbsp;·&nbsp;1 min</footer>
+  <footer class="entry-footer"><span title='2023-05-29 13:35:22 +0000 UTC'>May 29, 2023</span>&nbsp;·&nbsp;1 min</footer>
   <a class="entry-link" aria-label="post link to ICPC西安游记" href="https://caaatch22.github.io/posts/icpc%E8%A5%BF%E5%AE%89%E6%B8%B8%E8%AE%B0/"></a>
 </article>
 
@@ -282,7 +282,7 @@ template &lt;typename T&gt; class Base { void func() { static_cast&lt;T*&gt;(thi
 template &lt;typename ChildType&gt; struct VectorBase { ChildType &amp;underlying() { return static_cast&lt;ChildType &amp;&gt;(*this); } inline ChildType &amp;operator&#43;=(const ChildType &amp;rhs) { this-&gt;underlying() = this-&gt;underlying() &#43; rhs; return this-&gt;underlying(); } }; struct Vec3f : public VectorBase&lt;Vec3f&gt; { float x{}, y{}, z{}; Vec3f() = default; Vec3f(float x, float y, float z) : x(x), y(y), z(z) {} }; inline Vec3f operator&#43;(const Vec3f &amp;lhs, const Vec3f &amp;rhs) { Vec3f result; result.x = lhs.x &#43; rhs.x; result.y = lhs.y &#43; rhs.y; result.z = lhs.z &#43; rhs.z; return result; } 定义好VectorBase后，Vec3f, Vec4f等直接实现接口就好。相比虚函数的形式，在空间和runtime都有优势。
 ...</p>
   </div>
-  <footer class="entry-footer"><span title='2023-05-20 17:33:40 +0000 UTC'>2023-05-20</span>&nbsp;·&nbsp;2 min</footer>
+  <footer class="entry-footer"><span title='2023-05-20 17:33:40 +0000 UTC'>May 20, 2023</span>&nbsp;·&nbsp;2 min</footer>
   <a class="entry-link" aria-label="post link to C&#43;&#43; CRTP" href="https://caaatch22.github.io/posts/c-crtp/"></a>
 </article>
 
@@ -301,7 +301,7 @@ Overview FalconLink是一个轻量级的高并发网络库。它封装了网络�
 #include &#34;falconlink.hpp&#34; int main() { falconlink::InetAddr local_address(&#34;0.0.0.0&#34;, 8090); falconlink::Server echo_server(local_address); echo_server .onHandle([&amp;](falconlink::Connection* client_conn) { int from_fd = client_conn-&gt;fd(); auto [read, exit] = client_conn-&gt;recv(); if (exit) { client_conn-&gt;getEventLoop()-&gt;deleteConnection(from_fd); // client_conn ptr is invalid below here, do not touch it again return; } // 只有以下四行是业务逻辑 if (read) { client_conn-&gt;WriteToWriteBuffer(client_conn-&gt;ReadAsString()); client_conn-&gt;send(); client_conn-&gt;clearReadBuffer(); } }) .start(); return 0; } Build &amp; Test 将代码 clone 到本地，进入主目录
 ...</p>
   </div>
-  <footer class="entry-footer"><span title='2023-03-01 19:34:21 +0000 UTC'>2023-03-01</span>&nbsp;·&nbsp;1 min</footer>
+  <footer class="entry-footer"><span title='2023-03-01 19:34:21 +0000 UTC'>March 1, 2023</span>&nbsp;·&nbsp;1 min</footer>
   <a class="entry-link" aria-label="post link to 轻量级高并发网络库&#43;httpserver" href="https://caaatch22.github.io/posts/%E5%AE%9E%E7%8E%B0%E4%B8%80%E4%B8%AA%E7%AE%80%E5%8D%95%E7%9A%84%E7%BD%91%E7%BB%9C%E5%BA%93-httpserver/"></a>
 </article>
 
@@ -322,7 +322,7 @@ SELECT table1.y, table2.x FROM table1 INNER JOIN table2 ON table1.x = table2.y; 
 === BINDER === BoundSelec { table=BoundJoin { type=Inner, left=BoundBaseTableRef { table=table1, oid=25 }, right=BoundBaseTableRef { table=table2, oid=26 }, condition=(table1.x=table2.y) }, columns=[table1.y, table2.x], groupBy=[], having=, where=, limit=, offset=, order_by=[], is_distinct=false, ctes=, } 可以看出，binder的作用就是对AST的各个节点绑定一个（物理）实体。
 ...</p>
   </div>
-  <footer class="entry-footer"><span title='2023-01-17 23:45:12 +0000 UTC'>2023-01-17</span>&nbsp;·&nbsp;4 min</footer>
+  <footer class="entry-footer"><span title='2023-01-17 23:45:12 +0000 UTC'>January 17, 2023</span>&nbsp;·&nbsp;4 min</footer>
   <a class="entry-link" aria-label="post link to CMU15445-project3 Query Excution" href="https://caaatch22.github.io/posts/cmu15445-project3-query-execution/"></a>
 </article>
 
@@ -342,7 +342,7 @@ SELECT table1.y, table2.x FROM table1 INNER JOIN table2 ON table1.x = table2.y; 
 Wavelet Tree 该图给出了用序列 $A = [7, 3, 5, 6, 1, 3, 2, 7, 8, 4]$ 构建的wavelet tree的形态。对于树上的每个节点，我们会将其按照值域分成两个部分$[low, mid), [mid, high)$。通过 稳定划分（stable_partition，即不改变相对顺序的情况下划分）将该节点上的序列中小于 $mid$的划分到左子树中，大于等于mid的划分到右子树中，递归直至节点中只有一种值时为叶节点。需要注意的是，我们并不会在叶子节点中直接存储序列的值，而是通过某个方法使得我们能够使用较小的空间的情况下得到足够的信息。
 ...</p>
   </div>
-  <footer class="entry-footer"><span title='2023-01-10 16:18:32 +0000 UTC'>2023-01-10</span>&nbsp;·&nbsp;4 min</footer>
+  <footer class="entry-footer"><span title='2023-01-10 16:18:32 +0000 UTC'>January 10, 2023</span>&nbsp;·&nbsp;4 min</footer>
   <a class="entry-link" aria-label="post link to 将Wavelet Tree用于算法竞赛" href="https://caaatch22.github.io/posts/%E7%AE%97%E6%B3%95%E7%AB%9E%E8%B5%9B%E4%B8%AD%E7%9A%84wavelet-tree/"></a>
 </article>
 <footer class="page-footer">
