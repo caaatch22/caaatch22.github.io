@@ -170,6 +170,128 @@
 </header>
 
 <article class="post-entry"> 
+  <header class="entry-header">
+    <h2>Back to Basics -- c&#43;&#43; move sematics
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>1.3 Copying as a Fallback
+1.4 const Return Values const std::string get_value();不再是guideline，因为const disables 移动语义 例如：
+const std::string getValue(); std::vector&lt;std::string&gt; coll; coll.push_back(getValue()); // copies(because the return value is const) const std::string getValue(); // BAD: disables move semantics for return values const std::string&amp; getRef(); // OK const std::string* getPtr(); // OK Summary Move semantics allows us to optimize the copying of objects, where we no longer need the value. It can be used implicitly (for unnamed temporary objects or local return values) or explicitly (with std::move()). std::move() means I no longer need this value here. It marks the object as movable. An object marked with std::move() is not (partially) destroyed (the destructor still will be called). By declaring a function with a non-const rvalue reference (such as std::string&amp;&amp;), you define an interface where the caller semantically claims that it no longer needs the passed value. The implementer of the function can use this information to optimize its task by “stealing” the value or do any other modification with the passed argument. Usually, the implementer also has to ensure that the passed argument is in a valid state after the call. Moved-from objects of the C&#43;&#43; standard library are still valid objects, but you no longer know their value. Copy semantics is used as a fallback for move semantics (if copy semantics is supported). If there is no implementation taking an rvalue reference, any implementation taking an ordinary const lvalue reference (such as const std::string&amp;) is used. This fallback is then used even if the object is explicitly marked with std::move(). Calling std::move() for a const object usually has no effect. If you return by value (not by reference), do not declare the return value as a whole to be const. Moved-from objects Valid but Unspecified State
+...</p>
+  </div>
+  <footer class="entry-footer">&lt;span title=&#39;2023-10-17 23:38:14 &#43;0000 UTC&#39;&gt;October 17, 2023&lt;/span&gt;&amp;nbsp;·&amp;nbsp;2 min</footer>
+  <a class="entry-link" aria-label="post link to Back to Basics -- c&#43;&#43; move sematics" href="https://caaatch22.github.io/posts/back2basics-cpp-move-sematic/"></a>
+</article>
+
+<article class="post-entry"> 
+  <header class="entry-header">
+    <h2>Computer Architecture —— 分支预测
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p> H&amp;P那本关于分支预测的部分比较简短且表述有点晦涩，（顺便吐槽一下第五版的中文翻译，建议看英文原版）本文主要参考超标量处理器设计，国人写的，用语符合习惯，强烈推荐！
+Motivation 在处理器中，除了cache之外，另一个重要的内容就是分支预测，它和cache一起左右处理器的性能。以SPECint95作为benchmark，完美的cache和BP(branch-predictor)能使IPC提高两倍左右： 图片来自论文SSMT。当然，这是21世纪之前的结果了。现代处理器分支预测普遍能达到97%~98%以上的精度，在多数浮点benchmark中基本都是99%的准确率。
+为什么需要这么高的精度呢？ 一般情况下，分支指令的占比通常在 15% 到 30% 之间。对于经典五级流水线无分支预测cpu，一个branch会造成一次stall；而对于现代的superscalar且流水线级数远高于5的（一般是二十级以上）cpu，其misprediction penalty是 $M * N$ 的（M = fetch group内指令数, N = branch resolution latency，就是决定分支最终是否跳转需要多少周期）。如下图所示： 我们再做一个定量实验： 假设我们有一个
+$ N = 20 (20\ pipe stages), W = 5 (5\ wide fetch) $ 1 out of 5 instructions is a branch Each 5 instruction-block ends with a branch 的CPU，那么我们取出500条指令需要多少个周期呢？
+100% 预测正确率 100 个时钟周期 (all instructions fetched on the correct path) 无额外工作 99% 预测正确率 100 (correct path) &#43; 20 (wrong path) = 120 个时钟周期 20% 额外指令被取出 98% 预测正确率 100 (correct path) &#43; 20 * 2 (wrong path) = 140 个时钟周期 40% 额外指令被取出 95% 预测正确率 100 (correct path) &#43; 20 * 5 (wrong path) = 200 个时钟周期 100% 额外指令被取出 可以看出，分支预测失败在现代的超标量多流水线cpu中的penalty被极大的放大了。所以分支预测的正确性就显得额外重要。
+...</p>
+  </div>
+  <footer class="entry-footer">&lt;span title=&#39;2023-10-17 23:38:14 &#43;0000 UTC&#39;&gt;October 17, 2023&lt;/span&gt;&amp;nbsp;·&amp;nbsp;3 min</footer>
+  <a class="entry-link" aria-label="post link to Computer Architecture —— 分支预测" href="https://caaatch22.github.io/posts/branch-prediction/"></a>
+</article>
+
+<article class="post-entry"> 
+  <header class="entry-header">
+    <h2>C&#43;&#43;内存模型 —— 现代Architecture的妥协
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p> 介绍 什么是内存模型(Memory Model)呢？这里介绍的内存模型并非C&#43;&#43;对象的内存排布模型，而是一个非编程语言层面的概念。我们知道在C&#43;&#43;11中，标准引入了 std::atomic&lt;&gt;原子对象，同时还引入了
+memory_order_relaxed memory_order_consume memory_order_acquire memory_order_release memory_order_acq_rel memory_order_seq_cst 这六种 memory order。引入可以让我们进行无锁编程，而如果你想要更高性能的程序，你就必须深挖这六种内存模型的含义并正确应用。（当然，在不显式指明memory order的情况下，你能保证获得正确的代码，但存在性能损失）
+内存模型 在介绍C&#43;&#43; memory order之前，我们先回答另一个问题。你的计算机执行的程序就是你写的程序吗? —— 显然不是的。
+原因也很简单，为了更高效的执行指令，编译器、CPU结构、缓存及其他硬件系统都会对指令进行增删，修改，重排。但要回答具体进行了什么样的修改，又是一个极其复杂的问题。或者说，整个现代体系结构，就是在保证程序正确性的前提下利用各种手段对程序优化。我们可以粗略的将其分成几个部分：
+source code order: 程序员在源代码中指定的顺序 program code order: 基本上可以看成汇编/机器码的顺序，它可以由编译器优化后得到 execution code order: CPU执行指令顺序也不见得与汇编相同，不同CPU在执行相同机器码时任然存在优化空间。 perceived order/physical order: 最终的执行顺序。即便CPU按照某种确定指令执行，物理时间上的执行顺序仍然可能不同。例如，在超标量CPU中，一次可以fetch and decode多个指令，这些指令之间的物理执行顺序就是不确定的；由于不同层级缓存之间延时不同，以及缓存之间的通信需要等带来的不确定的执行顺序等 上图简要说明了你的源代码可能经历的优化步骤。
+这些优化的一个主要原因在于 掩盖memory access操作与CPU执行速度上的巨大鸿沟。如果没有cache，CPU每个访存指令都需要stall一两百个时钟周期，这是不可接受的。但是引入cache的同时又会带来 cache coherence等问题，这也是造成x初始为0，两个线程同时执行 x&#43;&#43;，而x最终不一定为 2的元凶。而一个内存模型则对上述并发程序的同一块内存进行了一定的限制，它给出了在并发程序下，任意一组写操作时，可能读到的值。 不同体系结构(x86, arm, power…)通过不同的内存模型来保证程序的正确性。
+bonus question: 不同等级的cache latency？
+answer: l1: 1ns, l2: 5ns, l3: 50~100ns, main memory: 200ns
+...</p>
+  </div>
+  <footer class="entry-footer">&lt;span title=&#39;2023-09-01 15:51:19 &#43;0000 UTC&#39;&gt;September 1, 2023&lt;/span&gt;&amp;nbsp;·&amp;nbsp;3 min</footer>
+  <a class="entry-link" aria-label="post link to C&#43;&#43;内存模型 —— 现代Architecture的妥协" href="https://caaatch22.github.io/posts/c-%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B--%E7%8E%B0%E4%BB%A3architecture%E7%9A%84%E5%A6%A5%E5%8D%8F/"></a>
+</article>
+
+<article class="post-entry"> 
+  <header class="entry-header">
+    <h2>Computer Architecture —— 高级缓存技术
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p> 本文不会介绍cache的组织形式等基本内容，但也算不上什么&#34;Advanced&#34;。主要包含一些从硬件层面优化cache的手段。
+优化cache的几种方法 pipeline caches 上图为教科书上经常出现的cache形式(2-way associative为例)，它很精炼的解释了cache的实现。但也稍微引入了些“误导”：
+图中v、tag和data部分画在连续的一行上，仿佛硬件上他们就是同一块 SRAM 的不同bit 图中识别tag与data是并行完成的，这很好，某种意义上能降低时延；但我们经常遗忘一个事实，只有读cache的时候我们才能这么操作（或者说在写cache时，读取data block是没有意义的） 对于第一点，在实际的实现当中，tag和data部分都是分开放置的，tag一般是由一种叫CAM(Context-Addressable Memory)的材料构成。当然，这与pi不pipeline没什么关系；
+读cache主要就两个部分：比较tag，获取data；我们暂且不考虑以pipeline的方式优化，那么serial的先比较tag再读data一定不如parallel的方式进行吗？当我们并行的读取tag和data的时候，我们会发现，读出来的data有可能没用（没有匹配的tag）；并且，在n-way set associate cache中，我们会浪费的读出$n-1$个data项；这给我们什么启示呢？如果我们串行的读cache，那么我们可以在比较tag阶段就知道我们想要的数据在不在cache当中；更有意义的是，根据tag比较的结果，我们就知道哪一路的数据是需要被访问的（提前知道了在n-way中的哪一way），那么我们访问data block时，就无需多路选择器，直接访问指定的way，将其他way的data访问的使能信号置为无效，这种做法的优点在于有效减小功耗。
+serial的做法肯定比parallel的延时要大，若这时访问cache处于处理器的critical path(关键路径)上，我们可以再将其进行流水线化。 我们现在再来看看写cache时的情况：
+写cache时，只有通过tag比较，确认要写的地址在cache中后，才可以写data SRAM，在主频较高的处理器中，这些操作很难在一个周期内完成，这也要求我们将其流水线化。下图为对cache进行写操作使用的流水线示意图：
+在上图的实现方式中，store第一个周期读取Tag并进行比较，根据比较的结果，在第二个周期选择是否将数据写到Data SRAM中。还需要注意的是，当执行load指令时，它想要的数据可能正好在store指令的流水线寄存器中（RAW的情况；上图中的DelayedStoreData寄存器），而不是来自于Data SRAM。因此需要一种机制检测这种情况，这需要将load指令所携带的地址和store指令的流水线寄存器(即DelayedStoreAddr寄存器)进行比较，如果相等，那么就将store指令的数据作为load指令的结果。
+由此可以看出，对写D-Cache使用流水线之后，不仅增加了流水线本身的硬件，也带来了其他一些额外的硬件开销。其实。不仅在Cache中有这种现象，在处理器的其他部分增加流水线的级数，也会伴随着其他方面的硬件需求,因此过深的流水线带来的硬件复杂度是非常高的，就像Intel的Pentium 4处理器，并不会从过深的流水线中得到预想的好处。当然，cache的流水线化已经是一种广泛使用的用于降低latency的方法了。
+write buffers 我愿称之为buffer of buffer，本来cache就起buffer的作用了，但我们再加一个buffer，如下图所示： 这和多一级的cache有什么不同呢？这是一个专门为写操作设计的buffer（注意：load也可能造成写操作）。原因在于我们知道写通常比读更慢，特别对于write-through来说；其次，当上层cache满后，需要先将dirty cache line写回下层cache，再读取下层cache中的数据。若下层cache只有一个读写端口，那么这种串行的过程导致D-Cache发生缺失的处理时间变得很长，此时就可以采用write buffer来解决这个问题。脏状态的cache-line会首先放到写级存中，等到下级存储器有空闲的时候，才会将写缓存中的数据写到下级存储器中。
+对于write buffer，我们还可以对其进行 合并(merging) 操作。所谓merging，指的是将在同一个cache-line上的数据一并写入下层cache中，而非多次写入同一个cache-line。 上图中的右侧表示了一个采用了merging write buffer策略的写缓冲区。
+critial word first and early restart 先来看一下cache miss时的cpu： 图中展示了一个blocking cache在cache miss时，cpu stall，而后cache将需要取得的cache-line放入后，cpu resume的timeline。我们可以发现，若我们只需要cache-line中的第3个word，cpu完全可以提早resume。如下图所示： ...</p>
+  </div>
+  <footer class="entry-footer">&lt;span title=&#39;2023-08-23 23:38:14 &#43;0000 UTC&#39;&gt;August 23, 2023&lt;/span&gt;&amp;nbsp;·&amp;nbsp;2 min</footer>
+  <a class="entry-link" aria-label="post link to Computer Architecture —— 高级缓存技术" href="https://caaatch22.github.io/posts/advanced-cache/"></a>
+</article>
+
+<article class="post-entry"> 
+  <header class="entry-header">
+    <h2>phmap —— 缓存友好的高效hashtable
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p> 众所周知，C&#43;&#43;标准库的 unordered_map在性能上向来不是一个好的选择。开源市场上有非常多的高性能哈希表可供选择，phmap继承自 absl-hashmap，有着非常好的插入、查找性能。在著名的Comprehensive C&#43;&#43; Hashmap Benchmarks 2022榜单中名列前茅。事实上，我比对了 phmap::flat_hash_map与榜单中综合性能第一的 ankerl::unordered_dense::map，我的benchmark中只有遍历哈希表时，flat_hash_map的性能低于 unordered_dense::map，其余无论是插入还是随即查找，大部分情况下 flat_hash_map的性能都更优。本文简单介绍了 flat_hash_map相关情况，以及一些使用上的建议与坑点。
+flat_hash_map 和 node_hash_map区别 phmap中有提供了两类哈希表，其内部布局示意图如下：
+由上图（忽略了bucket的细节）可以看出，flat_hash_map的最大的优点在于
+node之间的内存是连续的(虽然可能中间存在空node)，遍历的时候对cache更加友好 并且相比于 node_hash_map版少一次寻址过程（std::unordered_map的设计与 node_hash_map）相同。 而 flat_*系列的缺点就是在 rehash的时候:
+会引发原来的value失效（这里的失效指的是原来的那个对象所对应的内存失效，而不是value所包含的内容失效，例如，value是一个指针，那它的值——所指向的对象，不会受到影响）。举个例子： flat_hash_map&lt;int, Data&gt; mp; node_hash_map&lt;int, Data&gt; nodemp; mp[0] = Data(); nodemp[0] = Data(); auto&amp; mp0 = mp[0]; auto&amp; nodemp0 = nodemp[0]; // tigger rehash for (int i = 1; i &lt;= 10; i &#43;&#43;) { mp[i] = Data(); nodemp[i] = Data(); } assert(std::addressof(mp[0]) != std::addressof(mp0)); assert(std::addressof(nodemp[0]) == std::addressof(nodemp0)); 原因就是 flat_hash_map的内存布局导致的。而 node_hash_map或者 std::unordered_map就保证不会出现这种情况，因为当他们rehash的时候，只需要将bucket内的指针重新分配，指针的值还是指向原来的 node&lt;key, value&gt;.
+...</p>
+  </div>
+  <footer class="entry-footer">&lt;span title=&#39;2023-07-23 21:23:15 &#43;0000 UTC&#39;&gt;July 23, 2023&lt;/span&gt;&amp;nbsp;·&amp;nbsp;3 min</footer>
+  <a class="entry-link" aria-label="post link to phmap —— 缓存友好的高效hashtable" href="https://caaatch22.github.io/posts/phmap/"></a>
+</article>
+
+<article class="post-entry"> 
+  <header class="entry-header">
+    <h2>ICPC西安游记
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>没写记录，学弟写了，直接用
+ICPC西安邀请赛
+</p>
+  </div>
+  <footer class="entry-footer">&lt;span title=&#39;2023-05-29 13:35:22 &#43;0000 UTC&#39;&gt;May 29, 2023&lt;/span&gt;&amp;nbsp;·&amp;nbsp;1 min</footer>
+  <a class="entry-link" aria-label="post link to ICPC西安游记" href="https://caaatch22.github.io/posts/icpc%E8%A5%BF%E5%AE%89%E6%B8%B8%E8%AE%B0/"></a>
+</article>
+
+<article class="post-entry"> 
+  <header class="entry-header">
+    <h2>C&#43;&#43; CRTP
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p> 原先只是了解这个名词，想着C&#43;&#43;20后静态多态直接用 concept来实现就好了就没细看，没必要整这些模板元编程的奇技淫巧。没想到面试某量化C&#43;&#43;开发的时候被狠狠拷打…….
+CRTP (curiously recurring template pattern) 一般认为，CRTP可以用来实现静态多态
+template &lt;typename T&gt; class Base { void func() { static_cast&lt;T*&gt;(this)-&gt;funcImpl(); } }; class Derived : public Base&lt;Derived&gt; { void funcImpl() { // do works here } }; 通过CRTP可以使得类具有类似于虚函数的效果，同时又没有虚函数调用时的开销(虚函数调用需要通过虚函数指针查找虚函数表进行调用)，同时类的对象的体积相比使用虚函数也会减少(不需要存储虚函数指针)，但是缺点是无法动态绑定，感觉有点过于鸡肋。
+有什么用呢？可以用来向纯虚类一样做接口：（以下类似的代码在大量数学库中出现）
+template &lt;typename ChildType&gt; struct VectorBase { ChildType &amp;underlying() { return static_cast&lt;ChildType &amp;&gt;(*this); } inline ChildType &amp;operator&#43;=(const ChildType &amp;rhs) { this-&gt;underlying() = this-&gt;underlying() &#43; rhs; return this-&gt;underlying(); } }; struct Vec3f : public VectorBase&lt;Vec3f&gt; { float x{}, y{}, z{}; Vec3f() = default; Vec3f(float x, float y, float z) : x(x), y(y), z(z) {} }; inline Vec3f operator&#43;(const Vec3f &amp;lhs, const Vec3f &amp;rhs) { Vec3f result; result.x = lhs.x &#43; rhs.x; result.y = lhs.y &#43; rhs.y; result.z = lhs.z &#43; rhs.z; return result; } 定义好VectorBase后，Vec3f, Vec4f等直接实现接口就好。相比虚函数的形式，在空间和runtime都有优势。
+...</p>
+  </div>
+  <footer class="entry-footer">&lt;span title=&#39;2023-05-20 17:33:40 &#43;0000 UTC&#39;&gt;May 20, 2023&lt;/span&gt;&amp;nbsp;·&amp;nbsp;2 min</footer>
+  <a class="entry-link" aria-label="post link to C&#43;&#43; CRTP" href="https://caaatch22.github.io/posts/c-crtp/"></a>
+</article>
+
+<article class="post-entry"> 
 <figure class="entry-cover"><img loading="lazy" src="https://caaatch22.github.io/img/FalconLink/falcon-black.png" alt="">
 </figure>
   <header class="entry-header">
@@ -228,96 +350,12 @@ Wavelet Tree 该图给出了用序列 $A = [7, 3, 5, 6, 1, 3, 2, 7, 8, 4]$ 构�
   <footer class="entry-footer">&lt;span title=&#39;2023-01-10 16:18:32 &#43;0000 UTC&#39;&gt;January 10, 2023&lt;/span&gt;&amp;nbsp;·&amp;nbsp;4 min</footer>
   <a class="entry-link" aria-label="post link to 将Wavelet Tree用于算法竞赛" href="https://caaatch22.github.io/posts/%E7%AE%97%E6%B3%95%E7%AB%9E%E8%B5%9B%E4%B8%AD%E7%9A%84wavelet-tree/"></a>
 </article>
-
-<article class="post-entry"> 
-<figure class="entry-cover"><img loading="lazy" src="https://caaatch22.github.io/img/busTub/B-tree/B-tree.png" alt="">
-</figure>
-  <header class="entry-header">
-    <h2>CMU15445-project2 Concurrent B&#43; tree
-    </h2>
-  </header>
-  <div class="entry-content">
-    <p>Overview 这个实验应该是最难的一个实验了。。。（感觉和Project 4 —— Transaction实现的难度差不多） 另外，2022fall版本的B&#43; tree更是变态，因为几乎没有给任何内部的API，让人无从下手。建议到 Github repo 里找到20年的，我基本是根据里面定义的函数来实现的。
-实验材料贴心的为你分成了两个检查点，四个小任务。
-Checkpoint #1
-Task #1 - B&#43;Tree Pages Task #2 - B&#43;Tree Data Structure (Insertion, Deletion, Point Search) Checkpoint #2
-Task #3 - Index Iterator Task #4 - Concurrent Index Task #1 - B&#43;Tree Pages 第一个任务算是热身，主要是搞清楚 B&#43; 树的一些类之间的关系。 我们知道，数据库中的索引也是数据，同样以 page 的形式被组织。我们先来看看要完成的这些类之间的关系。
-B&#43; tree internal page 与 B &#43; tree leaf page 都继承自B &#43; tree page，B &#43; tree page 中定义了 B&#43; 树每个结点的一些信息。而B &#43; Tree 这个类则是Checkpoint 1的主要对象，它对internal page 以及 leaf page 进行管理，并对外开放接口。而在内存中，internal page 与 leaf page 都属于 page 的一部分，关系如下图所示。他们就是 page 中的 data 部分。因此，每次 从 buffer pool manager 得到一个 page 后，若是将他们用作 B&#43;树的结点，则需要对这个 data 进行释义，也就是将他强制转化为internal page 或者 leaf page。这在 C&#43;&#43; 中通过 reinterpret_cast 完成。
-...</p>
-  </div>
-  <footer class="entry-footer">&lt;span title=&#39;2022-12-27 23:45:12 &#43;0000 UTC&#39;&gt;December 27, 2022&lt;/span&gt;&amp;nbsp;·&amp;nbsp;2 min</footer>
-  <a class="entry-link" aria-label="post link to CMU15445-project2 Concurrent B&#43; tree" href="https://caaatch22.github.io/posts/cmu15445-project2-concurrent-b-tree/"></a>
-</article>
-
-<article class="post-entry"> 
-<figure class="entry-cover"><img loading="lazy" src="https://caaatch22.github.io/img/busTub/bustub.png" alt="">
-</figure>
-  <header class="entry-header">
-    <h2>CMU15445-project1 Buffer Pool Manager
-    </h2>
-  </header>
-  <div class="entry-content">
-    <p>Buffer Pool Manager cmu15445 是一门关于数据库管理系统（DBMS）设计与实现的经典公开课，是很多dba和内核开发人员的入门课程。开课教授Andy Pavlo 非常风趣幽默，他有自己上课的DJ，他曾在浴缸里录课，且时常语出惊人。这门课的实验项目BusTub非常有挑战性，并对所有人开放评测资源。
-Overview BusTub是一个面向磁盘的 DBMS(Database Management System)。由于磁盘上的数据不支持字节粒度的访问，这就需要一个管理页的中间层，而 Andy 坚持“The OS is not your friend”， 反对使用 mmap 进行页操作，因此实验一的目标便在于通过实现 Buffer Pool Manager 主动管理磁盘中的页（page）在内存中的缓存，从而，最小化磁盘访问次数（时间上）、最大化相关数据连续（空间上）。
-这次实验有三个子任务，分别是
-Task #1: Extendible Hash Table Task #2: LRU-K Replacer Task #3: Buffer Pool Manager Instance 可拓展哈希表是这个是实验中相对独立的模块。这里不会讲它的细节，后面的两个任务中需要用到哈希表的地方我直接用std::unordered_map替代，而且效率还更高。应该是因为 Extendible Hash Table 要求线程安全，为了方便在我在每个函数入口都加了大锁。 想要 Extendible Hash Table 具体细节的可以看这个b站视频。关于它的优化，我想可以进行更细粒度的锁管理甚至写一个无锁(lockfree)的哈希表。
-Buffer Pool Manager 在后两个实验开始之前，我建议先将Task #2和Task #3的实验材料完整的看完在开始写代码。因为 replacer 和 buffer pool manager 有较大程度的耦合。很多API设计需要对照两个组件才能知道自己应该维护的数据与功能的边界。为了更符合直觉，我会先阐述 buffer pool manager 的设计，同时会穿插着 LRU-k 的API什么时候，在哪用。
-...</p>
-  </div>
-  <footer class="entry-footer">&lt;span title=&#39;2022-12-22 15:37:34 &#43;0000 UTC&#39;&gt;December 22, 2022&lt;/span&gt;&amp;nbsp;·&amp;nbsp;3 min</footer>
-  <a class="entry-link" aria-label="post link to CMU15445-project1 Buffer Pool Manager" href="https://caaatch22.github.io/posts/cmu15445-project1-buffer-pool-manager/"></a>
-</article>
-
-<article class="post-entry"> 
-  <header class="entry-header">
-    <h2>个人常用配置备忘
-    </h2>
-  </header>
-  <div class="entry-content">
-    <p>vscode 插件：
-C/C&#43;&#43;, ~ Extension Pack, Themes, InteliCode CMake Tools, CodeLLDB Vim remote ssh, docker Error Lens, GitLens user的settings.json
-&#34;editor.fontFamily&#34;: &#34;Fira Code&#34;, &#34;workbench.panel.defaultLocation&#34;: &#34;right&#34;, &#34;vim.handleKeys&#34;: { &#34;&lt;C-c&gt;&#34;: false, &#34;&lt;C-f&gt;&#34;: false, &#34;&lt;C-x&gt;&#34;: false, &#34;&lt;C-a&gt;&#34;: false, &#34;&lt;C-p&gt;&#34;: false, }, &#34;C_Cpp.vcFormat.newLine.beforeOpenBrace.block&#34;: &#34;sameLine&#34;, &#34;C_Cpp.vcFormat.newLine.beforeOpenBrace.function&#34;: &#34;sameLine&#34;, &#34;editor.formatOnSave&#34;: true, &#34;C_Cpp.clang_format_fallbackStyle&#34;: &#34;{ BasedOnStyle: LLVM, UseTab: Never, IndentWidth: 2, TabWidth: 2}&#34;, pip, python, pyenv 使用pyenv控制多个python版本
-pyenv versions # 查看所有安装的python脚本 pyenv install 3.8.0 # 安装python 3.8.0 pyenv global 3.8.0 # 将3.8.0设置为全局python，对应pip也会改变 删除__pycache__
-find . -name &#34;*.pyc&#34; -type f -print -exec rm -rf {} \; about clash # start.sh nohup ./clash -d . &gt;/dev/null 2&gt;&amp;1 &amp; #shutdown.sh ps -A | grep clash | awk &#39;{print $1}&#39; | xargs kill 暂时设置7890做全局代理
-...</p>
-  </div>
-  <footer class="entry-footer">&lt;span title=&#39;2022-12-20 17:33:40 &#43;0000 UTC&#39;&gt;December 20, 2022&lt;/span&gt;&amp;nbsp;·&amp;nbsp;1 min</footer>
-  <a class="entry-link" aria-label="post link to 个人常用配置备忘" href="https://caaatch22.github.io/posts/memo/"></a>
-</article>
-
-<article class="post-entry"> 
-  <header class="entry-header">
-    <h2>cs144-note1
-    </h2>
-  </header>
-  <div class="entry-content">
-    <p>Computer Network introduction dominant model : bidirectional, reliable byte stream connection
-http: hypertext transfer protocol : designed to be a document centric way for programs to communicate. Client —&gt; Server model
-Bit-Torrent: (peer-to-peer model) a client requests document from other clients, a single client can request from many others. these collections of collaborating clients are called swarms when a client wants to downloads a file, it first find torrent, usually using www and download using http. torrent file describes information about data file, also tells bit-torrent about the tracker (a node keeps track names of clients of the swarm)
-...</p>
-  </div>
-  <footer class="entry-footer">&lt;span title=&#39;2022-05-09 22:35:22 &#43;0000 UTC&#39;&gt;May 9, 2022&lt;/span&gt;&amp;nbsp;·&amp;nbsp;3 min</footer>
-  <a class="entry-link" aria-label="post link to cs144-note1" href="https://caaatch22.github.io/posts/cs144-note1/"></a>
-</article>
-
-<article class="post-entry"> 
-<figure class="entry-cover"><img loading="lazy" src="https://caaatch22.github.io/img/icpc-algorithm-template/icpc-template.png" alt="">
-</figure>
-  <header class="entry-header">
-    <h2>xcpc template
-    </h2>
-  </header>
-  <div class="entry-content">
-    <p>icpc模板 Previous Next     / [pdf] View the PDF file here. algorithm-template Competitive Programming template
-...</p>
-  </div>
-  <footer class="entry-footer">&lt;span title=&#39;2022-03-17 23:38:14 &#43;0000 UTC&#39;&gt;March 17, 2022&lt;/span&gt;&amp;nbsp;·&amp;nbsp;1 min</footer>
-  <a class="entry-link" aria-label="post link to xcpc template" href="https://caaatch22.github.io/posts/xcpc-template/"></a>
-</article>
 <footer class="page-footer">
   <nav class="pagination">
     <a class="prev" href="https://caaatch22.github.io/posts/">
       «&nbsp;Prev&nbsp;
+    </a>
+    <a class="next" href="https://caaatch22.github.io/posts/page/3/">Next&nbsp;&nbsp;»
     </a>
   </nav>
 </footer>

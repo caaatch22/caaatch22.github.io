@@ -165,27 +165,89 @@
 <main class="main"> 
 
 <article class="post-entry"> 
+<figure class="entry-cover"><img loading="lazy" src="https://caaatch22.github.io/img/busTub/B-tree/B-tree.png" alt="">
+</figure>
   <header class="entry-header">
-    <h2>
+    <h2>CMU15445-project2 Concurrent B&#43; tree
     </h2>
   </header>
   <div class="entry-content">
-    <p></p>
+    <p>Overview 这个实验应该是最难的一个实验了。。。（感觉和Project 4 —— Transaction实现的难度差不多） 另外，2022fall版本的B&#43; tree更是变态，因为几乎没有给任何内部的API，让人无从下手。建议到 Github repo 里找到20年的，我基本是根据里面定义的函数来实现的。
+实验材料贴心的为你分成了两个检查点，四个小任务。
+Checkpoint #1
+Task #1 - B&#43;Tree Pages Task #2 - B&#43;Tree Data Structure (Insertion, Deletion, Point Search) Checkpoint #2
+Task #3 - Index Iterator Task #4 - Concurrent Index Task #1 - B&#43;Tree Pages 第一个任务算是热身，主要是搞清楚 B&#43; 树的一些类之间的关系。 我们知道，数据库中的索引也是数据，同样以 page 的形式被组织。我们先来看看要完成的这些类之间的关系。
+B&#43; tree internal page 与 B &#43; tree leaf page 都继承自B &#43; tree page，B &#43; tree page 中定义了 B&#43; 树每个结点的一些信息。而B &#43; Tree 这个类则是Checkpoint 1的主要对象，它对internal page 以及 leaf page 进行管理，并对外开放接口。而在内存中，internal page 与 leaf page 都属于 page 的一部分，关系如下图所示。他们就是 page 中的 data 部分。因此，每次 从 buffer pool manager 得到一个 page 后，若是将他们用作 B&#43;树的结点，则需要对这个 data 进行释义，也就是将他强制转化为internal page 或者 leaf page。这在 C&#43;&#43; 中通过 reinterpret_cast 完成。
+...</p>
   </div>
-  <footer class="entry-footer">0 min</footer>
-  <a class="entry-link" aria-label="post link to " href="https://caaatch22.github.io/posts/transformers-2-finetuning/"></a>
+  <footer class="entry-footer">&lt;span title=&#39;2022-12-27 23:45:12 &#43;0000 UTC&#39;&gt;December 27, 2022&lt;/span&gt;&amp;nbsp;·&amp;nbsp;2 min</footer>
+  <a class="entry-link" aria-label="post link to CMU15445-project2 Concurrent B&#43; tree" href="https://caaatch22.github.io/posts/cmu15445-project2-concurrent-b-tree/"></a>
+</article>
+
+<article class="post-entry"> 
+<figure class="entry-cover"><img loading="lazy" src="https://caaatch22.github.io/img/busTub/bustub.png" alt="">
+</figure>
+  <header class="entry-header">
+    <h2>CMU15445-project1 Buffer Pool Manager
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>Buffer Pool Manager cmu15445 是一门关于数据库管理系统（DBMS）设计与实现的经典公开课，是很多dba和内核开发人员的入门课程。开课教授Andy Pavlo 非常风趣幽默，他有自己上课的DJ，他曾在浴缸里录课，且时常语出惊人。这门课的实验项目BusTub非常有挑战性，并对所有人开放评测资源。
+Overview BusTub是一个面向磁盘的 DBMS(Database Management System)。由于磁盘上的数据不支持字节粒度的访问，这就需要一个管理页的中间层，而 Andy 坚持“The OS is not your friend”， 反对使用 mmap 进行页操作，因此实验一的目标便在于通过实现 Buffer Pool Manager 主动管理磁盘中的页（page）在内存中的缓存，从而，最小化磁盘访问次数（时间上）、最大化相关数据连续（空间上）。
+这次实验有三个子任务，分别是
+Task #1: Extendible Hash Table Task #2: LRU-K Replacer Task #3: Buffer Pool Manager Instance 可拓展哈希表是这个是实验中相对独立的模块。这里不会讲它的细节，后面的两个任务中需要用到哈希表的地方我直接用std::unordered_map替代，而且效率还更高。应该是因为 Extendible Hash Table 要求线程安全，为了方便在我在每个函数入口都加了大锁。 想要 Extendible Hash Table 具体细节的可以看这个b站视频。关于它的优化，我想可以进行更细粒度的锁管理甚至写一个无锁(lockfree)的哈希表。
+Buffer Pool Manager 在后两个实验开始之前，我建议先将Task #2和Task #3的实验材料完整的看完在开始写代码。因为 replacer 和 buffer pool manager 有较大程度的耦合。很多API设计需要对照两个组件才能知道自己应该维护的数据与功能的边界。为了更符合直觉，我会先阐述 buffer pool manager 的设计，同时会穿插着 LRU-k 的API什么时候，在哪用。
+...</p>
+  </div>
+  <footer class="entry-footer">&lt;span title=&#39;2022-12-22 15:37:34 &#43;0000 UTC&#39;&gt;December 22, 2022&lt;/span&gt;&amp;nbsp;·&amp;nbsp;3 min</footer>
+  <a class="entry-link" aria-label="post link to CMU15445-project1 Buffer Pool Manager" href="https://caaatch22.github.io/posts/cmu15445-project1-buffer-pool-manager/"></a>
 </article>
 
 <article class="post-entry"> 
   <header class="entry-header">
-    <h2>
+    <h2>个人常用配置备忘
     </h2>
   </header>
   <div class="entry-content">
-    <p></p>
+    <p>vscode 插件：
+C/C&#43;&#43;, ~ Extension Pack, Themes, InteliCode CMake Tools, CodeLLDB Vim remote ssh, docker Error Lens, GitLens user的settings.json
+&#34;editor.fontFamily&#34;: &#34;Fira Code&#34;, &#34;workbench.panel.defaultLocation&#34;: &#34;right&#34;, &#34;vim.handleKeys&#34;: { &#34;&lt;C-c&gt;&#34;: false, &#34;&lt;C-f&gt;&#34;: false, &#34;&lt;C-x&gt;&#34;: false, &#34;&lt;C-a&gt;&#34;: false, &#34;&lt;C-p&gt;&#34;: false, }, &#34;C_Cpp.vcFormat.newLine.beforeOpenBrace.block&#34;: &#34;sameLine&#34;, &#34;C_Cpp.vcFormat.newLine.beforeOpenBrace.function&#34;: &#34;sameLine&#34;, &#34;editor.formatOnSave&#34;: true, &#34;C_Cpp.clang_format_fallbackStyle&#34;: &#34;{ BasedOnStyle: LLVM, UseTab: Never, IndentWidth: 2, TabWidth: 2}&#34;, pip, python, pyenv 使用pyenv控制多个python版本
+pyenv versions # 查看所有安装的python脚本 pyenv install 3.8.0 # 安装python 3.8.0 pyenv global 3.8.0 # 将3.8.0设置为全局python，对应pip也会改变 删除__pycache__
+find . -name &#34;*.pyc&#34; -type f -print -exec rm -rf {} \; about clash # start.sh nohup ./clash -d . &gt;/dev/null 2&gt;&amp;1 &amp; #shutdown.sh ps -A | grep clash | awk &#39;{print $1}&#39; | xargs kill 暂时设置7890做全局代理
+...</p>
   </div>
-  <footer class="entry-footer">0 min</footer>
-  <a class="entry-link" aria-label="post link to " href="https://caaatch22.github.io/posts/transformers-3-flashattention/"></a>
+  <footer class="entry-footer">&lt;span title=&#39;2022-12-20 17:33:40 &#43;0000 UTC&#39;&gt;December 20, 2022&lt;/span&gt;&amp;nbsp;·&amp;nbsp;1 min</footer>
+  <a class="entry-link" aria-label="post link to 个人常用配置备忘" href="https://caaatch22.github.io/posts/memo/"></a>
+</article>
+
+<article class="post-entry"> 
+  <header class="entry-header">
+    <h2>cs144-note1
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>Computer Network introduction dominant model : bidirectional, reliable byte stream connection
+http: hypertext transfer protocol : designed to be a document centric way for programs to communicate. Client —&gt; Server model
+Bit-Torrent: (peer-to-peer model) a client requests document from other clients, a single client can request from many others. these collections of collaborating clients are called swarms when a client wants to downloads a file, it first find torrent, usually using www and download using http. torrent file describes information about data file, also tells bit-torrent about the tracker (a node keeps track names of clients of the swarm)
+...</p>
+  </div>
+  <footer class="entry-footer">&lt;span title=&#39;2022-05-09 22:35:22 &#43;0000 UTC&#39;&gt;May 9, 2022&lt;/span&gt;&amp;nbsp;·&amp;nbsp;3 min</footer>
+  <a class="entry-link" aria-label="post link to cs144-note1" href="https://caaatch22.github.io/posts/cs144-note1/"></a>
+</article>
+
+<article class="post-entry"> 
+<figure class="entry-cover"><img loading="lazy" src="https://caaatch22.github.io/img/icpc-algorithm-template/icpc-template.png" alt="">
+</figure>
+  <header class="entry-header">
+    <h2>xcpc template
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>icpc模板 Previous Next     / [pdf] View the PDF file here. algorithm-template Competitive Programming template
+...</p>
+  </div>
+  <footer class="entry-footer">&lt;span title=&#39;2022-03-17 23:38:14 &#43;0000 UTC&#39;&gt;March 17, 2022&lt;/span&gt;&amp;nbsp;·&amp;nbsp;1 min</footer>
+  <a class="entry-link" aria-label="post link to xcpc template" href="https://caaatch22.github.io/posts/xcpc-template/"></a>
 </article>
 <footer class="page-footer">
   <nav class="pagination">
