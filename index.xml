@@ -2001,9 +2001,6 @@ POWER架构还提供了一个额外的“轻量级同步”指令，称为 <code
 &lt;p&gt;&lt;strong&gt;FalconLink&lt;/strong&gt;是一个轻量级的高并发网络库。它封装了网络编程套接字API，将其抽象成一个易用，可拓展框架。用户只需通过设置回调函数的形式注入业务逻辑。它同时也具有 HTTP 服务请求与解析的功能。&lt;/p&gt;
 &lt;p&gt;&lt;img loading=&#34;lazy&#34; src=&#34;https://caaatch22.github.io/img/FalconLink/falconlink-architecture.png&#34; alt=&#34;&#34;  /&gt;
 &lt;/p&gt;
-&lt;video id=&#34;video&#34; controls=&#34;&#34;  controlslist=&#34;nodownload&#34;   preload=&#34;none&#34; allowfullscreen=&#34;true&#34; position= &#34;absolute&#34; width=&#34;100%&#34; poster=&#34;封面URL&#34;&gt;
-      &lt;source id=&#34;mp4&#34; src=&#34;https://lujia-lmj.oss-cn-beijing.aliyuncs.com/yyyx/2/S02E01.mp4&#34; type=&#34;video/mp4&#34; &gt;
-      &lt;/video&gt;
 &lt;p&gt;上图是FalconLink系统架构的一个简单概括性图示。&lt;/p&gt;
 &lt;ul&gt;
 &lt;li&gt;采用&lt;strong&gt;非阻塞socket&lt;/strong&gt;配合&lt;strong&gt;边缘触发&lt;/strong&gt;，及&lt;em&gt;one loop per thread&lt;/em&gt;的主从 &lt;code&gt;reactor&lt;/code&gt;设计&lt;/li&gt;
@@ -2051,9 +2048,6 @@ POWER架构还提供了一个额外的“轻量级同步”指令，称为 <code
 <p><strong>FalconLink</strong>是一个轻量级的高并发网络库。它封装了网络编程套接字API，将其抽象成一个易用，可拓展框架。用户只需通过设置回调函数的形式注入业务逻辑。它同时也具有 HTTP 服务请求与解析的功能。</p>
 <p><img loading="lazy" src="/img/FalconLink/falconlink-architecture.png" alt=""  />
 </p>
-<video id="video" controls=""  controlslist="nodownload"   preload="none" allowfullscreen="true" position= "absolute" width="100%" poster="封面URL">
-      <source id="mp4" src="https://lujia-lmj.oss-cn-beijing.aliyuncs.com/yyyx/2/S02E01.mp4" type="video/mp4" >
-      </video>
 <p>上图是FalconLink系统架构的一个简单概括性图示。</p>
 <ul>
 <li>采用<strong>非阻塞socket</strong>配合<strong>边缘触发</strong>，及<em>one loop per thread</em>的主从 <code>reactor</code>设计</li>
@@ -3714,6 +3708,56 @@ View the PDF file <a class="pdf-source" id="pdf-source-noscript-e21a8caf" href="
       <guid>https://caaatch22.github.io/posts/transformers-4-vllm/</guid>
       <description></description>
       <content:encoded><![CDATA[]]></content:encoded>
+    </item>
+    
+    <item>
+      <title></title>
+      <link>https://caaatch22.github.io/posts/yyyx/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://caaatch22.github.io/posts/yyyx/</guid>
+      <description>&lt;video id=&#34;video&#34; controls=&#34;&#34;  controlslist=&#34;nodownload&#34;   preload=&#34;none&#34; allowfullscreen=&#34;true&#34; position= &#34;absolute&#34; width=&#34;100%&#34; poster=&#34;封面URL&#34;&gt;
+      &lt;source id=&#34;mp4&#34; src=&#34;https://lujia-lmj.oss-cn-beijing.aliyuncs.com/yyyx/2/S02E01.mp4&#34; type=&#34;video/mp4&#34; &gt;
+      &lt;/video&gt;
+&lt;video id=&#34;video&#34; controls=&#34;&#34;  controlslist=&#34;nodownload&#34;   preload=&#34;none&#34; allowfullscreen=&#34;true&#34; position= &#34;absolute&#34; width=&#34;100%&#34; poster=&#34;封面URL&#34;&gt;
+      &lt;source id=&#34;mp4&#34; src=&#34;https://lujia-lmj.oss-cn-beijing.aliyuncs.com/yyyx/2/S02E02.mp4&#34; type=&#34;video/mp4&#34; &gt;
+      &lt;/video&gt;
+&lt;video id=&#34;video&#34; controls=&#34;&#34;  controlslist=&#34;nodownload&#34;   preload=&#34;none&#34; allowfullscreen=&#34;true&#34; position= &#34;absolute&#34; width=&#34;100%&#34; poster=&#34;封面URL&#34;&gt;
+      &lt;source id=&#34;mp4&#34; src=&#34;https://lujia-lmj.oss-cn-beijing.aliyuncs.com/yyyx/2/S02E03.mp4&#34; type=&#34;video/mp4&#34; &gt;
+      &lt;/video&gt;
+&lt;video id=&#34;video&#34; controls=&#34;&#34;  controlslist=&#34;nodownload&#34;   preload=&#34;none&#34; allowfullscreen=&#34;true&#34; position= &#34;absolute&#34; width=&#34;100%&#34; poster=&#34;封面URL&#34;&gt;
+      &lt;source id=&#34;mp4&#34; src=&#34;https://lujia-lmj.oss-cn-beijing.aliyuncs.com/yyyx/2/S02E04.mp4&#34; type=&#34;video/mp4&#34; &gt;
+      &lt;/video&gt;
+&lt;video id=&#34;video&#34; controls=&#34;&#34;  controlslist=&#34;nodownload&#34;   preload=&#34;none&#34; allowfullscreen=&#34;true&#34; position= &#34;absolute&#34; width=&#34;100%&#34; poster=&#34;封面URL&#34;&gt;
+      &lt;source id=&#34;mp4&#34; src=&#34;https://lujia-lmj.oss-cn-beijing.aliyuncs.com/yyyx/2/S02E05.mp4&#34; type=&#34;video/mp4&#34; &gt;
+      &lt;/video&gt;
+&lt;video id=&#34;video&#34; controls=&#34;&#34;  controlslist=&#34;nodownload&#34;   preload=&#34;none&#34; allowfullscreen=&#34;true&#34; position= &#34;absolute&#34; width=&#34;100%&#34; poster=&#34;封面URL&#34;&gt;
+      &lt;source id=&#34;mp4&#34; src=&#34;https://lujia-lmj.oss-cn-beijing.aliyuncs.com/yyyx/2/S02E06.mp4&#34; type=&#34;video/mp4&#34; &gt;
+      &lt;/video&gt;
+&lt;video id=&#34;video&#34; controls=&#34;&#34;  controlslist=&#34;nodownload&#34;   preload=&#34;none&#34; allowfullscreen=&#34;true&#34; position= &#34;absolute&#34; width=&#34;100%&#34; poster=&#34;封面URL&#34;&gt;
+      &lt;source id=&#34;mp4&#34; src=&#34;https://lujia-lmj.oss-cn-beijing.aliyuncs.com/yyyx/2/S02E06.mp4&#34; type=&#34;video/mp4&#34; &gt;
+      &lt;/video&gt;</description>
+      <content:encoded><![CDATA[<video id="video" controls=""  controlslist="nodownload"   preload="none" allowfullscreen="true" position= "absolute" width="100%" poster="封面URL">
+      <source id="mp4" src="https://lujia-lmj.oss-cn-beijing.aliyuncs.com/yyyx/2/S02E01.mp4" type="video/mp4" >
+      </video>
+<video id="video" controls=""  controlslist="nodownload"   preload="none" allowfullscreen="true" position= "absolute" width="100%" poster="封面URL">
+      <source id="mp4" src="https://lujia-lmj.oss-cn-beijing.aliyuncs.com/yyyx/2/S02E02.mp4" type="video/mp4" >
+      </video>
+<video id="video" controls=""  controlslist="nodownload"   preload="none" allowfullscreen="true" position= "absolute" width="100%" poster="封面URL">
+      <source id="mp4" src="https://lujia-lmj.oss-cn-beijing.aliyuncs.com/yyyx/2/S02E03.mp4" type="video/mp4" >
+      </video>
+<video id="video" controls=""  controlslist="nodownload"   preload="none" allowfullscreen="true" position= "absolute" width="100%" poster="封面URL">
+      <source id="mp4" src="https://lujia-lmj.oss-cn-beijing.aliyuncs.com/yyyx/2/S02E04.mp4" type="video/mp4" >
+      </video>
+<video id="video" controls=""  controlslist="nodownload"   preload="none" allowfullscreen="true" position= "absolute" width="100%" poster="封面URL">
+      <source id="mp4" src="https://lujia-lmj.oss-cn-beijing.aliyuncs.com/yyyx/2/S02E05.mp4" type="video/mp4" >
+      </video>
+<video id="video" controls=""  controlslist="nodownload"   preload="none" allowfullscreen="true" position= "absolute" width="100%" poster="封面URL">
+      <source id="mp4" src="https://lujia-lmj.oss-cn-beijing.aliyuncs.com/yyyx/2/S02E06.mp4" type="video/mp4" >
+      </video>
+<video id="video" controls=""  controlslist="nodownload"   preload="none" allowfullscreen="true" position= "absolute" width="100%" poster="封面URL">
+      <source id="mp4" src="https://lujia-lmj.oss-cn-beijing.aliyuncs.com/yyyx/2/S02E06.mp4" type="video/mp4" >
+      </video>]]></content:encoded>
     </item>
     
     <item>
