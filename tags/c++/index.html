@@ -170,7 +170,7 @@ bonus question: 不同等级的cache latency？
 answer: l1: 1ns, l2: 5ns, l3: 50~100ns, main memory: 200ns
 ...</p>
   </div>
-  <footer class="entry-footer">&lt;span title=&#39;2023-09-01 15:51:19 &#43;0000 UTC&#39;&gt;September 1, 2023&lt;/span&gt;&amp;nbsp;·&amp;nbsp;3 min</footer>
+  <footer class="entry-footer">&lt;span title=&#39;2023-09-01 15:51:19 &#43;0000 UTC&#39;&gt;2023-09-01&lt;/span&gt;&amp;nbsp;·&amp;nbsp;3 min</footer>
   <a class="entry-link" aria-label="post link to C&#43;&#43;内存模型 —— 现代Architecture的妥协" href="https://caaatch22.github.io/posts/c-%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B--%E7%8E%B0%E4%BB%A3architecture%E7%9A%84%E5%A6%A5%E5%8D%8F/"></a>
 </article>
 
@@ -187,7 +187,7 @@ template &lt;typename T&gt; class Base { void func() { static_cast&lt;T*&gt;(thi
 template &lt;typename ChildType&gt; struct VectorBase { ChildType &amp;underlying() { return static_cast&lt;ChildType &amp;&gt;(*this); } inline ChildType &amp;operator&#43;=(const ChildType &amp;rhs) { this-&gt;underlying() = this-&gt;underlying() &#43; rhs; return this-&gt;underlying(); } }; struct Vec3f : public VectorBase&lt;Vec3f&gt; { float x{}, y{}, z{}; Vec3f() = default; Vec3f(float x, float y, float z) : x(x), y(y), z(z) {} }; inline Vec3f operator&#43;(const Vec3f &amp;lhs, const Vec3f &amp;rhs) { Vec3f result; result.x = lhs.x &#43; rhs.x; result.y = lhs.y &#43; rhs.y; result.z = lhs.z &#43; rhs.z; return result; } 定义好VectorBase后，Vec3f, Vec4f等直接实现接口就好。相比虚函数的形式，在空间和runtime都有优势。
 ...</p>
   </div>
-  <footer class="entry-footer">&lt;span title=&#39;2023-05-20 17:33:40 &#43;0000 UTC&#39;&gt;May 20, 2023&lt;/span&gt;&amp;nbsp;·&amp;nbsp;2 min</footer>
+  <footer class="entry-footer">&lt;span title=&#39;2023-05-20 17:33:40 &#43;0000 UTC&#39;&gt;2023-05-20&lt;/span&gt;&amp;nbsp;·&amp;nbsp;2 min</footer>
   <a class="entry-link" aria-label="post link to C&#43;&#43; CRTP" href="https://caaatch22.github.io/posts/c-crtp/"></a>
 </article>
     </main>

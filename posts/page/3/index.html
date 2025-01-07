@@ -185,7 +185,7 @@ Task #3 - Index Iterator Task #4 - Concurrent Index Task #1 - B&#43;Tree Pages �
 B&#43; tree internal page 与 B &#43; tree leaf page 都继承自B &#43; tree page，B &#43; tree page 中定义了 B&#43; 树每个结点的一些信息。而B &#43; Tree 这个类则是Checkpoint 1的主要对象，它对internal page 以及 leaf page 进行管理，并对外开放接口。而在内存中，internal page 与 leaf page 都属于 page 的一部分，关系如下图所示。他们就是 page 中的 data 部分。因此，每次 从 buffer pool manager 得到一个 page 后，若是将他们用作 B&#43;树的结点，则需要对这个 data 进行释义，也就是将他强制转化为internal page 或者 leaf page。这在 C&#43;&#43; 中通过 reinterpret_cast 完成。
 ...</p>
   </div>
-  <footer class="entry-footer">&lt;span title=&#39;2022-12-27 23:45:12 &#43;0000 UTC&#39;&gt;December 27, 2022&lt;/span&gt;&amp;nbsp;·&amp;nbsp;2 min</footer>
+  <footer class="entry-footer">&lt;span title=&#39;2022-12-27 23:45:12 &#43;0000 UTC&#39;&gt;2022-12-27&lt;/span&gt;&amp;nbsp;·&amp;nbsp;2 min</footer>
   <a class="entry-link" aria-label="post link to CMU15445-project2 Concurrent B&#43; tree" href="https://caaatch22.github.io/posts/cmu15445-project2-concurrent-b-tree/"></a>
 </article>
 
@@ -204,7 +204,7 @@ Task #1: Extendible Hash Table Task #2: LRU-K Replacer Task #3: Buffer Pool Mana
 Buffer Pool Manager 在后两个实验开始之前，我建议先将Task #2和Task #3的实验材料完整的看完在开始写代码。因为 replacer 和 buffer pool manager 有较大程度的耦合。很多API设计需要对照两个组件才能知道自己应该维护的数据与功能的边界。为了更符合直觉，我会先阐述 buffer pool manager 的设计，同时会穿插着 LRU-k 的API什么时候，在哪用。
 ...</p>
   </div>
-  <footer class="entry-footer">&lt;span title=&#39;2022-12-22 15:37:34 &#43;0000 UTC&#39;&gt;December 22, 2022&lt;/span&gt;&amp;nbsp;·&amp;nbsp;3 min</footer>
+  <footer class="entry-footer">&lt;span title=&#39;2022-12-22 15:37:34 &#43;0000 UTC&#39;&gt;2022-12-22&lt;/span&gt;&amp;nbsp;·&amp;nbsp;3 min</footer>
   <a class="entry-link" aria-label="post link to CMU15445-project1 Buffer Pool Manager" href="https://caaatch22.github.io/posts/cmu15445-project1-buffer-pool-manager/"></a>
 </article>
 
@@ -221,7 +221,7 @@ pyenv versions # 查看所有安装的python脚本 pyenv install 3.8.0 # 安装p
 find . -name &#34;*.pyc&#34; -type f -print -exec rm -rf {} \; about clash # start.sh nohup ./clash -d . &gt;/dev/null 2&gt;&amp;1 &amp; #shutdown.sh ps -A | grep clash | awk &#39;{print $1}&#39; | xargs kill 暂时设置7890做全局代理
 ...</p>
   </div>
-  <footer class="entry-footer">&lt;span title=&#39;2022-12-20 17:33:40 &#43;0000 UTC&#39;&gt;December 20, 2022&lt;/span&gt;&amp;nbsp;·&amp;nbsp;1 min</footer>
+  <footer class="entry-footer">&lt;span title=&#39;2022-12-20 17:33:40 &#43;0000 UTC&#39;&gt;2022-12-20&lt;/span&gt;&amp;nbsp;·&amp;nbsp;1 min</footer>
   <a class="entry-link" aria-label="post link to 个人常用配置备忘" href="https://caaatch22.github.io/posts/memo/"></a>
 </article>
 
@@ -236,7 +236,7 @@ http: hypertext transfer protocol : designed to be a document centric way for pr
 Bit-Torrent: (peer-to-peer model) a client requests document from other clients, a single client can request from many others. these collections of collaborating clients are called swarms when a client wants to downloads a file, it first find torrent, usually using www and download using http. torrent file describes information about data file, also tells bit-torrent about the tracker (a node keeps track names of clients of the swarm)
 ...</p>
   </div>
-  <footer class="entry-footer">&lt;span title=&#39;2022-05-09 22:35:22 &#43;0000 UTC&#39;&gt;May 9, 2022&lt;/span&gt;&amp;nbsp;·&amp;nbsp;3 min</footer>
+  <footer class="entry-footer">&lt;span title=&#39;2022-05-09 22:35:22 &#43;0000 UTC&#39;&gt;2022-05-09&lt;/span&gt;&amp;nbsp;·&amp;nbsp;3 min</footer>
   <a class="entry-link" aria-label="post link to cs144-note1" href="https://caaatch22.github.io/posts/cs144-note1/"></a>
 </article>
 
@@ -251,7 +251,7 @@ Bit-Torrent: (peer-to-peer model) a client requests document from other clients,
     <p>icpc模板 Previous Next     / [pdf] View the PDF file here. algorithm-template Competitive Programming template
 ...</p>
   </div>
-  <footer class="entry-footer">&lt;span title=&#39;2022-03-17 23:38:14 &#43;0000 UTC&#39;&gt;March 17, 2022&lt;/span&gt;&amp;nbsp;·&amp;nbsp;1 min</footer>
+  <footer class="entry-footer">&lt;span title=&#39;2022-03-17 23:38:14 &#43;0000 UTC&#39;&gt;2022-03-17&lt;/span&gt;&amp;nbsp;·&amp;nbsp;1 min</footer>
   <a class="entry-link" aria-label="post link to xcpc template" href="https://caaatch22.github.io/posts/xcpc-template/"></a>
 </article>
 <footer class="page-footer">

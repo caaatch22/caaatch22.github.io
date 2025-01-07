@@ -169,7 +169,7 @@ $$ s = \frac{r_{max} - r_{min}}{q_{max} - q_{min}} $$ $r_{max}$就是这个tenso
 def get_quantized_range(bitwidth): quantized_max = (1 &lt;&lt; (bitwidth - 1)) - 1 quantized_min = -(1 &lt;&lt; (bitwidth - 1)) return quantized_min, quantized_max def linear_quantize(fp_tensor, bitwidth, scale, zero_point, dtype=torch.int8) -&gt; torch.Tensor: rounded_tensor = torch.round(fp_tensor / scale).to(dtype) shifted_tensor = rounded_tensor &#43; zero_point quantized_min, quantized_max = get_quantized_range(bitwidth) quantized_tensor = shifted_tensor.clamp_(quantized_min, quantized_max) return quantized_tensor 上述过程被称为非对称量化(asymmetric quantization)。
 ...</p>
   </div>
-  <footer class="entry-footer">&lt;span title=&#39;2024-02-27 22:19:21 &#43;0000 UTC&#39;&gt;February 27, 2024&lt;/span&gt;&amp;nbsp;·&amp;nbsp;3 min</footer>
+  <footer class="entry-footer">&lt;span title=&#39;2024-02-27 22:19:21 &#43;0000 UTC&#39;&gt;2024-02-27&lt;/span&gt;&amp;nbsp;·&amp;nbsp;3 min</footer>
   <a class="entry-link" aria-label="post link to TinyMl —— 模型量化(quantization)" href="https://caaatch22.github.io/posts/tinyml-quantization/"></a>
 </article>
     </main>

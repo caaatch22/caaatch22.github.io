@@ -167,7 +167,7 @@ node之间的内存是连续的(虽然可能中间存在空node)，遍历的时�
 会引发原来的value失效（这里的失效指的是原来的那个对象所对应的内存失效，而不是value所包含的内容失效，例如，value是一个指针，那它的值——所指向的对象，不会受到影响）。举个例子： flat_hash_map&lt;int, Data&gt; mp; node_hash_map&lt;int, Data&gt; nodemp; mp[0] = Data(); nodemp[0] = Data(); auto&amp; mp0 = mp[0]; auto&amp; nodemp0 = nodemp[0]; // tigger rehash for (int i = 1; i &lt;= 10; i &#43;&#43;) { mp[i] = Data(); nodemp[i] = Data(); } assert(std::addressof(mp[0]) != std::addressof(mp0)); assert(std::addressof(nodemp[0]) == std::addressof(nodemp0)); 原因就是 flat_hash_map的内存布局导致的。而 node_hash_map或者 std::unordered_map就保证不会出现这种情况，因为当他们rehash的时候，只需要将bucket内的指针重新分配，指针的值还是指向原来的 node&lt;key, value&gt;.
 ...</p>
   </div>
-  <footer class="entry-footer">&lt;span title=&#39;2023-07-23 21:23:15 &#43;0000 UTC&#39;&gt;July 23, 2023&lt;/span&gt;&amp;nbsp;·&amp;nbsp;3 min</footer>
+  <footer class="entry-footer">&lt;span title=&#39;2023-07-23 21:23:15 &#43;0000 UTC&#39;&gt;2023-07-23&lt;/span&gt;&amp;nbsp;·&amp;nbsp;3 min</footer>
   <a class="entry-link" aria-label="post link to phmap —— 缓存友好的高效hashtable" href="https://caaatch22.github.io/posts/phmap/"></a>
 </article>
 
@@ -187,7 +187,7 @@ node之间的内存是连续的(虽然可能中间存在空node)，遍历的时�
 Wavelet Tree 该图给出了用序列 $A = [7, 3, 5, 6, 1, 3, 2, 7, 8, 4]$ 构建的wavelet tree的形态。对于树上的每个节点，我们会将其按照值域分成两个部分$[low, mid), [mid, high)$。通过 稳定划分（stable_partition，即不改变相对顺序的情况下划分）将该节点上的序列中小于 $mid$的划分到左子树中，大于等于mid的划分到右子树中，递归直至节点中只有一种值时为叶节点。需要注意的是，我们并不会在叶子节点中直接存储序列的值，而是通过某个方法使得我们能够使用较小的空间的情况下得到足够的信息。
 ...</p>
   </div>
-  <footer class="entry-footer">&lt;span title=&#39;2023-01-10 16:18:32 &#43;0000 UTC&#39;&gt;January 10, 2023&lt;/span&gt;&amp;nbsp;·&amp;nbsp;4 min</footer>
+  <footer class="entry-footer">&lt;span title=&#39;2023-01-10 16:18:32 &#43;0000 UTC&#39;&gt;2023-01-10&lt;/span&gt;&amp;nbsp;·&amp;nbsp;4 min</footer>
   <a class="entry-link" aria-label="post link to 将Wavelet Tree用于算法竞赛" href="https://caaatch22.github.io/posts/%E7%AE%97%E6%B3%95%E7%AB%9E%E8%B5%9B%E4%B8%AD%E7%9A%84wavelet-tree/"></a>
 </article>
     </main>

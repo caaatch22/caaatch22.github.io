@@ -167,7 +167,7 @@ $ N = 20 (20\ pipe stages), W = 5 (5\ wide fetch) $ 1 out of 5 instructions is a
 100% 预测正确率 100 个时钟周期 (all instructions fetched on the correct path) 无额外工作 99% 预测正确率 100 (correct path) &#43; 20 (wrong path) = 120 个时钟周期 20% 额外指令被取出 98% 预测正确率 100 (correct path) &#43; 20 * 2 (wrong path) = 140 个时钟周期 40% 额外指令被取出 95% 预测正确率 100 (correct path) &#43; 20 * 5 (wrong path) = 200 个时钟周期 100% 额外指令被取出 可以看出，分支预测失败在现代的超标量多流水线cpu中的penalty被极大的放大了。所以分支预测的正确性就显得额外重要。
 ...</p>
   </div>
-  <footer class="entry-footer">&lt;span title=&#39;2023-10-17 23:38:14 &#43;0000 UTC&#39;&gt;October 17, 2023&lt;/span&gt;&amp;nbsp;·&amp;nbsp;3 min</footer>
+  <footer class="entry-footer">&lt;span title=&#39;2023-10-17 23:38:14 &#43;0000 UTC&#39;&gt;2023-10-17&lt;/span&gt;&amp;nbsp;·&amp;nbsp;3 min</footer>
   <a class="entry-link" aria-label="post link to Computer Architecture —— 分支预测" href="https://caaatch22.github.io/posts/branch-prediction/"></a>
 </article>
 
@@ -187,7 +187,7 @@ bonus question: 不同等级的cache latency？
 answer: l1: 1ns, l2: 5ns, l3: 50~100ns, main memory: 200ns
 ...</p>
   </div>
-  <footer class="entry-footer">&lt;span title=&#39;2023-09-01 15:51:19 &#43;0000 UTC&#39;&gt;September 1, 2023&lt;/span&gt;&amp;nbsp;·&amp;nbsp;3 min</footer>
+  <footer class="entry-footer">&lt;span title=&#39;2023-09-01 15:51:19 &#43;0000 UTC&#39;&gt;2023-09-01&lt;/span&gt;&amp;nbsp;·&amp;nbsp;3 min</footer>
   <a class="entry-link" aria-label="post link to C&#43;&#43;内存模型 —— 现代Architecture的妥协" href="https://caaatch22.github.io/posts/c-%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B--%E7%8E%B0%E4%BB%A3architecture%E7%9A%84%E5%A6%A5%E5%8D%8F/"></a>
 </article>
 
@@ -209,7 +209,7 @@ write buffers 我愿称之为buffer of buffer，本来cache就起buffer的作用
 对于write buffer，我们还可以对其进行 合并(merging) 操作。所谓merging，指的是将在同一个cache-line上的数据一并写入下层cache中，而非多次写入同一个cache-line。 上图中的右侧表示了一个采用了merging write buffer策略的写缓冲区。
 critial word first and early restart 先来看一下cache miss时的cpu： 图中展示了一个blocking cache在cache miss时，cpu stall，而后cache将需要取得的cache-line放入后，cpu resume的timeline。我们可以发现，若我们只需要cache-line中的第3个word，cpu完全可以提早resume。如下图所示： ...</p>
   </div>
-  <footer class="entry-footer">&lt;span title=&#39;2023-08-23 23:38:14 &#43;0000 UTC&#39;&gt;August 23, 2023&lt;/span&gt;&amp;nbsp;·&amp;nbsp;2 min</footer>
+  <footer class="entry-footer">&lt;span title=&#39;2023-08-23 23:38:14 &#43;0000 UTC&#39;&gt;2023-08-23&lt;/span&gt;&amp;nbsp;·&amp;nbsp;2 min</footer>
   <a class="entry-link" aria-label="post link to Computer Architecture —— 高级缓存技术" href="https://caaatch22.github.io/posts/advanced-cache/"></a>
 </article>
     </main>
