@@ -165,23 +165,6 @@
 <main class="main"> 
 
 <article class="post-entry"> 
-  <header class="entry-header">
-    <h2>C&#43;&#43; CRTP
-    </h2>
-  </header>
-  <div class="entry-content">
-    <p> 原先只是了解这个名词，想着C&#43;&#43;20后静态多态直接用 concept来实现就好了就没细看，没必要整这些模板元编程的奇技淫巧。没想到面试某量化C&#43;&#43;开发的时候被狠狠拷打…….
-CRTP (curiously recurring template pattern) 一般认为，CRTP可以用来实现静态多态
-template &lt;typename T&gt; class Base { void func() { static_cast&lt;T*&gt;(this)-&gt;funcImpl(); } }; class Derived : public Base&lt;Derived&gt; { void funcImpl() { // do works here } }; 通过CRTP可以使得类具有类似于虚函数的效果，同时又没有虚函数调用时的开销(虚函数调用需要通过虚函数指针查找虚函数表进行调用)，同时类的对象的体积相比使用虚函数也会减少(不需要存储虚函数指针)，但是缺点是无法动态绑定，感觉有点过于鸡肋。
-有什么用呢？可以用来向纯虚类一样做接口：（以下类似的代码在大量数学库中出现）
-template &lt;typename ChildType&gt; struct VectorBase { ChildType &amp;underlying() { return static_cast&lt;ChildType &amp;&gt;(*this); } inline ChildType &amp;operator&#43;=(const ChildType &amp;rhs) { this-&gt;underlying() = this-&gt;underlying() &#43; rhs; return this-&gt;underlying(); } }; struct Vec3f : public VectorBase&lt;Vec3f&gt; { float x{}, y{}, z{}; Vec3f() = default; Vec3f(float x, float y, float z) : x(x), y(y), z(z) {} }; inline Vec3f operator&#43;(const Vec3f &amp;lhs, const Vec3f &amp;rhs) { Vec3f result; result.x = lhs.x &#43; rhs.x; result.y = lhs.y &#43; rhs.y; result.z = lhs.z &#43; rhs.z; return result; } 定义好VectorBase后，Vec3f, Vec4f等直接实现接口就好。相比虚函数的形式，在空间和runtime都有优势。
-...</p>
-  </div>
-  <footer class="entry-footer">&lt;span title=&#39;2023-05-20 17:33:40 &#43;0000 UTC&#39;&gt;May 20, 2023&lt;/span&gt;&amp;nbsp;·&amp;nbsp;2 min</footer>
-  <a class="entry-link" aria-label="post link to C&#43;&#43; CRTP" href="https://caaatch22.github.io/posts/c-crtp/"></a>
-</article>
-
-<article class="post-entry"> 
 <figure class="entry-cover"><img loading="lazy" src="https://caaatch22.github.io/img/FalconLink/falcon-black.png" alt="">
 </figure>
   <header class="entry-header">
