@@ -14,9 +14,9 @@
       
       <guid>https://caaatch22.github.io/posts/cuco/</guid>
       <description>&lt;blockquote&gt;
-&lt;p&gt;still draft&lt;/p&gt;
+&lt;p&gt;still draft, to be updated&lt;/p&gt;
 &lt;/blockquote&gt;
-&lt;h2 id=&#34;实现了一个dynamic_map的retrieve_all&#34;&gt;实现了一个dynamic_map的retrieve_all&lt;/h2&gt;
+&lt;h3 id=&#34;实现了一个dynamic_map的retrieve_all&#34;&gt;实现了一个dynamic_map的retrieve_all&lt;/h3&gt;
 &lt;blockquote&gt;
 &lt;p&gt;访存算子，经典过滤问题，predict为true的元素拷贝到out数组，重点是需要维护一个 atomic 的out index, &lt;a href=&#34;https://developer.nvidia.com/blog/cuda-pro-tip-optimized-filtering-warp-aggregated-atomics/&#34;&gt;https://developer.nvidia.com/blog/cuda-pro-tip-optimized-filtering-warp-aggregated-atomics/&lt;/a&gt;, 翻译：https://zhuanlan.zhihu.com/p/581078557&lt;/p&gt;
 &lt;/blockquote&gt;
@@ -367,9 +367,9 @@
 &lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;}
 &lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;实测2/3速度差不多，在插入1亿数据后（实际总cap达到2亿），&lt;code&gt;&amp;lt;key, value&amp;gt;&lt;/code&gt;都是&lt;code&gt;cuda::atomic&amp;lt;int64_t&amp;gt;&lt;/code&gt;的情况下，retrieve_all cost 3ms左右；&lt;/p&gt;</description>
       <content:encoded><![CDATA[<blockquote>
-<p>still draft</p>
+<p>still draft, to be updated</p>
 </blockquote>
-<h2 id="实现了一个dynamic_map的retrieve_all">实现了一个dynamic_map的retrieve_all</h2>
+<h3 id="实现了一个dynamic_map的retrieve_all">实现了一个dynamic_map的retrieve_all</h3>
 <blockquote>
 <p>访存算子，经典过滤问题，predict为true的元素拷贝到out数组，重点是需要维护一个 atomic 的out index, <a href="https://developer.nvidia.com/blog/cuda-pro-tip-optimized-filtering-warp-aggregated-atomics/">https://developer.nvidia.com/blog/cuda-pro-tip-optimized-filtering-warp-aggregated-atomics/</a>, 翻译：https://zhuanlan.zhihu.com/p/581078557</p>
 </blockquote>
