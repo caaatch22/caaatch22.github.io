@@ -6,7 +6,722 @@
     <description>Recent content on Mingjie&#39;s Home</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>zh-cn</language>
-    <lastBuildDate>Tue, 07 Jan 2025 23:38:17 +0000</lastBuildDate><atom:link href="https://caaatch22.github.io/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Mon, 28 Apr 2025 00:00:00 +0000</lastBuildDate><atom:link href="https://caaatch22.github.io/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>cuCollections</title>
+      <link>https://caaatch22.github.io/posts/cuco/</link>
+      <pubDate>Mon, 28 Apr 2025 00:00:00 +0000</pubDate>
+      
+      <guid>https://caaatch22.github.io/posts/cuco/</guid>
+      <description>&lt;blockquote&gt;
+&lt;p&gt;still draft&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h2 id=&#34;实现了一个dynamic_map的retrieve_all&#34;&gt;实现了一个dynamic_map的retrieve_all&lt;/h2&gt;
+&lt;blockquote&gt;
+&lt;p&gt;访存算子，经典过滤问题，predict为true的元素拷贝到out数组，重点是需要维护一个 atomic 的out index, &lt;a href=&#34;https://developer.nvidia.com/blog/cuda-pro-tip-optimized-filtering-warp-aggregated-atomics/&#34;&gt;https://developer.nvidia.com/blog/cuda-pro-tip-optimized-filtering-warp-aggregated-atomics/&lt;/a&gt;, 翻译：https://zhuanlan.zhihu.com/p/581078557&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;host端：&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-cpp&#34; data-lang=&#34;cpp&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;template&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;typename&lt;/span&gt; Key, &lt;span style=&#34;color:#66d9ef&#34;&gt;typename&lt;/span&gt; Value, cuda&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;thread_scope Scope, &lt;span style=&#34;color:#66d9ef&#34;&gt;typename&lt;/span&gt; Allocator&lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;template&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;typename&lt;/span&gt; KeyOut, &lt;span style=&#34;color:#66d9ef&#34;&gt;typename&lt;/span&gt; ValueOut&lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;std&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;pair&lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt;KeyOut, ValueOut&lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&lt;/span&gt; dynamic_map&lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt;Key, Value, Scope, Allocator&lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;::&lt;/span&gt;retrieve_all(
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  KeyOut keys_out, ValueOut values_out, cudaStream_t stream) &lt;span style=&#34;color:#66d9ef&#34;&gt;const&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;{
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#66d9ef&#34;&gt;auto&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;constexpr&lt;/span&gt; block_size &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;128&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#66d9ef&#34;&gt;auto&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;constexpr&lt;/span&gt; stride     &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#66d9ef&#34;&gt;auto&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;const&lt;/span&gt; capacity       &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; get_capacity();
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#66d9ef&#34;&gt;auto&lt;/span&gt; grid_size            &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; (capacity &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; stride &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; block_size &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;) &lt;span style=&#34;color:#f92672&#34;&gt;/&lt;/span&gt; (stride &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; block_size);
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  std&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;vector&lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt;size_t&lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&lt;/span&gt; submap_cap_prefix(submaps_.size());
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  std&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;inclusive_scan(submaps_.begin(), submaps_.end(), submap_cap_prefix.begin(),
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;                      [](&lt;span style=&#34;color:#66d9ef&#34;&gt;auto&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;const&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&lt;/span&gt; sum, &lt;span style=&#34;color:#66d9ef&#34;&gt;auto&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;const&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&lt;/span&gt; submap) { &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; sum &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; submap&lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt;get_capacity(); }, 
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;                      (size_t)&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;);
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  thrust&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;device_vector&lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt;size_t&lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&lt;/span&gt; submap_cap_prefix_d(submap_cap_prefix);
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#75715e&#34;&gt;// 复用alloc_（用于slots_的alloc_）会比直接cudaMalloc快一个数量级，不需要重新分配内存
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;  &lt;span style=&#34;color:#75715e&#34;&gt;// 单纯cudaMalloc会触发GPU driver/runtime 的 allocation 初始化、页表建立等
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;  &lt;span style=&#34;color:#66d9ef&#34;&gt;using&lt;/span&gt; temp_allocator_type &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;typename&lt;/span&gt; std&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;allocator_traits&lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt;Allocator&lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;::&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;template&lt;/span&gt; rebind_alloc&lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;char&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#66d9ef&#34;&gt;auto&lt;/span&gt; temp_allocator &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; temp_allocator_type{alloc_};
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#66d9ef&#34;&gt;auto&lt;/span&gt; d_num_out      &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;reinterpret_cast&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;unsigned&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;long&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;long&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;*&amp;gt;&lt;/span&gt;(
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    std&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;allocator_traits&lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt;temp_allocator_type&lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;::&lt;/span&gt;allocate(temp_allocator, &lt;span style=&#34;color:#66d9ef&#34;&gt;sizeof&lt;/span&gt;(&lt;span style=&#34;color:#66d9ef&#34;&gt;unsigned&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;long&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;long&lt;/span&gt;)));
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  CUCO_CUDA_TRY(cudaMemsetAsync(d_num_out, &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;, &lt;span style=&#34;color:#66d9ef&#34;&gt;sizeof&lt;/span&gt;(&lt;span style=&#34;color:#66d9ef&#34;&gt;unsigned&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;long&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;long&lt;/span&gt;), stream));
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  detail&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;retrieve_all&lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt;block_size&lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&amp;lt;&amp;lt;&amp;lt;&lt;/span&gt;grid_size, block_size, &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;, stream&lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&amp;gt;&amp;gt;&lt;/span&gt;(
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    keys_out, values_out, submap_views_.data().get(), submaps_.size(), 
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    capacity, d_num_out, submap_cap_prefix_d.data().get(), 
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    empty_key_sentinel_, erased_key_sentinel_);
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  size_t h_num_out;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  CUCO_CUDA_TRY(
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    cudaMemcpyAsync(&lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&lt;/span&gt;h_num_out, d_num_out, &lt;span style=&#34;color:#66d9ef&#34;&gt;sizeof&lt;/span&gt;(size_t), cudaMemcpyDeviceToHost, stream));
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  CUCO_CUDA_TRY(cudaStreamSynchronize(stream));
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  CUCO_CUDA_TRY(cudaFree(d_num_out))
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; {keys_out &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; h_num_out, values_out &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; h_num_out};
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;ol&gt;
+&lt;li&gt;naive实现，一个全局atomic&lt;/li&gt;
+&lt;/ol&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-cpp&#34; data-lang=&#34;cpp&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;template&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;uint32_t&lt;/span&gt; block_size,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;          &lt;span style=&#34;color:#66d9ef&#34;&gt;typename&lt;/span&gt; OutputIt,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;          &lt;span style=&#34;color:#66d9ef&#34;&gt;typename&lt;/span&gt; viewT,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;          &lt;span style=&#34;color:#66d9ef&#34;&gt;typename&lt;/span&gt; PrefixT,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;          &lt;span style=&#34;color:#66d9ef&#34;&gt;typename&lt;/span&gt; Key&lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;CUCO_KERNEL &lt;span style=&#34;color:#66d9ef&#34;&gt;void&lt;/span&gt; retrieve_all(OutputIt keys_out,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;                              OutputIt values_out,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;                              viewT&lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; submap_views,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;                              &lt;span style=&#34;color:#66d9ef&#34;&gt;uint32_t&lt;/span&gt; num_submaps,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;                              &lt;span style=&#34;color:#66d9ef&#34;&gt;uint64_t&lt;/span&gt; capacity,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;                              &lt;span style=&#34;color:#66d9ef&#34;&gt;unsigned&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;long&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;long&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; d_num_out,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;                              PrefixT&lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; prefix_sum,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;                              Key empty_key_sentinel,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;                              Key erased_key_sentinel)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;{
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#66d9ef&#34;&gt;auto&lt;/span&gt; tid    &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; blockDim.x &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; blockIdx.x &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; threadIdx.x;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#66d9ef&#34;&gt;auto&lt;/span&gt; stride &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; blockDim.x &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; gridDim.x;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; (; tid &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt; capacity; tid &lt;span style=&#34;color:#f92672&#34;&gt;+=&lt;/span&gt; stride) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;uint32_t&lt;/span&gt; submap_idx &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;uint32_t&lt;/span&gt; submap_offset &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; tid;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#75715e&#34;&gt;// prefix_sum长度一般就10以内，不需要二分之类的操作
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;while&lt;/span&gt; (tid &lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;=&lt;/span&gt; prefix_sum[submap_idx] &lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&amp;amp;&lt;/span&gt; submap_idx &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt; num_submaps ) &lt;span style=&#34;color:#f92672&#34;&gt;++&lt;/span&gt;submap_idx;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; (submap_idx &lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      submap_offset &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; tid &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; prefix_sum[submap_idx &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;];
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    }
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;auto&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;const&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&lt;/span&gt;current_slot  &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; submap_views[submap_idx].get_slots()[submap_offset];
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    Key &lt;span style=&#34;color:#66d9ef&#34;&gt;const&lt;/span&gt; existing_key    &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; current_slot.first.load(cuda&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;std&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;memory_order_relaxed);
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;auto&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;const&lt;/span&gt; is_filled &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      not(cuco&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;detail&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;bitwise_compare(existing_key, empty_key_sentinel) or
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;          cuco&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;detail&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;bitwise_compare(existing_key, erased_key_sentinel));
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; (is_filled) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      &lt;span style=&#34;color:#66d9ef&#34;&gt;auto&lt;/span&gt; idx   &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; atomicAdd(d_num_out, &lt;span style=&#34;color:#66d9ef&#34;&gt;static_cast&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;unsigned&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;long&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;long&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&lt;/span&gt;(&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;));
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      &lt;span style=&#34;color:#66d9ef&#34;&gt;auto&lt;/span&gt; value &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; current_slot.second.load(cuda&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;std&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;memory_order_relaxed);
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      keys_out[idx]    &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; existing_key;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      values_out[idx]  &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; value;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    }
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  }
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;ol start=&#34;2&#34;&gt;
+&lt;li&gt;block内atomicAdd + 全局atomicAdd&lt;/li&gt;
+&lt;/ol&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-cpp&#34; data-lang=&#34;cpp&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;// 一个block内用一个__shared__ local_count表示这个block中predict为true的数量
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;// local_pos表示当前线程在该block内第几个predict为true
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;template&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;uint32_t&lt;/span&gt; block_size,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;          &lt;span style=&#34;color:#66d9ef&#34;&gt;typename&lt;/span&gt; OutputIt,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;          &lt;span style=&#34;color:#66d9ef&#34;&gt;typename&lt;/span&gt; viewT,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;          &lt;span style=&#34;color:#66d9ef&#34;&gt;typename&lt;/span&gt; PrefixT,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;          &lt;span style=&#34;color:#66d9ef&#34;&gt;typename&lt;/span&gt; Key&lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;CUCO_KERNEL &lt;span style=&#34;color:#66d9ef&#34;&gt;void&lt;/span&gt; retrieve_all(OutputIt keys_out,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;                              OutputIt values_out,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;                              viewT&lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; submap_views,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;                              &lt;span style=&#34;color:#66d9ef&#34;&gt;uint32_t&lt;/span&gt; num_submaps,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;                              &lt;span style=&#34;color:#66d9ef&#34;&gt;uint64_t&lt;/span&gt; capacity,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;                              &lt;span style=&#34;color:#66d9ef&#34;&gt;unsigned&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;long&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;long&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; d_num_out,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;                              PrefixT&lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; prefix_sum,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;                              Key empty_key_sentinel,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;                              Key erased_key_sentinel)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;{
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#66d9ef&#34;&gt;auto&lt;/span&gt; tid    &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; blockDim.x &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; blockIdx.x &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; threadIdx.x;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#66d9ef&#34;&gt;auto&lt;/span&gt; stride &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; blockDim.x &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; gridDim.x;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  __shared__ &lt;span style=&#34;color:#66d9ef&#34;&gt;unsigned&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;int&lt;/span&gt; local_count;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; (threadIdx.x &lt;span style=&#34;color:#f92672&#34;&gt;==&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    local_count &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  }
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  __syncthreads();
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; (; tid &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt; capacity; tid &lt;span style=&#34;color:#f92672&#34;&gt;+=&lt;/span&gt; stride) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;uint32_t&lt;/span&gt; submap_idx &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;uint32_t&lt;/span&gt; submap_offset &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; tid;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;while&lt;/span&gt; (tid &lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;=&lt;/span&gt; prefix_sum[submap_idx] &lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&amp;amp;&lt;/span&gt; submap_idx &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt; num_submaps ) &lt;span style=&#34;color:#f92672&#34;&gt;++&lt;/span&gt;submap_idx;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; (submap_idx &lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      submap_offset &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; tid &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; prefix_sum[submap_idx &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;];
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    }
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;auto&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;const&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&lt;/span&gt;current_slot  &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; submap_views[submap_idx].get_slots()[submap_offset];
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    Key &lt;span style=&#34;color:#66d9ef&#34;&gt;const&lt;/span&gt; existing_key    &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; current_slot.first.load(cuda&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;std&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;memory_order_relaxed);
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;auto&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;const&lt;/span&gt; is_filled &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      not(cuco&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;detail&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;bitwise_compare(existing_key, empty_key_sentinel) or
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;          cuco&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;detail&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;bitwise_compare(existing_key, erased_key_sentinel));
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;unsigned&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;int&lt;/span&gt; local_pos &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; (is_filled) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      local_pos &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; atomicAdd_block(&lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&lt;/span&gt;local_count, &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;);
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    }
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    __syncthreads();
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; (threadIdx.x &lt;span style=&#34;color:#f92672&#34;&gt;==&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      local_count &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; atomicAdd(d_num_out, local_count);
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    }
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    __syncthreads();
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; (is_filled) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      &lt;span style=&#34;color:#66d9ef&#34;&gt;auto&lt;/span&gt; value &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; current_slot.second.load(cuda&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;std&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;memory_order_relaxed);
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      keys_out[local_count &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; local_pos]    &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; existing_key;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      values_out[local_count &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; local_pos]  &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; value;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    }
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  }
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;// 类似原理，但是用cub::BlockScan实现
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;template&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;uint32_t&lt;/span&gt; block_size,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;          &lt;span style=&#34;color:#66d9ef&#34;&gt;typename&lt;/span&gt; OutputIt,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;          &lt;span style=&#34;color:#66d9ef&#34;&gt;typename&lt;/span&gt; viewT,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;          &lt;span style=&#34;color:#66d9ef&#34;&gt;typename&lt;/span&gt; PrefixT,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;          &lt;span style=&#34;color:#66d9ef&#34;&gt;typename&lt;/span&gt; Key&lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;CUCO_KERNEL &lt;span style=&#34;color:#66d9ef&#34;&gt;void&lt;/span&gt; retrieve_all(OutputIt keys_out,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;                              OutputIt values_out,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;                              viewT&lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; submap_views,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;                              &lt;span style=&#34;color:#66d9ef&#34;&gt;uint32_t&lt;/span&gt; num_submaps,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;                              &lt;span style=&#34;color:#66d9ef&#34;&gt;uint64_t&lt;/span&gt; capacity,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;                              &lt;span style=&#34;color:#66d9ef&#34;&gt;unsigned&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;long&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;long&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; d_num_out,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;                              PrefixT&lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; prefix_sum,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;                              Key empty_key_sentinel,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;                              Key erased_key_sentinel)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;{
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#66d9ef&#34;&gt;using&lt;/span&gt; BlockScan &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; cub&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;BlockScan&lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;unsigned&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;int&lt;/span&gt;, block_size&lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#75715e&#34;&gt;// Shared memory
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;  __shared__ &lt;span style=&#34;color:#66d9ef&#34;&gt;typename&lt;/span&gt; BlockScan&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;TempStorage scan_temp_storage;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  __shared__ &lt;span style=&#34;color:#66d9ef&#34;&gt;unsigned&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;int&lt;/span&gt; block_base;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#66d9ef&#34;&gt;auto&lt;/span&gt; tid    &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; blockDim.x &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; blockIdx.x &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; threadIdx.x;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#66d9ef&#34;&gt;auto&lt;/span&gt; stride &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; blockDim.x &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; gridDim.x;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; (; tid &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt; capacity; tid &lt;span style=&#34;color:#f92672&#34;&gt;+=&lt;/span&gt; stride) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#75715e&#34;&gt;// Compute submap index and offset
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;uint32_t&lt;/span&gt; submap_idx &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;uint32_t&lt;/span&gt; submap_offset &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; tid;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;while&lt;/span&gt; (tid &lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;=&lt;/span&gt; prefix_sum[submap_idx] &lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&amp;amp;&lt;/span&gt; submap_idx &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt; num_submaps) &lt;span style=&#34;color:#f92672&#34;&gt;++&lt;/span&gt;submap_idx;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; (submap_idx &lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      submap_offset &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; tid &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; prefix_sum[submap_idx &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;];
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    }
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;auto&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;const&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&lt;/span&gt; current_slot &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; submap_views[submap_idx].get_slots()[submap_offset];
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    Key &lt;span style=&#34;color:#66d9ef&#34;&gt;const&lt;/span&gt; existing_key   &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; current_slot.first.load(cuda&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;std&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;memory_order_relaxed);
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#75715e&#34;&gt;// Check key validity
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;bool&lt;/span&gt; is_filled &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; not(cuco&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;detail&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;bitwise_compare(existing_key, empty_key_sentinel) &lt;span style=&#34;color:#f92672&#34;&gt;||&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;                         cuco&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;detail&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;bitwise_compare(existing_key, erased_key_sentinel));
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#75715e&#34;&gt;// Perform block-wide exclusive scan to compute local write index
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;unsigned&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;int&lt;/span&gt; local_idx &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;unsigned&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;int&lt;/span&gt; total_valid &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    BlockScan(scan_temp_storage).ExclusiveSum(is_filled &lt;span style=&#34;color:#f92672&#34;&gt;?&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1u&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;:&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0u&lt;/span&gt;, local_idx, total_valid);
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#75715e&#34;&gt;// Block leader calculates global offset
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; (threadIdx.x &lt;span style=&#34;color:#f92672&#34;&gt;==&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      block_base &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; atomicAdd(d_num_out, total_valid);
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    }
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    __syncthreads();
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; (is_filled) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      &lt;span style=&#34;color:#66d9ef&#34;&gt;auto&lt;/span&gt; value &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; current_slot.second.load(cuda&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;std&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;memory_order_relaxed);
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      keys_out[block_base &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; local_idx]   &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; existing_key;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      values_out[block_base &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; local_idx] &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; value;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    }
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  }
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;3.&lt;/span&gt; warp&lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt;aggregated atomics: warp(or cooperative group)&lt;span style=&#34;color:#960050;background-color:#1e0010&#34;&gt;粒度&lt;/span&gt;atomicAdd &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; block内atomicAdd&lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt;&lt;span style=&#34;color:#960050;background-color:#1e0010&#34;&gt;全局&lt;/span&gt;atomicAdd
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#960050;background-color:#1e0010&#34;&gt;```&lt;/span&gt;cpp
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;template&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;uint32_t&lt;/span&gt; block_size,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;          &lt;span style=&#34;color:#66d9ef&#34;&gt;typename&lt;/span&gt; OutputIt,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;          &lt;span style=&#34;color:#66d9ef&#34;&gt;typename&lt;/span&gt; viewT,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;          &lt;span style=&#34;color:#66d9ef&#34;&gt;typename&lt;/span&gt; PrefixT,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;          &lt;span style=&#34;color:#66d9ef&#34;&gt;typename&lt;/span&gt; Key&lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;CUCO_KERNEL &lt;span style=&#34;color:#66d9ef&#34;&gt;void&lt;/span&gt; retrieve_all(OutputIt keys_out,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;                              OutputIt values_out,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;                              viewT&lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; submap_views,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;                              &lt;span style=&#34;color:#66d9ef&#34;&gt;uint32_t&lt;/span&gt; num_submaps,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;                              &lt;span style=&#34;color:#66d9ef&#34;&gt;uint64_t&lt;/span&gt; capacity,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;                              &lt;span style=&#34;color:#66d9ef&#34;&gt;unsigned&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;long&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;long&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; d_num_out,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;                              PrefixT&lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; prefix_sum,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;                              Key empty_key_sentinel,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;                              Key erased_key_sentinel)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;{
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#66d9ef&#34;&gt;auto&lt;/span&gt; tid    &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; blockDim.x &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; blockIdx.x &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; threadIdx.x;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#66d9ef&#34;&gt;auto&lt;/span&gt; stride &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; blockDim.x &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; gridDim.x;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  __shared__ &lt;span style=&#34;color:#66d9ef&#34;&gt;unsigned&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;int&lt;/span&gt; block_count;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  __shared__ &lt;span style=&#34;color:#66d9ef&#34;&gt;unsigned&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;int&lt;/span&gt; block_base;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; (threadIdx.x &lt;span style=&#34;color:#f92672&#34;&gt;==&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    block_count &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    block_base &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  }
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  __syncthreads();
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#66d9ef&#34;&gt;unsigned&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;int&lt;/span&gt; local_idx &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; (; tid &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt; capacity; tid &lt;span style=&#34;color:#f92672&#34;&gt;+=&lt;/span&gt; stride) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;uint32_t&lt;/span&gt; submap_idx &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;uint32_t&lt;/span&gt; submap_offset &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; tid;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;while&lt;/span&gt; (tid &lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;=&lt;/span&gt; prefix_sum[submap_idx] &lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&amp;amp;&lt;/span&gt; submap_idx &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt; num_submaps ) &lt;span style=&#34;color:#f92672&#34;&gt;++&lt;/span&gt;submap_idx;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; (submap_idx &lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      submap_offset &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; tid &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; prefix_sum[submap_idx &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;];
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    }
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;auto&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;const&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&lt;/span&gt;current_slot  &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; submap_views[submap_idx].get_slots()[submap_offset];
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    Key &lt;span style=&#34;color:#66d9ef&#34;&gt;const&lt;/span&gt; existing_key    &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; current_slot.first.load(cuda&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;std&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;memory_order_relaxed);
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;auto&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;const&lt;/span&gt; is_filled &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      not(cuco&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;detail&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;bitwise_compare(existing_key, empty_key_sentinel) or
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;          cuco&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;detail&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;bitwise_compare(existing_key, erased_key_sentinel));
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;unsigned&lt;/span&gt; mask &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; __ballot_sync(&lt;span style=&#34;color:#ae81ff&#34;&gt;0xffffffff&lt;/span&gt;, is_filled);
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;int&lt;/span&gt; lane &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; threadIdx.x &lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0x1f&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;int&lt;/span&gt; warp_prefix &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; __popc(mask &lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&lt;/span&gt; ((&lt;span style=&#34;color:#ae81ff&#34;&gt;1u&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&amp;lt;&lt;/span&gt; lane) &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;));
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; (is_filled) local_idx &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; warp_prefix;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;unsigned&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;int&lt;/span&gt; warp_vote &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; __popc(mask);
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;unsigned&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;int&lt;/span&gt; warp_base &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; (lane &lt;span style=&#34;color:#f92672&#34;&gt;==&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&amp;amp;&lt;/span&gt; warp_vote) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      warp_base &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; atomicAdd_block(&lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&lt;/span&gt;block_count, warp_vote);
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    }
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    warp_base &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; __shfl_sync(&lt;span style=&#34;color:#ae81ff&#34;&gt;0xffffffff&lt;/span&gt;, warp_base, &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;);
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    __syncthreads();
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; (threadIdx.x &lt;span style=&#34;color:#f92672&#34;&gt;==&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      block_base &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; atomicAdd(d_num_out, block_count);
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    }
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    __syncthreads();
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; (is_filled) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      &lt;span style=&#34;color:#66d9ef&#34;&gt;auto&lt;/span&gt; value &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; current_slot.second.load(cuda&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;std&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;memory_order_relaxed);
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      keys_out[block_base &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; warp_base &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; local_idx]    &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; existing_key;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      values_out[block_base &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; warp_base &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; local_idx]  &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; value;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    }
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  }
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;// 类似的，但是用cooperative group实现,实测还是tile_size=32最快，和warp没区别
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;// 写起来更modern一点
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;template&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;uint32_t&lt;/span&gt; block_size,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;          &lt;span style=&#34;color:#66d9ef&#34;&gt;uint32_t&lt;/span&gt; tile_size,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;          &lt;span style=&#34;color:#66d9ef&#34;&gt;typename&lt;/span&gt; OutputIt,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;          &lt;span style=&#34;color:#66d9ef&#34;&gt;typename&lt;/span&gt; viewT,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;          &lt;span style=&#34;color:#66d9ef&#34;&gt;typename&lt;/span&gt; PrefixT,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;          &lt;span style=&#34;color:#66d9ef&#34;&gt;typename&lt;/span&gt; Key&lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;CUCO_KERNEL &lt;span style=&#34;color:#66d9ef&#34;&gt;void&lt;/span&gt; retrieve_all(OutputIt keys_out,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;                              OutputIt values_out,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;                              viewT&lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; submap_views,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;                              &lt;span style=&#34;color:#66d9ef&#34;&gt;uint32_t&lt;/span&gt; num_submaps,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;                              &lt;span style=&#34;color:#66d9ef&#34;&gt;uint64_t&lt;/span&gt; capacity,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;                              &lt;span style=&#34;color:#66d9ef&#34;&gt;unsigned&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;long&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;long&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; d_num_out,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;                              PrefixT&lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; prefix_sum,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;                              Key empty_key_sentinel,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;                              Key erased_key_sentinel)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;{
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#66d9ef&#34;&gt;auto&lt;/span&gt; tile   &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; cg&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;tiled_partition&lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt;tile_size&lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&lt;/span&gt;(cg&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;this_thread_block());
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#66d9ef&#34;&gt;auto&lt;/span&gt; block  &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; cg&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;this_thread_block();
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#66d9ef&#34;&gt;auto&lt;/span&gt; tid    &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; blockDim.x &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; blockIdx.x &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; threadIdx.x;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#66d9ef&#34;&gt;auto&lt;/span&gt; stride &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; blockDim.x &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; gridDim.x;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  __shared__ &lt;span style=&#34;color:#66d9ef&#34;&gt;unsigned&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;int&lt;/span&gt; block_count;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  __shared__ &lt;span style=&#34;color:#66d9ef&#34;&gt;unsigned&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;int&lt;/span&gt; block_base;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; (threadIdx.x &lt;span style=&#34;color:#f92672&#34;&gt;==&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    block_count &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    block_base &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  }
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  block.sync();
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; (; tid &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt; capacity; tid &lt;span style=&#34;color:#f92672&#34;&gt;+=&lt;/span&gt; stride) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;uint32_t&lt;/span&gt; submap_idx &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;uint32_t&lt;/span&gt; submap_offset &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; tid;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;while&lt;/span&gt; (tid &lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;=&lt;/span&gt; prefix_sum[submap_idx] &lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&amp;amp;&lt;/span&gt; submap_idx &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt; num_submaps ) &lt;span style=&#34;color:#f92672&#34;&gt;++&lt;/span&gt;submap_idx;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; (submap_idx &lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      submap_offset &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; tid &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; prefix_sum[submap_idx &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;];
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    }
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;auto&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;const&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&lt;/span&gt;current_slot  &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; submap_views[submap_idx].get_slots()[submap_offset];
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    Key &lt;span style=&#34;color:#66d9ef&#34;&gt;const&lt;/span&gt; existing_key    &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; current_slot.first.load(cuda&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;std&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;memory_order_relaxed);
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;auto&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;const&lt;/span&gt; is_filled &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      not(cuco&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;detail&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;bitwise_compare(existing_key, empty_key_sentinel) or
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;          cuco&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;detail&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;bitwise_compare(existing_key, erased_key_sentinel));
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;unsigned&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;int&lt;/span&gt; tile_mask &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; tile.ballot(is_filled);
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;unsigned&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;int&lt;/span&gt; tile_rank &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; tile.thread_rank();
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;unsigned&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;int&lt;/span&gt; tile_vote &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; __popc(tile_mask);
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;unsigned&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;int&lt;/span&gt; tile_prefix &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; __popc(tile_mask &lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&lt;/span&gt; ((&lt;span style=&#34;color:#ae81ff&#34;&gt;1u&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&amp;lt;&lt;/span&gt; tile_rank) &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;));
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;unsigned&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;int&lt;/span&gt; tile_base &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; (tile_rank &lt;span style=&#34;color:#f92672&#34;&gt;==&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&amp;amp;&lt;/span&gt; tile_mask) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      tile_base &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; atomicAdd_block(&lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&lt;/span&gt;block_count, tile_vote);
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    }
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    tile_base &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; tile.shfl(tile_base, &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;);
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    block.sync();
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; (block.thread_rank() &lt;span style=&#34;color:#f92672&#34;&gt;==&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      block_base &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; atomicAdd(d_num_out, block_count);
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    }
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    block.sync();
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; (is_filled) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      &lt;span style=&#34;color:#66d9ef&#34;&gt;auto&lt;/span&gt; value &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; current_slot.second.load(cuda&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;std&lt;span style=&#34;color:#f92672&#34;&gt;::&lt;/span&gt;memory_order_relaxed);
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      keys_out[block_base &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; tile_base &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; tile_prefix]    &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; existing_key;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      values_out[block_base &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; tile_base &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; tile_prefix]  &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; value;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    }
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  }
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;实测2/3速度差不多，在插入1亿数据后（实际总cap达到2亿），&lt;code&gt;&amp;lt;key, value&amp;gt;&lt;/code&gt;都是&lt;code&gt;cuda::atomic&amp;lt;int64_t&amp;gt;&lt;/code&gt;的情况下，retrieve_all cost 3ms左右；&lt;/p&gt;</description>
+      <content:encoded><![CDATA[<blockquote>
+<p>still draft</p>
+</blockquote>
+<h2 id="实现了一个dynamic_map的retrieve_all">实现了一个dynamic_map的retrieve_all</h2>
+<blockquote>
+<p>访存算子，经典过滤问题，predict为true的元素拷贝到out数组，重点是需要维护一个 atomic 的out index, <a href="https://developer.nvidia.com/blog/cuda-pro-tip-optimized-filtering-warp-aggregated-atomics/">https://developer.nvidia.com/blog/cuda-pro-tip-optimized-filtering-warp-aggregated-atomics/</a>, 翻译：https://zhuanlan.zhihu.com/p/581078557</p>
+</blockquote>
+<p>host端：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">template</span> <span style="color:#f92672">&lt;</span><span style="color:#66d9ef">typename</span> Key, <span style="color:#66d9ef">typename</span> Value, cuda<span style="color:#f92672">::</span>thread_scope Scope, <span style="color:#66d9ef">typename</span> Allocator<span style="color:#f92672">&gt;</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">template</span> <span style="color:#f92672">&lt;</span><span style="color:#66d9ef">typename</span> KeyOut, <span style="color:#66d9ef">typename</span> ValueOut<span style="color:#f92672">&gt;</span>
+</span></span><span style="display:flex;"><span>std<span style="color:#f92672">::</span>pair<span style="color:#f92672">&lt;</span>KeyOut, ValueOut<span style="color:#f92672">&gt;</span> dynamic_map<span style="color:#f92672">&lt;</span>Key, Value, Scope, Allocator<span style="color:#f92672">&gt;::</span>retrieve_all(
+</span></span><span style="display:flex;"><span>  KeyOut keys_out, ValueOut values_out, cudaStream_t stream) <span style="color:#66d9ef">const</span>
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">auto</span> <span style="color:#66d9ef">constexpr</span> block_size <span style="color:#f92672">=</span> <span style="color:#ae81ff">128</span>;
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">auto</span> <span style="color:#66d9ef">constexpr</span> stride     <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">auto</span> <span style="color:#66d9ef">const</span> capacity       <span style="color:#f92672">=</span> get_capacity();
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">auto</span> grid_size            <span style="color:#f92672">=</span> (capacity <span style="color:#f92672">+</span> stride <span style="color:#f92672">*</span> block_size <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>) <span style="color:#f92672">/</span> (stride <span style="color:#f92672">*</span> block_size);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  std<span style="color:#f92672">::</span>vector<span style="color:#f92672">&lt;</span>size_t<span style="color:#f92672">&gt;</span> submap_cap_prefix(submaps_.size());
+</span></span><span style="display:flex;"><span>  std<span style="color:#f92672">::</span>inclusive_scan(submaps_.begin(), submaps_.end(), submap_cap_prefix.begin(),
+</span></span><span style="display:flex;"><span>                      [](<span style="color:#66d9ef">auto</span> <span style="color:#66d9ef">const</span><span style="color:#f92672">&amp;</span> sum, <span style="color:#66d9ef">auto</span> <span style="color:#66d9ef">const</span><span style="color:#f92672">&amp;</span> submap) { <span style="color:#66d9ef">return</span> sum <span style="color:#f92672">+</span> submap<span style="color:#f92672">-&gt;</span>get_capacity(); }, 
+</span></span><span style="display:flex;"><span>                      (size_t)<span style="color:#ae81ff">0</span>);
+</span></span><span style="display:flex;"><span>  thrust<span style="color:#f92672">::</span>device_vector<span style="color:#f92672">&lt;</span>size_t<span style="color:#f92672">&gt;</span> submap_cap_prefix_d(submap_cap_prefix);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e">// 复用alloc_（用于slots_的alloc_）会比直接cudaMalloc快一个数量级，不需要重新分配内存
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#75715e">// 单纯cudaMalloc会触发GPU driver/runtime 的 allocation 初始化、页表建立等
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#66d9ef">using</span> temp_allocator_type <span style="color:#f92672">=</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">typename</span> std<span style="color:#f92672">::</span>allocator_traits<span style="color:#f92672">&lt;</span>Allocator<span style="color:#f92672">&gt;::</span><span style="color:#66d9ef">template</span> rebind_alloc<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">char</span><span style="color:#f92672">&gt;</span>;
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">auto</span> temp_allocator <span style="color:#f92672">=</span> temp_allocator_type{alloc_};
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">auto</span> d_num_out      <span style="color:#f92672">=</span> <span style="color:#66d9ef">reinterpret_cast</span><span style="color:#f92672">&lt;</span><span style="color:#66d9ef">unsigned</span> <span style="color:#66d9ef">long</span> <span style="color:#66d9ef">long</span><span style="color:#f92672">*&gt;</span>(
+</span></span><span style="display:flex;"><span>    std<span style="color:#f92672">::</span>allocator_traits<span style="color:#f92672">&lt;</span>temp_allocator_type<span style="color:#f92672">&gt;::</span>allocate(temp_allocator, <span style="color:#66d9ef">sizeof</span>(<span style="color:#66d9ef">unsigned</span> <span style="color:#66d9ef">long</span> <span style="color:#66d9ef">long</span>)));
+</span></span><span style="display:flex;"><span>  CUCO_CUDA_TRY(cudaMemsetAsync(d_num_out, <span style="color:#ae81ff">0</span>, <span style="color:#66d9ef">sizeof</span>(<span style="color:#66d9ef">unsigned</span> <span style="color:#66d9ef">long</span> <span style="color:#66d9ef">long</span>), stream));
+</span></span><span style="display:flex;"><span>  
+</span></span><span style="display:flex;"><span>  detail<span style="color:#f92672">::</span>retrieve_all<span style="color:#f92672">&lt;</span>block_size<span style="color:#f92672">&gt;&lt;&lt;&lt;</span>grid_size, block_size, <span style="color:#ae81ff">0</span>, stream<span style="color:#f92672">&gt;&gt;&gt;</span>(
+</span></span><span style="display:flex;"><span>    keys_out, values_out, submap_views_.data().get(), submaps_.size(), 
+</span></span><span style="display:flex;"><span>    capacity, d_num_out, submap_cap_prefix_d.data().get(), 
+</span></span><span style="display:flex;"><span>    empty_key_sentinel_, erased_key_sentinel_);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  size_t h_num_out;
+</span></span><span style="display:flex;"><span>  CUCO_CUDA_TRY(
+</span></span><span style="display:flex;"><span>    cudaMemcpyAsync(<span style="color:#f92672">&amp;</span>h_num_out, d_num_out, <span style="color:#66d9ef">sizeof</span>(size_t), cudaMemcpyDeviceToHost, stream));
+</span></span><span style="display:flex;"><span>  CUCO_CUDA_TRY(cudaStreamSynchronize(stream));
+</span></span><span style="display:flex;"><span>  CUCO_CUDA_TRY(cudaFree(d_num_out))
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">return</span> {keys_out <span style="color:#f92672">+</span> h_num_out, values_out <span style="color:#f92672">+</span> h_num_out};
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><ol>
+<li>naive实现，一个全局atomic</li>
+</ol>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">template</span> <span style="color:#f92672">&lt;</span><span style="color:#66d9ef">uint32_t</span> block_size,
+</span></span><span style="display:flex;"><span>          <span style="color:#66d9ef">typename</span> OutputIt,
+</span></span><span style="display:flex;"><span>          <span style="color:#66d9ef">typename</span> viewT,
+</span></span><span style="display:flex;"><span>          <span style="color:#66d9ef">typename</span> PrefixT,
+</span></span><span style="display:flex;"><span>          <span style="color:#66d9ef">typename</span> Key<span style="color:#f92672">&gt;</span>
+</span></span><span style="display:flex;"><span>CUCO_KERNEL <span style="color:#66d9ef">void</span> retrieve_all(OutputIt keys_out,
+</span></span><span style="display:flex;"><span>                              OutputIt values_out,
+</span></span><span style="display:flex;"><span>                              viewT<span style="color:#f92672">*</span> submap_views,
+</span></span><span style="display:flex;"><span>                              <span style="color:#66d9ef">uint32_t</span> num_submaps,
+</span></span><span style="display:flex;"><span>                              <span style="color:#66d9ef">uint64_t</span> capacity,
+</span></span><span style="display:flex;"><span>                              <span style="color:#66d9ef">unsigned</span> <span style="color:#66d9ef">long</span> <span style="color:#66d9ef">long</span><span style="color:#f92672">*</span> d_num_out,
+</span></span><span style="display:flex;"><span>                              PrefixT<span style="color:#f92672">*</span> prefix_sum,
+</span></span><span style="display:flex;"><span>                              Key empty_key_sentinel,
+</span></span><span style="display:flex;"><span>                              Key erased_key_sentinel)
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">auto</span> tid    <span style="color:#f92672">=</span> blockDim.x <span style="color:#f92672">*</span> blockIdx.x <span style="color:#f92672">+</span> threadIdx.x;
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">auto</span> stride <span style="color:#f92672">=</span> blockDim.x <span style="color:#f92672">*</span> gridDim.x;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">for</span> (; tid <span style="color:#f92672">&lt;</span> capacity; tid <span style="color:#f92672">+=</span> stride) {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">uint32_t</span> submap_idx <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">uint32_t</span> submap_offset <span style="color:#f92672">=</span> tid;
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// prefix_sum长度一般就10以内，不需要二分之类的操作
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">while</span> (tid <span style="color:#f92672">&gt;=</span> prefix_sum[submap_idx] <span style="color:#f92672">&amp;&amp;</span> submap_idx <span style="color:#f92672">&lt;</span> num_submaps ) <span style="color:#f92672">++</span>submap_idx;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (submap_idx <span style="color:#f92672">&gt;</span> <span style="color:#ae81ff">0</span>) {
+</span></span><span style="display:flex;"><span>      submap_offset <span style="color:#f92672">=</span> tid <span style="color:#f92672">-</span> prefix_sum[submap_idx <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>];
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">auto</span> <span style="color:#66d9ef">const</span> <span style="color:#f92672">&amp;</span>current_slot  <span style="color:#f92672">=</span> submap_views[submap_idx].get_slots()[submap_offset];
+</span></span><span style="display:flex;"><span>    Key <span style="color:#66d9ef">const</span> existing_key    <span style="color:#f92672">=</span> current_slot.first.load(cuda<span style="color:#f92672">::</span>std<span style="color:#f92672">::</span>memory_order_relaxed);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">auto</span> <span style="color:#66d9ef">const</span> is_filled <span style="color:#f92672">=</span>
+</span></span><span style="display:flex;"><span>      not(cuco<span style="color:#f92672">::</span>detail<span style="color:#f92672">::</span>bitwise_compare(existing_key, empty_key_sentinel) or
+</span></span><span style="display:flex;"><span>          cuco<span style="color:#f92672">::</span>detail<span style="color:#f92672">::</span>bitwise_compare(existing_key, erased_key_sentinel));
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (is_filled) {
+</span></span><span style="display:flex;"><span>      <span style="color:#66d9ef">auto</span> idx   <span style="color:#f92672">=</span> atomicAdd(d_num_out, <span style="color:#66d9ef">static_cast</span><span style="color:#f92672">&lt;</span><span style="color:#66d9ef">unsigned</span> <span style="color:#66d9ef">long</span> <span style="color:#66d9ef">long</span><span style="color:#f92672">&gt;</span>(<span style="color:#ae81ff">1</span>));
+</span></span><span style="display:flex;"><span>      <span style="color:#66d9ef">auto</span> value <span style="color:#f92672">=</span> current_slot.second.load(cuda<span style="color:#f92672">::</span>std<span style="color:#f92672">::</span>memory_order_relaxed);
+</span></span><span style="display:flex;"><span>      keys_out[idx]    <span style="color:#f92672">=</span> existing_key;
+</span></span><span style="display:flex;"><span>      values_out[idx]  <span style="color:#f92672">=</span> value;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><ol start="2">
+<li>block内atomicAdd + 全局atomicAdd</li>
+</ol>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#75715e">// 一个block内用一个__shared__ local_count表示这个block中predict为true的数量
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">// local_pos表示当前线程在该block内第几个predict为true
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">template</span> <span style="color:#f92672">&lt;</span><span style="color:#66d9ef">uint32_t</span> block_size,
+</span></span><span style="display:flex;"><span>          <span style="color:#66d9ef">typename</span> OutputIt,
+</span></span><span style="display:flex;"><span>          <span style="color:#66d9ef">typename</span> viewT,
+</span></span><span style="display:flex;"><span>          <span style="color:#66d9ef">typename</span> PrefixT,
+</span></span><span style="display:flex;"><span>          <span style="color:#66d9ef">typename</span> Key<span style="color:#f92672">&gt;</span>
+</span></span><span style="display:flex;"><span>CUCO_KERNEL <span style="color:#66d9ef">void</span> retrieve_all(OutputIt keys_out,
+</span></span><span style="display:flex;"><span>                              OutputIt values_out,
+</span></span><span style="display:flex;"><span>                              viewT<span style="color:#f92672">*</span> submap_views,
+</span></span><span style="display:flex;"><span>                              <span style="color:#66d9ef">uint32_t</span> num_submaps,
+</span></span><span style="display:flex;"><span>                              <span style="color:#66d9ef">uint64_t</span> capacity,
+</span></span><span style="display:flex;"><span>                              <span style="color:#66d9ef">unsigned</span> <span style="color:#66d9ef">long</span> <span style="color:#66d9ef">long</span><span style="color:#f92672">*</span> d_num_out,
+</span></span><span style="display:flex;"><span>                              PrefixT<span style="color:#f92672">*</span> prefix_sum,
+</span></span><span style="display:flex;"><span>                              Key empty_key_sentinel,
+</span></span><span style="display:flex;"><span>                              Key erased_key_sentinel)
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">auto</span> tid    <span style="color:#f92672">=</span> blockDim.x <span style="color:#f92672">*</span> blockIdx.x <span style="color:#f92672">+</span> threadIdx.x;
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">auto</span> stride <span style="color:#f92672">=</span> blockDim.x <span style="color:#f92672">*</span> gridDim.x;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  __shared__ <span style="color:#66d9ef">unsigned</span> <span style="color:#66d9ef">int</span> local_count;
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">if</span> (threadIdx.x <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span>) {
+</span></span><span style="display:flex;"><span>    local_count <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>  __syncthreads();
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">for</span> (; tid <span style="color:#f92672">&lt;</span> capacity; tid <span style="color:#f92672">+=</span> stride) {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">uint32_t</span> submap_idx <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">uint32_t</span> submap_offset <span style="color:#f92672">=</span> tid;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">while</span> (tid <span style="color:#f92672">&gt;=</span> prefix_sum[submap_idx] <span style="color:#f92672">&amp;&amp;</span> submap_idx <span style="color:#f92672">&lt;</span> num_submaps ) <span style="color:#f92672">++</span>submap_idx;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (submap_idx <span style="color:#f92672">&gt;</span> <span style="color:#ae81ff">0</span>) {
+</span></span><span style="display:flex;"><span>      submap_offset <span style="color:#f92672">=</span> tid <span style="color:#f92672">-</span> prefix_sum[submap_idx <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>];
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">auto</span> <span style="color:#66d9ef">const</span> <span style="color:#f92672">&amp;</span>current_slot  <span style="color:#f92672">=</span> submap_views[submap_idx].get_slots()[submap_offset];
+</span></span><span style="display:flex;"><span>    Key <span style="color:#66d9ef">const</span> existing_key    <span style="color:#f92672">=</span> current_slot.first.load(cuda<span style="color:#f92672">::</span>std<span style="color:#f92672">::</span>memory_order_relaxed);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">auto</span> <span style="color:#66d9ef">const</span> is_filled <span style="color:#f92672">=</span>
+</span></span><span style="display:flex;"><span>      not(cuco<span style="color:#f92672">::</span>detail<span style="color:#f92672">::</span>bitwise_compare(existing_key, empty_key_sentinel) or
+</span></span><span style="display:flex;"><span>          cuco<span style="color:#f92672">::</span>detail<span style="color:#f92672">::</span>bitwise_compare(existing_key, erased_key_sentinel));
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">unsigned</span> <span style="color:#66d9ef">int</span> local_pos <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (is_filled) {
+</span></span><span style="display:flex;"><span>      local_pos <span style="color:#f92672">=</span> atomicAdd_block(<span style="color:#f92672">&amp;</span>local_count, <span style="color:#ae81ff">1</span>);
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    __syncthreads();
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (threadIdx.x <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span>) {
+</span></span><span style="display:flex;"><span>      local_count <span style="color:#f92672">=</span> atomicAdd(d_num_out, local_count);
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    __syncthreads();
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (is_filled) {
+</span></span><span style="display:flex;"><span>      <span style="color:#66d9ef">auto</span> value <span style="color:#f92672">=</span> current_slot.second.load(cuda<span style="color:#f92672">::</span>std<span style="color:#f92672">::</span>memory_order_relaxed);
+</span></span><span style="display:flex;"><span>      keys_out[local_count <span style="color:#f92672">+</span> local_pos]    <span style="color:#f92672">=</span> existing_key;
+</span></span><span style="display:flex;"><span>      values_out[local_count <span style="color:#f92672">+</span> local_pos]  <span style="color:#f92672">=</span> value;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// 类似原理，但是用cub::BlockScan实现
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span><span style="color:#66d9ef">template</span> <span style="color:#f92672">&lt;</span><span style="color:#66d9ef">uint32_t</span> block_size,
+</span></span><span style="display:flex;"><span>          <span style="color:#66d9ef">typename</span> OutputIt,
+</span></span><span style="display:flex;"><span>          <span style="color:#66d9ef">typename</span> viewT,
+</span></span><span style="display:flex;"><span>          <span style="color:#66d9ef">typename</span> PrefixT,
+</span></span><span style="display:flex;"><span>          <span style="color:#66d9ef">typename</span> Key<span style="color:#f92672">&gt;</span>
+</span></span><span style="display:flex;"><span>CUCO_KERNEL <span style="color:#66d9ef">void</span> retrieve_all(OutputIt keys_out,
+</span></span><span style="display:flex;"><span>                              OutputIt values_out,
+</span></span><span style="display:flex;"><span>                              viewT<span style="color:#f92672">*</span> submap_views,
+</span></span><span style="display:flex;"><span>                              <span style="color:#66d9ef">uint32_t</span> num_submaps,
+</span></span><span style="display:flex;"><span>                              <span style="color:#66d9ef">uint64_t</span> capacity,
+</span></span><span style="display:flex;"><span>                              <span style="color:#66d9ef">unsigned</span> <span style="color:#66d9ef">long</span> <span style="color:#66d9ef">long</span><span style="color:#f92672">*</span> d_num_out,
+</span></span><span style="display:flex;"><span>                              PrefixT<span style="color:#f92672">*</span> prefix_sum,
+</span></span><span style="display:flex;"><span>                              Key empty_key_sentinel,
+</span></span><span style="display:flex;"><span>                              Key erased_key_sentinel)
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">using</span> BlockScan <span style="color:#f92672">=</span> cub<span style="color:#f92672">::</span>BlockScan<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">unsigned</span> <span style="color:#66d9ef">int</span>, block_size<span style="color:#f92672">&gt;</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e">// Shared memory
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  __shared__ <span style="color:#66d9ef">typename</span> BlockScan<span style="color:#f92672">::</span>TempStorage scan_temp_storage;
+</span></span><span style="display:flex;"><span>  __shared__ <span style="color:#66d9ef">unsigned</span> <span style="color:#66d9ef">int</span> block_base;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">auto</span> tid    <span style="color:#f92672">=</span> blockDim.x <span style="color:#f92672">*</span> blockIdx.x <span style="color:#f92672">+</span> threadIdx.x;
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">auto</span> stride <span style="color:#f92672">=</span> blockDim.x <span style="color:#f92672">*</span> gridDim.x;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">for</span> (; tid <span style="color:#f92672">&lt;</span> capacity; tid <span style="color:#f92672">+=</span> stride) {
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Compute submap index and offset
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">uint32_t</span> submap_idx <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">uint32_t</span> submap_offset <span style="color:#f92672">=</span> tid;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">while</span> (tid <span style="color:#f92672">&gt;=</span> prefix_sum[submap_idx] <span style="color:#f92672">&amp;&amp;</span> submap_idx <span style="color:#f92672">&lt;</span> num_submaps) <span style="color:#f92672">++</span>submap_idx;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (submap_idx <span style="color:#f92672">&gt;</span> <span style="color:#ae81ff">0</span>) {
+</span></span><span style="display:flex;"><span>      submap_offset <span style="color:#f92672">=</span> tid <span style="color:#f92672">-</span> prefix_sum[submap_idx <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>];
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">auto</span> <span style="color:#66d9ef">const</span><span style="color:#f92672">&amp;</span> current_slot <span style="color:#f92672">=</span> submap_views[submap_idx].get_slots()[submap_offset];
+</span></span><span style="display:flex;"><span>    Key <span style="color:#66d9ef">const</span> existing_key   <span style="color:#f92672">=</span> current_slot.first.load(cuda<span style="color:#f92672">::</span>std<span style="color:#f92672">::</span>memory_order_relaxed);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Check key validity
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">bool</span> is_filled <span style="color:#f92672">=</span> not(cuco<span style="color:#f92672">::</span>detail<span style="color:#f92672">::</span>bitwise_compare(existing_key, empty_key_sentinel) <span style="color:#f92672">||</span>
+</span></span><span style="display:flex;"><span>                         cuco<span style="color:#f92672">::</span>detail<span style="color:#f92672">::</span>bitwise_compare(existing_key, erased_key_sentinel));
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Perform block-wide exclusive scan to compute local write index
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">unsigned</span> <span style="color:#66d9ef">int</span> local_idx <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">unsigned</span> <span style="color:#66d9ef">int</span> total_valid <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>    BlockScan(scan_temp_storage).ExclusiveSum(is_filled <span style="color:#f92672">?</span> <span style="color:#ae81ff">1u</span> <span style="color:#f92672">:</span> <span style="color:#ae81ff">0u</span>, local_idx, total_valid);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Block leader calculates global offset
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">if</span> (threadIdx.x <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span>) {
+</span></span><span style="display:flex;"><span>      block_base <span style="color:#f92672">=</span> atomicAdd(d_num_out, total_valid);
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    __syncthreads();
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (is_filled) {
+</span></span><span style="display:flex;"><span>      <span style="color:#66d9ef">auto</span> value <span style="color:#f92672">=</span> current_slot.second.load(cuda<span style="color:#f92672">::</span>std<span style="color:#f92672">::</span>memory_order_relaxed);
+</span></span><span style="display:flex;"><span>      keys_out[block_base <span style="color:#f92672">+</span> local_idx]   <span style="color:#f92672">=</span> existing_key;
+</span></span><span style="display:flex;"><span>      values_out[block_base <span style="color:#f92672">+</span> local_idx] <span style="color:#f92672">=</span> value;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#ae81ff">3.</span> warp<span style="color:#f92672">-</span>aggregated atomics: warp(or cooperative group)<span style="color:#960050;background-color:#1e0010">粒度</span>atomicAdd <span style="color:#f92672">+</span> block内atomicAdd<span style="color:#f92672">+</span><span style="color:#960050;background-color:#1e0010">全局</span>atomicAdd
+</span></span><span style="display:flex;"><span><span style="color:#960050;background-color:#1e0010">```</span>cpp
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">template</span> <span style="color:#f92672">&lt;</span><span style="color:#66d9ef">uint32_t</span> block_size,
+</span></span><span style="display:flex;"><span>          <span style="color:#66d9ef">typename</span> OutputIt,
+</span></span><span style="display:flex;"><span>          <span style="color:#66d9ef">typename</span> viewT,
+</span></span><span style="display:flex;"><span>          <span style="color:#66d9ef">typename</span> PrefixT,
+</span></span><span style="display:flex;"><span>          <span style="color:#66d9ef">typename</span> Key<span style="color:#f92672">&gt;</span>
+</span></span><span style="display:flex;"><span>CUCO_KERNEL <span style="color:#66d9ef">void</span> retrieve_all(OutputIt keys_out,
+</span></span><span style="display:flex;"><span>                              OutputIt values_out,
+</span></span><span style="display:flex;"><span>                              viewT<span style="color:#f92672">*</span> submap_views,
+</span></span><span style="display:flex;"><span>                              <span style="color:#66d9ef">uint32_t</span> num_submaps,
+</span></span><span style="display:flex;"><span>                              <span style="color:#66d9ef">uint64_t</span> capacity,
+</span></span><span style="display:flex;"><span>                              <span style="color:#66d9ef">unsigned</span> <span style="color:#66d9ef">long</span> <span style="color:#66d9ef">long</span><span style="color:#f92672">*</span> d_num_out,
+</span></span><span style="display:flex;"><span>                              PrefixT<span style="color:#f92672">*</span> prefix_sum,
+</span></span><span style="display:flex;"><span>                              Key empty_key_sentinel,
+</span></span><span style="display:flex;"><span>                              Key erased_key_sentinel)
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">auto</span> tid    <span style="color:#f92672">=</span> blockDim.x <span style="color:#f92672">*</span> blockIdx.x <span style="color:#f92672">+</span> threadIdx.x;
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">auto</span> stride <span style="color:#f92672">=</span> blockDim.x <span style="color:#f92672">*</span> gridDim.x;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  __shared__ <span style="color:#66d9ef">unsigned</span> <span style="color:#66d9ef">int</span> block_count;
+</span></span><span style="display:flex;"><span>  __shared__ <span style="color:#66d9ef">unsigned</span> <span style="color:#66d9ef">int</span> block_base;
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">if</span> (threadIdx.x <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span>) {
+</span></span><span style="display:flex;"><span>    block_count <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>    block_base <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>  __syncthreads();
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">unsigned</span> <span style="color:#66d9ef">int</span> local_idx <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">for</span> (; tid <span style="color:#f92672">&lt;</span> capacity; tid <span style="color:#f92672">+=</span> stride) {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">uint32_t</span> submap_idx <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">uint32_t</span> submap_offset <span style="color:#f92672">=</span> tid;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">while</span> (tid <span style="color:#f92672">&gt;=</span> prefix_sum[submap_idx] <span style="color:#f92672">&amp;&amp;</span> submap_idx <span style="color:#f92672">&lt;</span> num_submaps ) <span style="color:#f92672">++</span>submap_idx;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (submap_idx <span style="color:#f92672">&gt;</span> <span style="color:#ae81ff">0</span>) {
+</span></span><span style="display:flex;"><span>      submap_offset <span style="color:#f92672">=</span> tid <span style="color:#f92672">-</span> prefix_sum[submap_idx <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>];
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">auto</span> <span style="color:#66d9ef">const</span> <span style="color:#f92672">&amp;</span>current_slot  <span style="color:#f92672">=</span> submap_views[submap_idx].get_slots()[submap_offset];
+</span></span><span style="display:flex;"><span>    Key <span style="color:#66d9ef">const</span> existing_key    <span style="color:#f92672">=</span> current_slot.first.load(cuda<span style="color:#f92672">::</span>std<span style="color:#f92672">::</span>memory_order_relaxed);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">auto</span> <span style="color:#66d9ef">const</span> is_filled <span style="color:#f92672">=</span>
+</span></span><span style="display:flex;"><span>      not(cuco<span style="color:#f92672">::</span>detail<span style="color:#f92672">::</span>bitwise_compare(existing_key, empty_key_sentinel) or
+</span></span><span style="display:flex;"><span>          cuco<span style="color:#f92672">::</span>detail<span style="color:#f92672">::</span>bitwise_compare(existing_key, erased_key_sentinel));
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">unsigned</span> mask <span style="color:#f92672">=</span> __ballot_sync(<span style="color:#ae81ff">0xffffffff</span>, is_filled);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int</span> lane <span style="color:#f92672">=</span> threadIdx.x <span style="color:#f92672">&amp;</span> <span style="color:#ae81ff">0x1f</span>;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int</span> warp_prefix <span style="color:#f92672">=</span> __popc(mask <span style="color:#f92672">&amp;</span> ((<span style="color:#ae81ff">1u</span> <span style="color:#f92672">&lt;&lt;</span> lane) <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>));
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (is_filled) local_idx <span style="color:#f92672">=</span> warp_prefix;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">unsigned</span> <span style="color:#66d9ef">int</span> warp_vote <span style="color:#f92672">=</span> __popc(mask);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">unsigned</span> <span style="color:#66d9ef">int</span> warp_base <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (lane <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">&amp;&amp;</span> warp_vote) {
+</span></span><span style="display:flex;"><span>      warp_base <span style="color:#f92672">=</span> atomicAdd_block(<span style="color:#f92672">&amp;</span>block_count, warp_vote);
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    warp_base <span style="color:#f92672">=</span> __shfl_sync(<span style="color:#ae81ff">0xffffffff</span>, warp_base, <span style="color:#ae81ff">0</span>);
+</span></span><span style="display:flex;"><span>    __syncthreads();
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (threadIdx.x <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span>) {
+</span></span><span style="display:flex;"><span>      block_base <span style="color:#f92672">=</span> atomicAdd(d_num_out, block_count);
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    __syncthreads();
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (is_filled) {
+</span></span><span style="display:flex;"><span>      <span style="color:#66d9ef">auto</span> value <span style="color:#f92672">=</span> current_slot.second.load(cuda<span style="color:#f92672">::</span>std<span style="color:#f92672">::</span>memory_order_relaxed);
+</span></span><span style="display:flex;"><span>      keys_out[block_base <span style="color:#f92672">+</span> warp_base <span style="color:#f92672">+</span> local_idx]    <span style="color:#f92672">=</span> existing_key;
+</span></span><span style="display:flex;"><span>      values_out[block_base <span style="color:#f92672">+</span> warp_base <span style="color:#f92672">+</span> local_idx]  <span style="color:#f92672">=</span> value;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// 类似的，但是用cooperative group实现,实测还是tile_size=32最快，和warp没区别
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">// 写起来更modern一点
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span><span style="color:#66d9ef">template</span> <span style="color:#f92672">&lt;</span><span style="color:#66d9ef">uint32_t</span> block_size,
+</span></span><span style="display:flex;"><span>          <span style="color:#66d9ef">uint32_t</span> tile_size,
+</span></span><span style="display:flex;"><span>          <span style="color:#66d9ef">typename</span> OutputIt,
+</span></span><span style="display:flex;"><span>          <span style="color:#66d9ef">typename</span> viewT,
+</span></span><span style="display:flex;"><span>          <span style="color:#66d9ef">typename</span> PrefixT,
+</span></span><span style="display:flex;"><span>          <span style="color:#66d9ef">typename</span> Key<span style="color:#f92672">&gt;</span>
+</span></span><span style="display:flex;"><span>CUCO_KERNEL <span style="color:#66d9ef">void</span> retrieve_all(OutputIt keys_out,
+</span></span><span style="display:flex;"><span>                              OutputIt values_out,
+</span></span><span style="display:flex;"><span>                              viewT<span style="color:#f92672">*</span> submap_views,
+</span></span><span style="display:flex;"><span>                              <span style="color:#66d9ef">uint32_t</span> num_submaps,
+</span></span><span style="display:flex;"><span>                              <span style="color:#66d9ef">uint64_t</span> capacity,
+</span></span><span style="display:flex;"><span>                              <span style="color:#66d9ef">unsigned</span> <span style="color:#66d9ef">long</span> <span style="color:#66d9ef">long</span><span style="color:#f92672">*</span> d_num_out,
+</span></span><span style="display:flex;"><span>                              PrefixT<span style="color:#f92672">*</span> prefix_sum,
+</span></span><span style="display:flex;"><span>                              Key empty_key_sentinel,
+</span></span><span style="display:flex;"><span>                              Key erased_key_sentinel)
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">auto</span> tile   <span style="color:#f92672">=</span> cg<span style="color:#f92672">::</span>tiled_partition<span style="color:#f92672">&lt;</span>tile_size<span style="color:#f92672">&gt;</span>(cg<span style="color:#f92672">::</span>this_thread_block());
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">auto</span> block  <span style="color:#f92672">=</span> cg<span style="color:#f92672">::</span>this_thread_block();
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">auto</span> tid    <span style="color:#f92672">=</span> blockDim.x <span style="color:#f92672">*</span> blockIdx.x <span style="color:#f92672">+</span> threadIdx.x;
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">auto</span> stride <span style="color:#f92672">=</span> blockDim.x <span style="color:#f92672">*</span> gridDim.x;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  __shared__ <span style="color:#66d9ef">unsigned</span> <span style="color:#66d9ef">int</span> block_count;
+</span></span><span style="display:flex;"><span>  __shared__ <span style="color:#66d9ef">unsigned</span> <span style="color:#66d9ef">int</span> block_base;
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">if</span> (threadIdx.x <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span>) {
+</span></span><span style="display:flex;"><span>    block_count <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>    block_base <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>  block.sync();
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">for</span> (; tid <span style="color:#f92672">&lt;</span> capacity; tid <span style="color:#f92672">+=</span> stride) {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">uint32_t</span> submap_idx <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">uint32_t</span> submap_offset <span style="color:#f92672">=</span> tid;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">while</span> (tid <span style="color:#f92672">&gt;=</span> prefix_sum[submap_idx] <span style="color:#f92672">&amp;&amp;</span> submap_idx <span style="color:#f92672">&lt;</span> num_submaps ) <span style="color:#f92672">++</span>submap_idx;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (submap_idx <span style="color:#f92672">&gt;</span> <span style="color:#ae81ff">0</span>) {
+</span></span><span style="display:flex;"><span>      submap_offset <span style="color:#f92672">=</span> tid <span style="color:#f92672">-</span> prefix_sum[submap_idx <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>];
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">auto</span> <span style="color:#66d9ef">const</span> <span style="color:#f92672">&amp;</span>current_slot  <span style="color:#f92672">=</span> submap_views[submap_idx].get_slots()[submap_offset];
+</span></span><span style="display:flex;"><span>    Key <span style="color:#66d9ef">const</span> existing_key    <span style="color:#f92672">=</span> current_slot.first.load(cuda<span style="color:#f92672">::</span>std<span style="color:#f92672">::</span>memory_order_relaxed);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">auto</span> <span style="color:#66d9ef">const</span> is_filled <span style="color:#f92672">=</span>
+</span></span><span style="display:flex;"><span>      not(cuco<span style="color:#f92672">::</span>detail<span style="color:#f92672">::</span>bitwise_compare(existing_key, empty_key_sentinel) or
+</span></span><span style="display:flex;"><span>          cuco<span style="color:#f92672">::</span>detail<span style="color:#f92672">::</span>bitwise_compare(existing_key, erased_key_sentinel));
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">unsigned</span> <span style="color:#66d9ef">int</span> tile_mask <span style="color:#f92672">=</span> tile.ballot(is_filled);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">unsigned</span> <span style="color:#66d9ef">int</span> tile_rank <span style="color:#f92672">=</span> tile.thread_rank();
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">unsigned</span> <span style="color:#66d9ef">int</span> tile_vote <span style="color:#f92672">=</span> __popc(tile_mask);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">unsigned</span> <span style="color:#66d9ef">int</span> tile_prefix <span style="color:#f92672">=</span> __popc(tile_mask <span style="color:#f92672">&amp;</span> ((<span style="color:#ae81ff">1u</span> <span style="color:#f92672">&lt;&lt;</span> tile_rank) <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>));
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">unsigned</span> <span style="color:#66d9ef">int</span> tile_base <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (tile_rank <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">&amp;&amp;</span> tile_mask) {
+</span></span><span style="display:flex;"><span>      tile_base <span style="color:#f92672">=</span> atomicAdd_block(<span style="color:#f92672">&amp;</span>block_count, tile_vote);
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    tile_base <span style="color:#f92672">=</span> tile.shfl(tile_base, <span style="color:#ae81ff">0</span>);
+</span></span><span style="display:flex;"><span>    block.sync();
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (block.thread_rank() <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span>) {
+</span></span><span style="display:flex;"><span>      block_base <span style="color:#f92672">=</span> atomicAdd(d_num_out, block_count);
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    block.sync();
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (is_filled) {
+</span></span><span style="display:flex;"><span>      <span style="color:#66d9ef">auto</span> value <span style="color:#f92672">=</span> current_slot.second.load(cuda<span style="color:#f92672">::</span>std<span style="color:#f92672">::</span>memory_order_relaxed);
+</span></span><span style="display:flex;"><span>      keys_out[block_base <span style="color:#f92672">+</span> tile_base <span style="color:#f92672">+</span> tile_prefix]    <span style="color:#f92672">=</span> existing_key;
+</span></span><span style="display:flex;"><span>      values_out[block_base <span style="color:#f92672">+</span> tile_base <span style="color:#f92672">+</span> tile_prefix]  <span style="color:#f92672">=</span> value;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>实测2/3速度差不多，在插入1亿数据后（实际总cap达到2亿），<code>&lt;key, value&gt;</code>都是<code>cuda::atomic&lt;int64_t&gt;</code>的情况下，retrieve_all cost 3ms左右；</p>
+]]></content:encoded>
+    </item>
+    
     <item>
       <title>TinyMl —— 模型量化(quantization)</title>
       <link>https://caaatch22.github.io/posts/tinyml-quantization/</link>
